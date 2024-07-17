@@ -3,7 +3,7 @@ en:
     admin:
       site_settings:
         categories:
-          discourse_doc_categpries: "Documentation Categories"
+          doc_categories: "Documentation Categories"
   js:
     doc_categories:
       category_settings:
