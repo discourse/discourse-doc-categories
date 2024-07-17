@@ -1,4 +1,4 @@
-TODO_plugin_name:
-  plugin_name_enabled:
+doc_categories:
+  doc_categories_enabled:
     default: false
     client: true
