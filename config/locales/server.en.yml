@@ -1,1 +1,3 @@
 en:
+  site_settings:
+    doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"

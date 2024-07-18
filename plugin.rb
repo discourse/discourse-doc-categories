@@ -1,21 +1,26 @@
 # frozen_string_literal: true
 
-# name: discourse-plugin-name
+# name: discourse-doc-categories
 # about: TODO
 # meta_topic_id: TODO
 # version: 0.0.1
 # authors: Discourse
 # url: TODO
-# required_version: 2.7.0
+# required_version: 3.3.0.beta4-dev
 
-enabled_site_setting :plugin_name_enabled
+enabled_site_setting :doc_categories_enabled
 
-module ::MyPluginModule
-  PLUGIN_NAME = "discourse-plugin-name"
+register_asset "stylesheets/common.scss"
+
+module ::DocCategories
+  PLUGIN_NAME = "discourse-doc-categories"
+
+  CATEGORY_INDEX_TOPIC = "doc_category_index_topic"
 end
 
-require_relative "lib/my_plugin_module/engine"
+require_relative "lib/doc_categories/engine"
 
 after_initialize do
-  # Code which should run after Rails has finished booting
+  register_category_custom_field_type(DocCategories::CATEGORY_INDEX_TOPIC, :integer)
+  Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC
 end

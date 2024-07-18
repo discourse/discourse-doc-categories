@@ -3,7 +3,13 @@ en:
     admin:
       site_settings:
         categories:
-          TODO_plugin_name: "Plugin Name"
+          doc_categories: "Documentation Categories"
   js:
-    discourse_plugin_name:
-      placeholder: placeholder
+    doc_categories:
+      category_settings:
+        title: "Documentation Mode"
+        index_topic: "Index Topic"
+      sidebar:
+        filter:
+          no_results:
+            description: 'We couldn’t find anything matching ‘%{filter}’.<br><br>Do you want to perform a <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">search on this category</a> or a <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">site wide search</a> instead?'
