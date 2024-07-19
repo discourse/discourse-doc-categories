@@ -27,5 +27,9 @@ after_initialize do
   Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC
 
   # legacy docs
-  add_to_serializer(:site, :docs_legacy_path) { GlobalSetting.docs_path }
+  add_to_serializer(
+    :site,
+    :docs_legacy_path,
+    include_condition: -> { SiteSetting.doc_categories_docs_legacy_enabled },
+  ) { GlobalSetting.docs_path }
 end
