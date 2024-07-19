@@ -5,14 +5,13 @@ export default function () {
     "service:site-settings"
   );
 
-  if (!siteSettings.docs_legacy_enabled) {
+  if (!siteSettings.doc_categories_docs_legacy_enabled) {
     return;
   }
 
   const site = getOwnerWithFallback(this).lookup("service:site");
   const docsPath = site.docs_legacy_path || "docs";
 
-  this.route("doc-legacy-docs", { path: "/" + docsPath }, function () {
-    this.route("index", { path: "/" });
-  });
+  this.route("doc-legacy-docs", { path: "/" + docsPath });
+  this.route("doc-legacy-kb-xplr", { path: "/knowledge-explorer" });
 }

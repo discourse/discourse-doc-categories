@@ -2,6 +2,6 @@
 
 class ::DocCategories::DocsLegacyConstraint
   def matches?(_request)
-    SiteSetting.docs_legacy_enabled
+    SiteSetting.doc_categories_docs_legacy_enabled
   end
 end

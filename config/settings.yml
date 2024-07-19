@@ -2,6 +2,9 @@ doc_categories:
   doc_categories_enabled:
     default: false
     client: true
-  docs_legacy_enabled:
+  doc_categories_homepage:
+    default: ""
+    client: true
+  doc_categories_docs_legacy_enabled:
     default: false
     client: true
