@@ -4,7 +4,7 @@ module ::DocCategories
   class DocsLegacyController < ::ApplicationController
     requires_plugin PLUGIN_NAME
 
-    skip_before_action :check_xhr, only: %i[redirect_url redirect_to_homepage]
+    skip_before_action :check_xhr, only: %i[redirect_url]
 
     def redirect_url
       # if there is a `topic` parameter provided. try to redirect to the corresponding topic
@@ -30,7 +30,7 @@ module ::DocCategories
     private
 
     def redirect_to_homepage
-      if SiteSetting.doc_categories_homepage
+      if SiteSetting.doc_categories_homepage.present?
         redirect_to "#{SiteSetting.doc_categories_homepage}#{prepare_url_query_params}"
         return
       end
