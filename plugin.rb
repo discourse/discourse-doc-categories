@@ -12,6 +12,8 @@ enabled_site_setting :doc_categories_enabled
 
 register_asset "stylesheets/common.scss"
 
+GlobalSetting.add_default :docs_path, "docs"
+
 module ::DocCategories
   PLUGIN_NAME = "discourse-doc-categories"
 
@@ -23,4 +25,11 @@ require_relative "lib/doc_categories/engine"
 after_initialize do
   register_category_custom_field_type(DocCategories::CATEGORY_INDEX_TOPIC, :integer)
   Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC
+
+  # legacy docs
+  add_to_serializer(
+    :site,
+    :docs_legacy_path,
+    include_condition: -> { SiteSetting.doc_categories_docs_legacy_enabled },
+  ) { GlobalSetting.docs_path }
 end
