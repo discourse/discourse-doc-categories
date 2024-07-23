@@ -4,7 +4,7 @@ import DiscourseURL from "discourse/lib/url";
 import DiscourseRoute from "discourse/routes/discourse";
 import { samePrefix } from "discourse-common/lib/get-url";
 
-export default class DocLegacyDocs extends DiscourseRoute {
+export default class DocLegacyDocsRoute extends DiscourseRoute {
   @service router;
   @service siteSettings;
 
