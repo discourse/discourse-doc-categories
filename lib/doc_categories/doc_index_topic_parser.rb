@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ::DocCategories::DocIndexTopicParser
   HEADING_TAGS = %w[h1 h2 h3 h4 h5 h6]
   LIST_TAGS = %w[ol ul]
