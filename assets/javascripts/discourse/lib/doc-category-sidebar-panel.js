@@ -19,7 +19,7 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
     hidden = true;
     displayHeader = true;
 
-    get docsSidebar() {
+    get docCategorySidebar() {
       return getOwnerWithFallback(this).lookup("service:doc-category-sidebar");
     }
 
@@ -27,20 +27,20 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
     get sections() {
       const router = getOwnerWithFallback(this).lookup("service:router");
 
-      return this.docsSidebar.sectionsConfig.map((config) => {
+      return this.docCategorySidebar.sectionsConfig.map((config) => {
         return prepareDocsSection({ config, router });
       });
     }
 
     get filterable() {
-      return !this.docsSidebar.loading;
+      return !this.docCategorySidebar.loading;
     }
 
     filterNoResultsDescription(filter) {
-      const active = this.docsSidebar.activeCategory;
+      const active = this.docCategorySidebar.activeCategory;
       let categoryFilter = "";
 
-      if (this.docsSidebar.activeCategory) {
+      if (this.docCategorySidebar.activeCategory) {
         categoryFilter =
           " " +
           (this.#assembleCategoryFilter("", active, 1) ??
@@ -92,7 +92,9 @@ function prepareDocsSection({ config, router }) {
     }
 
     get name() {
-      return this.#config.name;
+      return this.text
+        ? `${SIDEBAR_DOCS_PANEL}__${unicodeSlugify(this.text)}`
+        : `${SIDEBAR_DOCS_PANEL}::root`;
     }
 
     get title() {
@@ -100,9 +102,7 @@ function prepareDocsSection({ config, router }) {
     }
 
     get text() {
-      return this.#config.label
-        ? I18n.t(this.#config.label)
-        : this.#config.text;
+      return this.#config.text;
     }
 
     get links() {
@@ -121,7 +121,7 @@ function prepareDocsSection({ config, router }) {
     }
 
     get hideSectionHeader() {
-      return this.#config.name === `${SIDEBAR_DOCS_PANEL}::root`;
+      return !this.text;
     }
 
     get collapsedByDefault() {
