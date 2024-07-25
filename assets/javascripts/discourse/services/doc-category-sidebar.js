@@ -2,21 +2,30 @@ import { tracked } from "@glimmer/tracking";
 import Service, { inject as service } from "@ember/service";
 import { MAIN_PANEL } from "discourse/lib/sidebar/panels";
 import { deepEqual } from "discourse-common/lib/object";
+import { bind } from "discourse-common/utils/decorators";
 
 export const SIDEBAR_DOCS_PANEL = "discourse-docs-sidebar";
 
 export default class DocCategorySidebarService extends Service {
   @service appEvents;
   @service router;
+  @service messageBus;
   @service sidebarState;
   @service store;
 
+  @tracked _indexCategoryId = null;
   @tracked _indexConfig = null;
 
   constructor() {
     super(...arguments);
 
     this.appEvents.on("page:changed", this, this.#maybeForceDocsSidebar);
+    this.messageBus.subscribe("/categories", this.maybeUpdateIndexContent);
+  }
+
+  willDestroy() {
+    super.willDestroy(...arguments);
+    this.messageBus.unsubscribe("/categories", this.maybeUpdateIndexContent);
   }
 
   get activeCategory() {
@@ -56,53 +65,69 @@ export default class DocCategorySidebarService extends Service {
     this.sidebarState.hideSwitchPanelButtons();
   }
 
-  toggleSidebarPanel() {
-    if (this.isVisible) {
-      this.hideDocsSidebar();
-    } else {
-      this.showDocsSidebar();
-    }
-  }
-
   disableDocsSidebar() {
     this.hideDocsSidebar();
+    this._indexCategoryId = null;
     this._indexConfig = null;
+  }
+
+  @bind
+  maybeUpdateIndexContent(data) {
+    const updatedIndex = data.categories?.find(
+      (c) => c.id === this._indexCategoryId
+    )?.doc_category_index;
+    if (updatedIndex) {
+      this.#setSidebarContent(this._indexCategoryId, updatedIndex);
+      return;
+    }
+
+    if (data.deleted_categories?.find((id) => id === this._indexCategoryId)) {
+      this.disableDocsSidebar();
+    }
   }
 
   #findIndexForActiveCategory() {
     let category = this.activeCategory;
 
     while (category != null) {
+      const categoryId = category.id;
       const indexConfig = category.doc_category_index;
 
       if (indexConfig) {
-        return indexConfig;
+        return { categoryId, indexConfig };
       }
 
       category = category.parentCategory;
     }
+
+    return {};
   }
 
   #maybeForceDocsSidebar() {
-    const newIndexConfig = this.#findIndexForActiveCategory();
+    const { categoryId, indexConfig: newIndexConfig } =
+      this.#findIndexForActiveCategory();
 
     if (!newIndexConfig) {
       this.disableDocsSidebar();
       return;
     }
 
-    if (!deepEqual(this._indexConfig, newIndexConfig)) {
-      this.#setSidebarContent(newIndexConfig);
+    if (
+      this._indexCategoryId !== categoryId ||
+      !deepEqual(this._indexConfig, newIndexConfig)
+    ) {
+      this.#setSidebarContent(categoryId, newIndexConfig);
     }
   }
 
-  #setSidebarContent(index) {
-    if (!index) {
+  #setSidebarContent(categoryId, indexConfig) {
+    if (!indexConfig) {
       this.disableDocsSidebar();
       return;
     }
 
-    this._indexConfig = index;
+    this._indexCategoryId = categoryId;
+    this._indexConfig = indexConfig;
     this.showDocsSidebar();
   }
 }
