@@ -71,6 +71,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
   before do
     SiteSetting.navigation_menu = "sidebar"
     SiteSetting.doc_categories_enabled = true
+    Site.clear_cache
 
     documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
     documentation_category.save!
@@ -109,6 +110,38 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
       expect(sidebar).to be_visible
       expect_docs_sidebar_to_be_correct
+    end
+
+    it "should inherit the docs sidebar from the parent category if available" do
+      visit("/c/#{documentation_subcategory.slug}/#{documentation_subcategory.id}")
+
+      expect(sidebar).to be_visible
+      expect_docs_sidebar_to_be_correct
+    end
+
+    it "should display correctly the subcategory index when different from the parent category" do
+      subcategory_index_topic = Fabricate(:topic, category: documentation_subcategory)
+
+      Fabricate(:post, topic: subcategory_index_topic, raw: <<~MD)
+      # Subcategory Index
+      * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
+      * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+      MD
+
+      documentation_subcategory.custom_fields[
+        DocCategories::CATEGORY_INDEX_TOPIC
+      ] = subcategory_index_topic.id
+      documentation_subcategory.save!
+
+      visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+
+      expect(sidebar).to be_visible
+      expect_docs_sidebar_to_be_correct
+
+      visit("/c/#{documentation_subcategory.slug}/#{documentation_subcategory.id}")
+
+      expect(sidebar).to be_visible
+      expect(sidebar).to have_section(docs_section_name("Subcategory Index"))
     end
   end
 
