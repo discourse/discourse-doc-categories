@@ -66,7 +66,7 @@ after_initialize do
   # this plugin uses a plugin initializer pattern to (hopefully) better organize plugin API calls
   # instead of having them all in one file.
   #
-  # PLEASE add the plugin code into a separate file in the lib/doc_categories/plugin_initializers folder, where
+  # PLEASE add the plugin code into a separate file in the lib/doc_categories/initializers folder, where
   # they can be organized by theme or feature.
   #
   # To create the plugin initializer file, you should follow the pattern below:
