@@ -19,7 +19,7 @@ module ::DocCategories
 
   CATEGORY_INDEX_TOPIC = "doc_category_index_topic"
 
-  class PluginInitializer
+  class Initializer
     attr_reader :plugin
 
     def initialize(plugin)
@@ -32,14 +32,13 @@ module ::DocCategories
     end
   end
 
-  module PluginInitializers
+  module Initializers
     module_function
 
     def apply(plugin)
       constants.each do |c|
         klass = const_get(c)
-
-        klass.new(plugin).apply if klass.is_a?(Class) && klass < PluginInitializer
+        klass.new(plugin).apply if klass.is_a?(Class) && klass < Initializer
       end
     end
   end
@@ -62,7 +61,7 @@ after_initialize do
     include_condition: -> { SiteSetting.doc_categories_docs_legacy_enabled },
   ) { GlobalSetting.docs_path }
 
-  DocCategories::PluginInitializers.apply(self)
+  DocCategories::Initializers.apply(self)
 
   # this plugin uses a plugin initializer pattern to (hopefully) better organize plugin API calls
   # instead of having them all in one file.
@@ -73,8 +72,8 @@ after_initialize do
   # To create the plugin initializer file, you should follow the pattern below:
   #
   # module ::DocCategories
-  #   module PluginInitializers
-  #     class SampleInitializer < PluginInitializer
+  #   module Initializers
+  #     class SampleInitializer < Initializer
   #       def apply
   #         # use plugin.add_to_class, plugin.add_to_serializer, etc. here
   #         # eg. plugin.add_to_serializer(...)

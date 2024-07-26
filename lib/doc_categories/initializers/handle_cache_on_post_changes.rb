@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module ::DocCategories
-  module PluginInitializers
-    class HandleCacheOnPostChanges < PluginInitializer
+  module Initializers
+    class HandleCacheOnPostChanges < Initializer
       def apply
         # since the index structure is serialized into the category data, we need to invalidate the site cache when
         # the first post of an index topic is updated

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module ::DocCategories
-  module PluginInitializers
-    class SerializeIndexStructure < PluginInitializer
+  module Initializers
+    class SerializeIndexStructure < Initializer
       def apply
         # add the index structure to the category serializer
         plugin.add_to_serializer(

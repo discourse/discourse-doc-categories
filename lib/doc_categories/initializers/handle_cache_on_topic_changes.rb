@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module ::DocCategories
-  module PluginInitializers
+  module Initializers
     # since the index structure is serialized into the category data, we need to invalidate the site cache when
     # an index topic changes category or is deleted
 
-    class HandleCacheOnTopicChanges < PluginInitializer
+    class HandleCacheOnTopicChanges < Initializer
       def apply
         plugin.add_class_method(:topic, :clear_doc_categories_cache) { Site.clear_cache }
 
