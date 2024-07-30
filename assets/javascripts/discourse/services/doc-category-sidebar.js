@@ -1,8 +1,15 @@
 import { tracked } from "@glimmer/tracking";
+import { schedule } from "@ember/runloop";
 import Service, { inject as service } from "@ember/service";
+import { TrackedMap } from "@ember-compat/tracked-built-ins";
 import { MAIN_PANEL } from "discourse/lib/sidebar/panels";
 import { deepEqual } from "discourse-common/lib/object";
 import { bind } from "discourse-common/utils/decorators";
+import {
+  generateSectionLinkName,
+  generateSectionName,
+  isSectionLinkActive,
+} from "../lib/doc-category-sidebar-panel";
 
 export const SIDEBAR_DOCS_PANEL = "discourse-docs-sidebar";
 
@@ -13,18 +20,43 @@ export default class DocCategorySidebarService extends Service {
   @service sidebarState;
   @service store;
 
+  @tracked _currentActiveSectionName = null;
+  @tracked _currentActiveSectionLinkName = null;
   @tracked _indexCategoryId = null;
   @tracked _indexConfig = null;
+  _sectionCollapsedStateTracker = new TrackedMap();
 
   constructor() {
     super(...arguments);
 
-    this.appEvents.on("page:changed", this, this.#maybeForceDocsSidebar);
+    this.appEvents.on("page:changed", this, this.maybeForceDocsSidebar);
+    this.appEvents.on(
+      "sidebar-state:collapse-section",
+      this,
+      this.#trackCollapsedSection
+    );
+    this.appEvents.on(
+      "sidebar-state:expand-section",
+      this,
+      this.#trackExpandedSection
+    );
     this.messageBus.subscribe("/categories", this.maybeUpdateIndexContent);
   }
 
   willDestroy() {
     super.willDestroy(...arguments);
+
+    this.appEvents.off("page:changed", this, this.maybeForceDocsSidebar);
+    this.appEvents.off(
+      "sidebar-state:collapse-section",
+      this,
+      this.#trackCollapsedSection
+    );
+    this.appEvents.off(
+      "sidebar-state:expand-section",
+      this,
+      this.#trackExpandedSection
+    );
     this.messageBus.unsubscribe("/categories", this.maybeUpdateIndexContent);
   }
 
@@ -35,20 +67,25 @@ export default class DocCategorySidebarService extends Service {
     );
   }
 
-  get isEnabled() {
-    return !!this._activeIndex;
-  }
-
   get isVisible() {
     return this.sidebarState.isCurrentPanel(SIDEBAR_DOCS_PANEL);
   }
 
-  get loading() {
-    return this._loading;
-  }
-
   get sectionsConfig() {
     return this._indexConfig || [];
+  }
+
+  get activeSectionInfo() {
+    let linkConfig = null;
+    const sectionConfig = this.sectionsConfig.find((section) => {
+      linkConfig = section.links?.find((link) =>
+        isSectionLinkActive(this.router, link)
+      );
+
+      return !!linkConfig;
+    });
+
+    return sectionConfig ? { sectionConfig, linkConfig } : null;
   }
 
   hideDocsSidebar() {
@@ -69,6 +106,29 @@ export default class DocCategorySidebarService extends Service {
     this.hideDocsSidebar();
     this._indexCategoryId = null;
     this._indexConfig = null;
+    this._currentActiveSectionName = null;
+    this._currentActiveSectionLinkName = null;
+  }
+
+  @bind
+  maybeForceDocsSidebar(opts = {}) {
+    const { categoryId, indexConfig: newIndexConfig } =
+      this.#findIndexForCategory(opts.category);
+
+    if (!newIndexConfig) {
+      this.disableDocsSidebar();
+      return;
+    }
+
+    if (
+      this._indexCategoryId !== categoryId ||
+      !deepEqual(this._indexConfig, newIndexConfig)
+    ) {
+      this.#setSidebarContent(categoryId, newIndexConfig);
+      return;
+    }
+
+    this.#maybeExpandActiveSection();
   }
 
   @bind
@@ -97,8 +157,8 @@ export default class DocCategorySidebarService extends Service {
     }
   }
 
-  #findIndexForActiveCategory() {
-    let category = this.activeCategory;
+  #findIndexForCategory(category) {
+    category ??= this.activeCategory;
 
     while (category != null) {
       const categoryId = category.id;
@@ -114,23 +174,6 @@ export default class DocCategorySidebarService extends Service {
     return {};
   }
 
-  #maybeForceDocsSidebar() {
-    const { categoryId, indexConfig: newIndexConfig } =
-      this.#findIndexForActiveCategory();
-
-    if (!newIndexConfig) {
-      this.disableDocsSidebar();
-      return;
-    }
-
-    if (
-      this._indexCategoryId !== categoryId ||
-      !deepEqual(this._indexConfig, newIndexConfig)
-    ) {
-      this.#setSidebarContent(categoryId, newIndexConfig);
-    }
-  }
-
   #setSidebarContent(categoryId, indexConfig) {
     if (!indexConfig) {
       this.disableDocsSidebar();
@@ -140,5 +183,72 @@ export default class DocCategorySidebarService extends Service {
     this._indexCategoryId = categoryId;
     this._indexConfig = indexConfig;
     this.showDocsSidebar();
+    this.#maybeExpandActiveSection();
+  }
+
+  #maybeExpandActiveSection() {
+    const oldActiveSectionName = this._currentActiveSectionName;
+    const oldActiveSectionLinkName = this._currentActiveSectionLinkName;
+
+    const newActiveSectionInfo = this.activeSectionInfo;
+    const newActiveSectionName = newActiveSectionInfo
+      ? generateSectionName(newActiveSectionInfo.sectionConfig)
+      : null;
+    const newActiveSectionLinkName = newActiveSectionInfo?.linkConfig
+      ? generateSectionLinkName(
+          newActiveSectionName,
+          newActiveSectionInfo.linkConfig
+        )
+      : null;
+
+    // skip if the active section link did not change
+    if (oldActiveSectionLinkName === newActiveSectionLinkName) {
+      return;
+    }
+
+    // only act if we have a tracked value for the old active section name
+    if (this._sectionCollapsedStateTracker.has(oldActiveSectionName)) {
+      if (this._sectionCollapsedStateTracker.get(oldActiveSectionName)) {
+        this.sidebarState.collapsedSections.add(oldActiveSectionName);
+      } else {
+        this.sidebarState.collapsedSections.delete(oldActiveSectionName);
+      }
+    }
+
+    // expand the new active section
+    if (newActiveSectionName) {
+      this.sidebarState.collapsedSections.delete(newActiveSectionName);
+    }
+
+    // scroll the new active link into view
+    if (newActiveSectionLinkName) {
+      schedule("afterRender", () => {
+        const itemElement = document.querySelector(
+          `li[data-list-item-name='${newActiveSectionLinkName}']`
+        );
+
+        itemElement?.scrollIntoView({
+          block: "center",
+        });
+      });
+    }
+
+    // update the current active section and link
+    this._currentActiveSectionName = newActiveSectionName;
+    this._currentActiveSectionLinkName = newActiveSectionLinkName;
+  }
+
+  #trackCollapsedSection(eventData) {
+    this.#trackSectionCollapsedState(eventData.sectionKey, true);
+  }
+
+  #trackExpandedSection(eventData) {
+    this.#trackSectionCollapsedState(eventData.sectionKey, false);
+  }
+
+  #trackSectionCollapsedState(sectionName, isCollapsed) {
+    if (this.isVisible) {
+      this._sectionCollapsedStateTracker.set(sectionName, isCollapsed);
+    }
   }
 }

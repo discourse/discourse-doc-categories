@@ -92,9 +92,7 @@ function prepareDocsSection({ config, router }) {
     }
 
     get name() {
-      return this.text
-        ? `${SIDEBAR_DOCS_PANEL}__${unicodeSlugify(this.text)}`
-        : `${SIDEBAR_DOCS_PANEL}::root`;
+      return generateSectionName(this.#config);
     }
 
     get title() {
@@ -107,10 +105,10 @@ function prepareDocsSection({ config, router }) {
 
     get links() {
       return this.sectionLinks.map(
-        (sectionLinkData) =>
+        (sectionLinkConfig) =>
           new DocCategorySidebarSectionLink({
-            data: sectionLinkData,
-            panelName: this.name,
+            config: sectionLinkConfig,
+            sectionName: this.name,
             router,
           })
       );
@@ -131,39 +129,24 @@ function prepareDocsSection({ config, router }) {
 }
 
 class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
-  #data;
-  #panelName;
+  #config;
+  #sectionName;
   #router;
 
-  constructor({ data, panelName, router }) {
+  constructor({ config, sectionName, router }) {
     super(...arguments);
 
-    this.#data = data;
-    this.#panelName = panelName;
+    this.#config = config;
+    this.#sectionName = sectionName;
     this.#router = router;
   }
 
   get active() {
-    if (DiscourseURL.isInternal(this.href) && samePrefix(this.href)) {
-      const topicRouteInfo = this.#router
-        .recognize(this.href.replace(getAbsoluteURL("/"), "/"), "")
-        .find((route) => route.name === "topic");
-
-      const currentTopicRouteInfo = this.#router.currentRoute.find(
-        (route) => route.name === "topic"
-      );
-
-      return (
-        currentTopicRouteInfo &&
-        currentTopicRouteInfo?.params?.id === topicRouteInfo?.params?.id
-      );
-    }
-
-    return false;
+    return isSectionLinkActive(this.#router, this.#config);
   }
 
   get name() {
-    return `${this.#panelName}___${unicodeSlugify(this.#data.text)}`;
+    return generateSectionLinkName(this.#sectionName, this.#config);
   }
 
   get classNames() {
@@ -177,21 +160,50 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get href() {
-    return this.#data.href;
+    return this.#config.href;
   }
 
   get text() {
-    return this.#data.text;
+    return this.#config.text;
   }
 
   get title() {
-    return this.#data.text;
+    return this.#config.text;
   }
 
   @computed("data.text")
   get keywords() {
     return {
-      navigation: this.#data.text.toLowerCase().split(/\s+/g),
+      navigation: this.#config.text.toLowerCase().split(/\s+/g),
     };
   }
+}
+
+export function generateSectionName(config) {
+  return config.text
+    ? `${SIDEBAR_DOCS_PANEL}__${unicodeSlugify(config.text)}`
+    : `${SIDEBAR_DOCS_PANEL}::root`;
+}
+
+export function generateSectionLinkName(sectionName, linkConfig) {
+  return `${sectionName}___${unicodeSlugify(linkConfig.text)}`;
+}
+
+export function isSectionLinkActive(router, linkConfig) {
+  if (DiscourseURL.isInternal(linkConfig.href) && samePrefix(linkConfig.href)) {
+    const topicRouteInfo = router
+      .recognize(linkConfig.href.replace(getAbsoluteURL("/"), "/"), "")
+      .find((route) => route.name === "topic");
+
+    const currentTopicRouteInfo = router.currentRoute?.find(
+      (route) => route.name === "topic"
+    );
+
+    return (
+      !!currentTopicRouteInfo &&
+      currentTopicRouteInfo?.params?.id === topicRouteInfo?.params?.id
+    );
+  }
+
+  return false;
 }
