@@ -4,14 +4,8 @@ module ::DocCategories
   module Initializers
     class InvalidateCacheOnEnabledSettingChange < Initializer
       def apply
-        # DiscourseEvent is used below intentionally because we want this code to work when the plugin is disabled
-        # `plugin.on`, wouldn't
-
-        # rubocop:disable Discourse/Plugins/UsePluginInstanceOn
-        DiscourseEvent.on(:site_setting_changed) do |name|
-          # invalidates the site cache if the plugin is turned on or off
-          Site.clear_cache if name == plugin.enabled_site_setting
-        end
+        # invalidates the site cache when the plugin is turned on or off
+        plugin.on_enabled_change { Site.clear_cache }
       end
     end
   end
