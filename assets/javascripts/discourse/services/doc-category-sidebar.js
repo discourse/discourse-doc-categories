@@ -29,7 +29,14 @@ export default class DocCategorySidebarService extends Service {
   constructor() {
     super(...arguments);
 
-    this.appEvents.on("page:changed", this, this.maybeForceDocsSidebar);
+    this.router.on("routeDidChange", (transition) => {
+      if (transition.isAborted) {
+        return;
+      }
+
+      this.maybeForceDocsSidebar();
+    });
+
     this.appEvents.on(
       "sidebar-state:collapse-section",
       this,

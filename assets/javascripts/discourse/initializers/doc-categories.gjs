@@ -1,5 +1,4 @@
 import { withPluginApi } from "discourse/lib/plugin-api";
-import Category from "discourse/models/category";
 import DocCategorySettings from "../components/doc-category-settings";
 import DocCategorySidebarPanel, {
   generateSectionName,
@@ -38,29 +37,6 @@ export default {
 
           // default behavior
           next();
-        }
-      );
-
-      // tries to activate the docs sidebar as soon as possible.
-      // this is done to prevent that the default sidebar flashes on the screen before the docs sidebar is activated
-      api.registerBehaviorTransformer(
-        "route-application-activate",
-        ({ context, next }) => {
-          next();
-
-          if (context.transition?.isAborted) {
-            return;
-          }
-
-          let route = context.transition?.to;
-          let category;
-          do {
-            category =
-              context.transition?.resolvedModels?.[route.name]?.category;
-            route = route.parent;
-          } while (route && !(category instanceof Category));
-
-          docCategorySidebar.maybeForceDocsSidebar({ category });
         }
       );
     });
