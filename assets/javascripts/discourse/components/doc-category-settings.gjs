@@ -3,6 +3,7 @@ import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import Topic from "discourse/models/topic";
+import dIcon from "discourse-common/helpers/d-icon";
 import i18n from "discourse-common/helpers/i18n";
 import TopicChooser from "select-kit/components/topic-chooser";
 
@@ -29,6 +30,28 @@ export default class DocCategorySettings extends Component {
     return this.args.outletArgs.category;
   }
 
+  get errorMessage() {
+    if (this.loadingIndexTopic) {
+      return;
+    }
+
+    if (this.indexTopicId && !this.indexTopic) {
+      return i18n(
+        "doc_categories.category_settings.index_topic.errors.topic_not_found"
+      );
+    } else if (
+      this.indexTopic &&
+      this.indexTopic.category_id !== this.category.id
+    ) {
+      return i18n(
+        "doc_categories.category_settings.index_topic.errors.mismatched-category",
+        {
+          category_name: this.indexTopic.category?.name,
+        }
+      );
+    }
+  }
+
   get indexTopicContent() {
     if (this.loadingIndexTopic || !this.indexTopicId) {
       return [];
@@ -37,12 +60,25 @@ export default class DocCategorySettings extends Component {
     return [this.indexTopic];
   }
 
+  get searchFilters() {
+    return [
+      "in:title",
+      "include:unlisted",
+      `category:${this.category.id}`,
+    ].join(" ");
+  }
+
+  get shouldDisplayErrorMessage() {
+    return !this.loadingIndexTopic && this.errorMessage;
+  }
+
   async loadIndexTopic() {
     this.loadingIndexTopic = true;
 
     try {
       // using store.find doesn't work for topics
-      this.indexTopic = await Topic.find(this.indexTopicId, {});
+      const topic = await Topic.find(this.indexTopicId, {});
+      this.onChangeIndexTopic(this.indexTopicId, topic);
     } finally {
       this.loadingIndexTopic = false;
     }
@@ -57,17 +93,25 @@ export default class DocCategorySettings extends Component {
 
   <template>
     <h3>{{i18n "doc_categories.category_settings.title"}}</h3>
-    <section class="field">
-      <label class="checkbox-label">
-        {{i18n "doc_categories.category_settings.index_topic"}}
+    <section
+      class="field doc-categories-settings doc-categories-settings__index-topic"
+    >
+      <label class="label">
+        {{i18n "doc_categories.category_settings.index_topic.label"}}
       </label>
       <div class="controls">
         <TopicChooser
           @value={{this.indexTopicId}}
           @content={{this.indexTopicContent}}
           @onChange={{this.onChangeIndexTopic}}
-          @options={{hash additionalFilters="in:title include:unlisted"}}
+          @options={{hash additionalFilters=this.searchFilters}}
         />
+        {{#if this.shouldDisplayErrorMessage}}
+          <div class="validation-error">
+            {{dIcon "times"}}
+            {{this.errorMessage}}
+          </div>
+        {{/if}}
       </div>
     </section>
   </template>

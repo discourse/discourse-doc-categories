@@ -15,3 +15,13 @@
     }
   }
 }
+
+.doc-categories-settings {
+  .validation-error {
+    padding-top: 3px;
+
+    font-size: var(--font-down-1);
+    line-height: var(--line-height-large);
+    color: var(--danger);
+  }
+}
