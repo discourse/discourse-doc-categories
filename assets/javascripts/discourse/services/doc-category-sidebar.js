@@ -73,14 +73,25 @@ export default class DocCategorySidebarService extends Service {
 
   @bind
   maybeUpdateIndexContent(data) {
-    const updatedIndex = data.categories?.find(
-      (c) => c.id === this._indexCategoryId
-    )?.doc_category_index;
-    if (updatedIndex) {
-      this.#setSidebarContent(this._indexCategoryId, updatedIndex);
+    // if the docs sidebar is not displayed, tries to display it
+    if (!this.isVisible) {
+      this.maybeForceDocsSidebar();
       return;
     }
 
+    // if the docs sidebar is displayed, checks if the index needs to be updated for the current category
+    const updatedCategory = data.categories?.find(
+      (c) => c.id === this._indexCategoryId
+    );
+
+    if (updatedCategory) {
+      this.#setSidebarContent(
+        this._indexCategoryId,
+        updatedCategory.doc_category_index
+      );
+    }
+
+    // if the category no longer exists hides the docs sidebar
     if (data.deleted_categories?.find((id) => id === this._indexCategoryId)) {
       this.disableDocsSidebar();
     }
