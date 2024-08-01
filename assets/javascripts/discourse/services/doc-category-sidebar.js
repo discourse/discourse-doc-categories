@@ -1,27 +1,31 @@
 import { tracked } from "@glimmer/tracking";
 import Service, { inject as service } from "@ember/service";
-import { isEmpty } from "@ember/utils";
-import { ajax } from "discourse/lib/ajax";
 import { MAIN_PANEL } from "discourse/lib/sidebar/panels";
-import { parseSidebarStructure } from "../lib/doc-category-sidebar-structure-parser";
+import { deepEqual } from "discourse-common/lib/object";
+import { bind } from "discourse-common/utils/decorators";
 
 export const SIDEBAR_DOCS_PANEL = "discourse-docs-sidebar";
 
-export default class DocsSidebarService extends Service {
+export default class DocCategorySidebarService extends Service {
   @service appEvents;
   @service router;
+  @service messageBus;
   @service sidebarState;
   @service store;
 
-  #contentCache = new Map();
-  @tracked _activeTopicId;
-  @tracked _currentSectionsConfig = null;
-  @tracked _loading = false;
+  @tracked _indexCategoryId = null;
+  @tracked _indexConfig = null;
 
   constructor() {
     super(...arguments);
 
     this.appEvents.on("page:changed", this, this.#maybeForceDocsSidebar);
+    this.messageBus.subscribe("/categories", this.maybeUpdateIndexContent);
+  }
+
+  willDestroy() {
+    super.willDestroy(...arguments);
+    this.messageBus.unsubscribe("/categories", this.maybeUpdateIndexContent);
   }
 
   get activeCategory() {
@@ -31,16 +35,8 @@ export default class DocsSidebarService extends Service {
     );
   }
 
-  get allSectionsExpanded() {
-    return this.sectionsConfig?.every((sectionConfig) => {
-      return !this.sidebarState.collapsedSections.has(
-        `sidebar-section-${sectionConfig.name}-collapsed`
-      );
-    });
-  }
-
   get isEnabled() {
-    return !!this._activeTopicId;
+    return !!this._activeIndex;
   }
 
   get isVisible() {
@@ -52,7 +48,7 @@ export default class DocsSidebarService extends Service {
   }
 
   get sectionsConfig() {
-    return this._currentSectionsConfig || [];
+    return this._indexConfig || [];
   }
 
   hideDocsSidebar() {
@@ -69,100 +65,80 @@ export default class DocsSidebarService extends Service {
     this.sidebarState.hideSwitchPanelButtons();
   }
 
-  toggleSidebarPanel() {
-    if (this.isVisible) {
-      this.hideDocsSidebar();
-    } else {
-      this.showDocsSidebar();
+  disableDocsSidebar() {
+    this.hideDocsSidebar();
+    this._indexCategoryId = null;
+    this._indexConfig = null;
+  }
+
+  @bind
+  maybeUpdateIndexContent(data) {
+    // if the docs sidebar is not displayed, tries to display it
+    if (!this.isVisible) {
+      this.maybeForceDocsSidebar();
+      return;
+    }
+
+    // if the docs sidebar is displayed, checks if the index needs to be updated for the current category
+    const updatedCategory = data.categories?.find(
+      (c) => c.id === this._indexCategoryId
+    );
+
+    if (updatedCategory) {
+      this.#setSidebarContent(
+        this._indexCategoryId,
+        updatedCategory.doc_category_index
+      );
+    }
+
+    // if the category no longer exists hides the docs sidebar
+    if (data.deleted_categories?.find((id) => id === this._indexCategoryId)) {
+      this.disableDocsSidebar();
     }
   }
 
-  disableDocsSidebar() {
-    this.hideDocsSidebar();
-    this._activeTopicId = null;
-    this._currentSectionsConfig = null;
-  }
-
-  #findSettingsForActiveCategory() {
+  #findIndexForActiveCategory() {
     let category = this.activeCategory;
 
     while (category != null) {
-      const matchingSetting = category.custom_fields?.doc_category_index_topic;
+      const categoryId = category.id;
+      const indexConfig = category.doc_category_index;
 
-      if (matchingSetting) {
-        return { indexTopicId: matchingSetting };
+      if (indexConfig) {
+        return { categoryId, indexConfig };
       }
 
       category = category.parentCategory;
     }
+
+    return {};
   }
 
   #maybeForceDocsSidebar() {
-    const newActiveTopicId =
-      this.#findSettingsForActiveCategory()?.indexTopicId;
+    const { categoryId, indexConfig: newIndexConfig } =
+      this.#findIndexForActiveCategory();
 
-    if (!newActiveTopicId) {
+    if (!newIndexConfig) {
       this.disableDocsSidebar();
       return;
     }
 
-    if (this._activeTopicId !== newActiveTopicId) {
-      this.#setSidebarContent(newActiveTopicId);
+    if (
+      this._indexCategoryId !== categoryId ||
+      !deepEqual(this._indexConfig, newIndexConfig)
+    ) {
+      this.#setSidebarContent(categoryId, newIndexConfig);
     }
   }
 
-  async #setSidebarContent(topic_id) {
-    this._activeTopicId = topic_id;
-
-    if (!this._activeTopicId) {
-      this.hideDocsSidebar();
+  #setSidebarContent(categoryId, indexConfig) {
+    if (!indexConfig) {
+      this.disableDocsSidebar();
       return;
     }
 
-    this._currentSectionsConfig = this.#contentCache.get(this._activeTopicId);
-
-    if (this._currentSectionsConfig) {
-      this.showDocsSidebar();
-      return;
-    }
-
-    await this.#fetchTopicContent(topic_id);
-  }
-
-  async #fetchTopicContent(topic_id) {
-    this._loading = true;
+    this._indexCategoryId = categoryId;
+    this._indexConfig = indexConfig;
     this.showDocsSidebar();
-
-    try {
-      // leverages the post stream API to fetch only the first post
-      const data = await ajax(`/t/${topic_id}/posts.json`, {
-        post_number: 2,
-        include_suggested: false,
-        asc: false,
-      });
-
-      const cookedHtml = data?.post_stream?.posts?.[0]?.cooked;
-      if (!cookedHtml) {
-        // display regular sidebar
-        return;
-      }
-
-      const sections = parseSidebarStructure(cookedHtml);
-
-      // the parser will return only sections with at least one link
-      // if none could be found, fallback to the default sidebar
-      if (isEmpty(sections)) {
-        this.disableDocsSidebar();
-        return;
-      }
-
-      this.#contentCache.set(topic_id, sections);
-      this._currentSectionsConfig = sections;
-    } catch (error) {
-      // if an error occurred while fetching the content, fallback to the default sidebar
-      this.disableDocsSidebar();
-    } finally {
-      this._loading = false;
-    }
   }
 }
