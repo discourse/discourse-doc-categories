@@ -18,6 +18,8 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
     key = SIDEBAR_DOCS_PANEL;
     hidden = true;
     displayHeader = true;
+    expandActiveSection = true;
+    scrollActiveLinkIntoView = true;
 
     get docCategorySidebar() {
       return getOwnerWithFallback(this).lookup("service:doc-category-sidebar");
@@ -143,7 +145,7 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
     this.#router = router;
   }
 
-  get active() {
+  get currentWhen() {
     if (DiscourseURL.isInternal(this.href) && samePrefix(this.href)) {
       const topicRouteInfo = this.#router
         .recognize(this.href.replace(getAbsoluteURL("/"), "/"), "")
@@ -168,11 +170,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
 
   get classNames() {
     const list = ["docs-sidebar-nav-link"];
-
-    if (this.active) {
-      list.push("active");
-    }
-
     return list.join(" ");
   }
 
