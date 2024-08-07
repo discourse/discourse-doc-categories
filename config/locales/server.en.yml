@@ -1,4 +1,5 @@
 en:
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
-    doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs"
+    doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"
+    doc_categories_homepage: "When `doc_categories_docs_legacy_enabled` the old docs homepage will redirect to this address."
