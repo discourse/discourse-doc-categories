@@ -19,6 +19,12 @@ module ::DocCategories
 
   CATEGORY_INDEX_TOPIC = "doc_category_index_topic"
 
+  def self.legacyMode?
+    # disable the compatibility mode if the docs plugin is enabled
+    return false if defined?(::Docs) && SiteSetting.docs_enabled
+    SiteSetting.doc_categories_docs_legacy_enabled
+  end
+
   class Initializer
     attr_reader :plugin
 
@@ -58,7 +64,7 @@ after_initialize do
   add_to_serializer(
     :site,
     :docs_legacy_path,
-    include_condition: -> { SiteSetting.doc_categories_docs_legacy_enabled },
+    include_condition: -> { DocCategories.legacyMode? },
   ) { GlobalSetting.docs_path }
 
   DocCategories::Initializers.apply(self)
