@@ -2,7 +2,6 @@
 
 RSpec.describe Search do
   describe "in:docs" do
-    fab!(:admin) { Fabricate(:admin, refresh_auto_groups: true) }
     fab!(:category) { Fabricate(:category_with_definition) }
     fab!(:topic) { Fabricate(:topic, category: category, title: "looking for this?") }
     fab!(:post) { Fabricate(:post, topic: topic, post_number: 1) }
@@ -49,9 +48,9 @@ RSpec.describe Search do
         documentation_category.save!
 
         results_with_advanced_search_trigger =
-          Search.execute("looking in:docs", guardian: Guardian.new(admin)).posts.map(&:id)
+          Search.execute("looking in:docs").posts.map(&:id)
         results_without_advanced_search_trigger =
-          Search.execute("looking", guardian: Guardian.new(admin)).posts.map(&:id)
+          Search.execute("looking").posts.map(&:id)
 
         expect(results_with_advanced_search_trigger).to contain_exactly(
           documentation_category_post.id,
@@ -67,7 +66,7 @@ RSpec.describe Search do
 
       it "doesn't return anything if there are no doc categories" do
         results_with_advanced_search_trigger =
-          Search.execute("looking in:docs", guardian: Guardian.new(admin)).posts.map(&:id)
+          Search.execute("looking in:docs").posts.map(&:id)
 
         expect(results_with_advanced_search_trigger).to be_blank
       end
@@ -78,9 +77,9 @@ RSpec.describe Search do
 
       it "won't modify the search results" do
         results_with_advanced_search_trigger =
-          Search.execute("looking in:docs", guardian: Guardian.new(admin)).posts.map(&:id)
+          Search.execute("looking in:docs").posts.map(&:id)
         results_without_advanced_search_trigger =
-          Search.execute("looking", guardian: Guardian.new(admin)).posts.map(&:id)
+          Search.execute("looking").posts.map(&:id)
 
         expect(results_without_advanced_search_trigger).to contain_exactly(
           post.id,
