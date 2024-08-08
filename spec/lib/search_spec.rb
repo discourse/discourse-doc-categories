@@ -37,17 +37,17 @@ RSpec.describe Search do
       [topic, documentation_category_topic, documentation_subcategory_topic].each do |t|
         SearchIndexer.index(t, force: true)
       end
-
-      documentation_category.custom_fields[
-        DocCategories::CATEGORY_INDEX_TOPIC
-      ] = documentation_category_topic.id
-      documentation_category.save!
     end
 
     context "when the plugin is enabled" do
       before { SiteSetting.doc_categories_enabled = true }
 
       it "includes only posts from the doc categories (including subcategories) in the results" do
+        documentation_category.custom_fields[
+          DocCategories::CATEGORY_INDEX_TOPIC
+        ] = documentation_category_topic.id
+        documentation_category.save!
+
         results_with_advanced_search_trigger =
           Search.execute("looking in:docs", guardian: Guardian.new(admin)).posts.map(&:id)
         results_without_advanced_search_trigger =
@@ -63,6 +63,13 @@ RSpec.describe Search do
         expect(results_without_advanced_search_trigger).to include(
           *results_with_advanced_search_trigger,
         )
+      end
+
+      it "doesn't return anything if there are no doc categories" do
+        results_with_advanced_search_trigger =
+          Search.execute("looking in:docs", guardian: Guardian.new(admin)).posts.map(&:id)
+
+        expect(results_with_advanced_search_trigger).to be_blank
       end
     end
 
