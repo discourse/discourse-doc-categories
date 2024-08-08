@@ -47,10 +47,8 @@ RSpec.describe Search do
         ] = documentation_category_topic.id
         documentation_category.save!
 
-        results_with_advanced_search_trigger =
-          Search.execute("looking in:docs").posts.map(&:id)
-        results_without_advanced_search_trigger =
-          Search.execute("looking").posts.map(&:id)
+        results_with_advanced_search_trigger = Search.execute("looking in:docs").posts.map(&:id)
+        results_without_advanced_search_trigger = Search.execute("looking").posts.map(&:id)
 
         expect(results_with_advanced_search_trigger).to contain_exactly(
           documentation_category_post.id,
@@ -65,8 +63,7 @@ RSpec.describe Search do
       end
 
       it "doesn't return anything if there are no doc categories" do
-        results_with_advanced_search_trigger =
-          Search.execute("looking in:docs").posts.map(&:id)
+        results_with_advanced_search_trigger = Search.execute("looking in:docs").posts.map(&:id)
 
         expect(results_with_advanced_search_trigger).to be_blank
       end
@@ -76,10 +73,8 @@ RSpec.describe Search do
       before { SiteSetting.doc_categories_enabled = false }
 
       it "won't modify the search results" do
-        results_with_advanced_search_trigger =
-          Search.execute("looking in:docs").posts.map(&:id)
-        results_without_advanced_search_trigger =
-          Search.execute("looking").posts.map(&:id)
+        results_with_advanced_search_trigger = Search.execute("looking in:docs").posts.map(&:id)
+        results_without_advanced_search_trigger = Search.execute("looking").posts.map(&:id)
 
         expect(results_without_advanced_search_trigger).to contain_exactly(
           post.id,
