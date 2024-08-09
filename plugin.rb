@@ -56,10 +56,6 @@ after_initialize do
   register_category_custom_field_type(DocCategories::CATEGORY_INDEX_TOPIC, :integer)
   Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC
 
-  add_to_class(:category, :doc_index_topic_id) do
-    custom_fields[DocCategories::CATEGORY_INDEX_TOPIC]
-  end
-
   # legacy docs
   add_to_serializer(
     :site,

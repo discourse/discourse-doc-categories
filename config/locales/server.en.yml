@@ -1,4 +1,7 @@
 en:
+  reports:
+    doc_categories_missing_topics:
+      title: "Docs - Topics not indexed"
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
     doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"
