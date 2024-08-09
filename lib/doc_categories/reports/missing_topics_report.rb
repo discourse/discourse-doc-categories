@@ -14,7 +14,7 @@ module ::DocCategories::Reports
             title: :title,
             id: :id,
           },
-          title: I18n.t("reports.top_referred_topics.labels.topic"),
+          title: I18n.t("reports.doc_categories_missing_topics.labels.topic"),
         },
       ]
       @report.data = []
