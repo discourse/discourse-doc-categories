@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ::DocCategories::Url
   def self.extract_topic_id_from_url(url)
     return unless route = Discourse.route_for(url)

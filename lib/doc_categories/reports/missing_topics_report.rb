@@ -28,7 +28,7 @@ module ::DocCategories::Reports
     private
 
     def set_filters
-      return unless (doc_category_ids = Category.doc_category_ids).present?
+      return if (doc_category_ids = Category.doc_category_ids).blank?
 
       doc_category_choices =
         Category.where(id: doc_category_ids).pluck(:id, :name).map { |id, name| { id:, name: } }
