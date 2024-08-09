@@ -2,7 +2,7 @@
 
 module ::DocCategories
   module Initializers
-    class AddReportForMissingTopics < Initializer
+    class AddReports < Initializer
       def apply
         plugin.add_report("doc_categories_missing_topics") do |report|
           DocCategories::Reports::MissingTopicsReport.new(report).run
