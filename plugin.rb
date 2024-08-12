@@ -14,6 +14,8 @@ register_asset "stylesheets/common.scss"
 
 GlobalSetting.add_default :docs_path, "docs"
 
+register_svg_icon "far-file"
+
 module ::DocCategories
   PLUGIN_NAME = "discourse-doc-categories"
 
