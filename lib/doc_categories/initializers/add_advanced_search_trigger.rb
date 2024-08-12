@@ -8,10 +8,8 @@ module ::DocCategories
           next posts unless SiteSetting.doc_categories_enabled
 
           target_category_ids =
-            CategoryCustomField
-              .where(name: DocCategories::CATEGORY_INDEX_TOPIC)
-              .where.not(value: nil)
-              .pluck(:category_id)
+            Category
+              .doc_category_ids
               .flat_map { |category_id| Category.subcategory_ids(category_id) }
               .uniq
 

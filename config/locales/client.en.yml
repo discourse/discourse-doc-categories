@@ -1,6 +1,13 @@
 en:
   admin_js:
     admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Category"
+            include_topic_from_subcategories:
+              label: "Include topics from subcategories"
       site_settings:
         categories:
           doc_categories: "Documentation Categories"
