@@ -2,9 +2,15 @@ en:
   reports:
     doc_categories_missing_topics:
       title: "Docs - Topics not indexed"
-      description: "Topics from the documentation categories that won't be indexed in the sidebar"
+      description: "List topics from the documentation categories that are not indexed in the sidebar"
       labels:
         topic: "Topic"
+    doc_categories_extraneous_items:
+      title: "Docs - Extraneous items"
+      description: "List items indexed in the documentation categories that do not match a topic in the category"
+      labels:
+        item: "Item"
+        reason: "Reason"
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
     doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"

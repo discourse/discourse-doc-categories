@@ -7,21 +7,12 @@ module ::DocCategories::Reports
 
       @report.dates_filtering = false
       @report.modes = [:table]
-      @report.labels = [
-        {
-          type: :topic,
-          properties: {
-            title: :title,
-            id: :id,
-          },
-          title: I18n.t("reports.doc_categories_missing_topics.labels.topic"),
-        },
-      ]
       @report.data = []
     end
 
     def run
       return unless filters = set_filters
+      set_labels(filters)
       set_data(filters)
     end
 
@@ -63,6 +54,19 @@ module ::DocCategories::Reports
       end
 
       { category:, include_topic_from_subcategories: }
+    end
+
+    def set_labels(filters)
+      @report.labels = [
+        {
+          type: :topic,
+          properties: {
+            title: :title,
+            id: :id,
+          },
+          title: I18n.t("reports.doc_categories_missing_topics.labels.topic"),
+        },
+      ]
     end
 
     def set_data(filters)
