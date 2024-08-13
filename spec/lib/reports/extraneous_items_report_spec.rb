@@ -18,6 +18,11 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
     Fabricate(:post, topic: t)
     t
   end
+  fab!(:documentation_invisible_topic) do
+    t = Fabricate(:topic, category: documentation_category, visible: false)
+    Fabricate(:post, topic: t)
+    t
+  end
   fab!(:documentation_subtopic) do
     t = Fabricate(:topic, category: documentation_subcategory)
     Fabricate(:post, topic: t)
@@ -40,6 +45,7 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
       * No link
       * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
       * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+      * [#{documentation_invisible_topic.title}](/t/#{documentation_invisible_topic.slug}/#{documentation_invisible_topic.id})
 
       ## Writing
 
@@ -86,6 +92,11 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
       expect(generated_report.data).to match_array(
         [
           {
+            title: documentation_invisible_topic.title,
+            href: "/t/#{documentation_invisible_topic.slug}/#{documentation_invisible_topic.id}",
+            reason: :topic_not_visible,
+          },
+          {
             title: documentation_subtopic.title,
             href: "/t/#{documentation_subtopic.slug}/#{documentation_subtopic.id}",
             reason: :other_category,
@@ -120,6 +131,11 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
 
       expect(generated_report.data).to match_array(
         [
+          {
+            title: documentation_invisible_topic.title,
+            href: "/t/#{documentation_invisible_topic.slug}/#{documentation_invisible_topic.id}",
+            reason: :topic_not_visible,
+          },
           { title: topic.title, href: "/t/#{topic.slug}/#{topic.id}", reason: :other_category },
           { title: "Category", href: "/c/#{category.slug}/#{category.id}", reason: :not_a_topic },
           {

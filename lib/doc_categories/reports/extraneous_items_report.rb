@@ -30,6 +30,8 @@ module ::DocCategories::Reports
         )
 
       existing_topic_ids = topic_query.list_category_topic_ids(category)
+      invisible_topic_ids = Topic.where(id: existing_topic_ids, visible: false).pluck(:id)
+      existing_topic_ids -= invisible_topic_ids
 
       # topics listed in the index
       index_topic_id = category.doc_index_topic_id
@@ -49,7 +51,11 @@ module ::DocCategories::Reports
 
               reason =
                 if topic_id.present?
-                  :other_category
+                  if invisible_topic_ids.include?(topic_id)
+                    :topic_not_visible
+                  else
+                    :other_category
+                  end
                 elsif route.present?
                   :not_a_topic
                 else
