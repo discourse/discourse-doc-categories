@@ -21,8 +21,12 @@ module ::DocCategories::Reports
     def set_filters
       return if (doc_category_ids = Category.doc_category_ids).blank?
 
+      doc_categories = Category.where(id: doc_category_ids)
       doc_category_choices =
-        Category.where(id: doc_category_ids).pluck(:id, :name).map { |id, name| { id:, name: } }
+        doc_categories.map { |category| { id: category.id, name: category.name } }
+      if doc_category_choices.size > 1
+        doc_category_choices.prepend({ id: -1, name: I18n.t("js.category.all") })
+      end
 
       category_id = @report.filters[:doc_category].to_i if @report.filters[:doc_category].present?
       category_id ||= doc_category_choices.first[:id]
@@ -36,13 +40,13 @@ module ::DocCategories::Reports
         auto_insert_none_item: false,
       )
 
-      category = Category.find_by(id: category_id)
-      return if category.blank?
-      return unless category.doc_category?
+      doc_categories =
+        doc_categories.filter { |category| category.id == category_id } if category_id != -1
+      return if doc_categories.blank?
 
       include_topic_from_subcategories = false
 
-      if Category.subcategory_ids(category_id).present?
+      if doc_categories.any? { |category| Category.subcategory_ids(category.id).present? }
         include_topic_from_subcategories = @report.filters[:include_topic_from_subcategories]
         include_topic_from_subcategories =
           !!ActiveRecord::Type::Boolean.new.cast(include_topic_from_subcategories)
@@ -53,7 +57,7 @@ module ::DocCategories::Reports
         )
       end
 
-      { category:, include_topic_from_subcategories: }
+      { categories: doc_categories, include_topic_from_subcategories: }
     end
 
     def set_labels(filters)
@@ -67,42 +71,64 @@ module ::DocCategories::Reports
           title: I18n.t("reports.doc_categories_missing_topics.labels.topic"),
         },
       ]
+
+      if filters[:categories].size > 1
+        @report.labels << {
+          type: :link,
+          properties: %i[index_category_url index_category_name],
+          title: I18n.t("reports.doc_categories_missing_topics.labels.index_category"),
+        }
+      end
     end
 
     def set_data(filters)
-      filters => { category:, include_topic_from_subcategories: }
+      filters => { categories:, include_topic_from_subcategories: }
 
-      # topics listed in the index
-      index_topic_id = category.doc_index_topic_id
-      indexed_topic_ids =
-        Topic
-          .find_by(id: index_topic_id)
-          &.yield_self do |index_topic|
-            DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
-          end
-          &.flat_map do |section|
-            section[:links].filter_map do |link|
-              DocCategories::Url.extract_topic_id_from_url(link[:href]) if link[:href].present?
+      data = []
+
+      categories.each do |category|
+        # topics listed in the index
+        index_topic_id = category.doc_index_topic_id
+        indexed_topic_ids =
+          Topic
+            .find_by(id: index_topic_id)
+            &.yield_self do |index_topic|
+              DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
             end
-          end
-          &.uniq
-      indexed_topic_ids ||= []
+            &.flat_map do |section|
+              section[:links].filter_map do |link|
+                DocCategories::Url.extract_topic_id_from_url(link[:href]) if link[:href].present?
+              end
+            end
+            &.uniq
+        indexed_topic_ids ||= []
 
-      # existing topics
-      topic_query =
-        TopicQuery.new(
-          Discourse.system_user,
-          { limit: false, no_subcategories: !include_topic_from_subcategories },
-        )
+        # existing topics
+        topic_query =
+          TopicQuery.new(
+            Discourse.system_user,
+            { limit: false, no_subcategories: !include_topic_from_subcategories },
+          )
 
-      existing_topic_ids = topic_query.list_category_topic_ids(category)
-      missing_topic_ids = existing_topic_ids - indexed_topic_ids - [index_topic_id]
+        existing_topic_ids = topic_query.list_category_topic_ids(category)
+        missing_topic_ids = existing_topic_ids - indexed_topic_ids - [index_topic_id]
 
-      @report.data +=
-        Topic
-          .where(id: missing_topic_ids, visible: true)
-          .pluck(:id, :title)
-          .map { |id, title| { id:, title: } }
+        data +=
+          Topic
+            .where(id: missing_topic_ids, visible: true)
+            .pluck(:id, :title)
+            .map do |id, title|
+              {
+                id:,
+                title:,
+                index_category_id: category.id,
+                index_category_name: category.name,
+                index_category_url: "/c/#{category.id}",
+              }
+            end
+      end
+
+      @report.data = data
     end
   end
 end
