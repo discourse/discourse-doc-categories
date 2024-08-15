@@ -4,11 +4,13 @@ en:
       title: "Docs - Topics not indexed"
       description: "List topics from the documentation categories that are not indexed in the sidebar"
       labels:
+        index_category: "Index Category"
         topic: "Topic"
     doc_categories_extraneous_items:
       title: "Docs - Extraneous items"
       description: "List items indexed in the documentation categories that do not match a topic in the category"
       labels:
+        index_category: "Index Category"
         item: "Item"
         reason: "Reason"
   site_settings:

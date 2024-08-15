@@ -83,8 +83,57 @@ RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
 
       expect(generated_report.data).to match_array(
         [
-          { id: documentation_category.topic.id, title: documentation_category.topic.title },
-          { id: other_topic.id, title: other_topic.title },
+          {
+            id: documentation_category.topic.id,
+            title: documentation_category.topic.title,
+            index_category_id: documentation_category.id,
+            index_category_name: documentation_category.name,
+            index_category_url: "/c/#{documentation_category.id}",
+          },
+          {
+            id: other_topic.id,
+            title: other_topic.title,
+            index_category_id: documentation_category.id,
+            index_category_name: documentation_category.name,
+            index_category_url: "/c/#{documentation_category.id}",
+          },
+        ],
+      )
+    end
+
+    it "returns the expected data when filtering all categories" do
+      other_category = Fabricate(:category_with_definition, name: "The other category")
+      other_category_index_topic =
+        Fabricate(:topic, category: other_category).tap do |t|
+          Fabricate(:post, topic: t, raw: index_topic.first_post.raw)
+        end
+
+      other_category.custom_fields[
+        DocCategories::CATEGORY_INDEX_TOPIC
+      ] = other_category_index_topic.id
+      other_category.save!
+
+      generated_report = report(filters: { doc_category: -1 })
+
+      expect(generated_report.filters[:doc_category]).to eq(-1)
+      expect(generated_report.filters.has_key?(:include_topic_from_subcategories)).to eq(false)
+
+      expect(generated_report.data).to match_array(
+        [
+          {
+            id: documentation_category.topic.id,
+            title: documentation_category.topic.title,
+            index_category_id: documentation_category.id,
+            index_category_name: documentation_category.name,
+            index_category_url: "/c/#{documentation_category.id}",
+          },
+          {
+            id: other_category.topic.id,
+            title: other_category.topic.title,
+            index_category_id: other_category.id,
+            index_category_name: other_category.name,
+            index_category_url: "/c/#{other_category.id}",
+          },
         ],
       )
     end
@@ -116,8 +165,20 @@ RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
 
       expect(generated_report.data).to match_array(
         [
-          { id: documentation_category.topic.id, title: documentation_category.topic.title },
-          { id: topic_in_subcategory.id, title: topic_in_subcategory.title },
+          {
+            id: documentation_category.topic.id,
+            title: documentation_category.topic.title,
+            index_category_id: documentation_category.id,
+            index_category_name: documentation_category.name,
+            index_category_url: "/c/#{documentation_category.id}",
+          },
+          {
+            id: topic_in_subcategory.id,
+            title: topic_in_subcategory.title,
+            index_category_id: documentation_category.id,
+            index_category_name: documentation_category.name,
+            index_category_url: "/c/#{documentation_category.id}",
+          },
         ],
       )
     end
