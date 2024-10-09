@@ -169,7 +169,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
           :user_chat_channel_membership,
           user: admin,
           chat_channel: Fabricate(:chat_channel),
-          )
+        )
       admin.upsert_custom_fields(::Chat::LAST_CHAT_CHANNEL_ID => membership.chat_channel.id)
       chat_page.prefers_full_page
 
