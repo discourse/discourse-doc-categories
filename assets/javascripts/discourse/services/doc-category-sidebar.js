@@ -19,12 +19,14 @@ export default class DocCategorySidebarService extends Service {
   constructor() {
     super(...arguments);
 
-    this.appEvents.on("page:changed", this, this.#maybeForceDocsSidebar);
+    this.router.on("routeDidChange", this, this.currentRouteChanged);
     this.messageBus.subscribe("/categories", this.maybeUpdateIndexContent);
   }
 
   willDestroy() {
     super.willDestroy(...arguments);
+
+    this.router.off("routeDidChange", this, this.currentRouteChanged);
     this.messageBus.unsubscribe("/categories", this.maybeUpdateIndexContent);
   }
 
@@ -95,6 +97,15 @@ export default class DocCategorySidebarService extends Service {
     if (data.deleted_categories?.find((id) => id === this._indexCategoryId)) {
       this.disableDocsSidebar();
     }
+  }
+
+  @bind
+  currentRouteChanged(transition) {
+    if (transition.isAborted) {
+      return;
+    }
+
+    this.#maybeForceDocsSidebar();
   }
 
   #findIndexForActiveCategory() {

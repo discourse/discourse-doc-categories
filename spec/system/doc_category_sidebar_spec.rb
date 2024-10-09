@@ -154,6 +154,40 @@ RSpec.describe "Doc Category Sidebar", system: true do
     end
   end
 
+  context "when interacting with chat" do
+    fab!(:admin)
+    let(:chat_page) { PageObjects::Pages::Chat.new }
+
+    before do
+      chat_system_bootstrap
+      sign_in(admin)
+    end
+
+    it "keeps the docs sidebar open instead of switching to the main panel when toggling the drawer" do
+      membership =
+        Fabricate(
+          :user_chat_channel_membership,
+          user: admin,
+          chat_channel: Fabricate(:chat_channel),
+          )
+      admin.upsert_custom_fields(::Chat::LAST_CHAT_CHANNEL_ID => membership.chat_channel.id)
+      chat_page.prefers_full_page
+
+      visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+
+      expect(sidebar).to be_visible
+      expect_docs_sidebar_to_be_correct
+
+      chat_page.open_from_header
+      expect(sidebar).to be_visible
+      expect(sidebar).to have_no_section(docs_section_name("General Usage"))
+
+      chat_page.minimize_full_page
+      expect(chat_page).to have_drawer
+      expect_docs_sidebar_to_be_correct
+    end
+  end
+
   context "when filtering" do
     it "should suggest filtering the content when there are no results" do
       SiteSetting.max_category_nesting = 3
