@@ -75,7 +75,7 @@ export default class DocCategorySidebarService extends Service {
   maybeUpdateIndexContent(data) {
     // if the docs sidebar is not displayed, tries to display it
     if (!this.isVisible) {
-      this.maybeForceDocsSidebar();
+      this.#maybeForceDocsSidebar();
       return;
     }
 
