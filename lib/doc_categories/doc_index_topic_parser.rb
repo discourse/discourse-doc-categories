@@ -50,14 +50,14 @@ class ::DocCategories::DocIndexTopicParser
     node.children.each { |child| add_link(child) if list_item?(child) }
   end
 
-  def add_link(node)
-    anchor = node.at_css("a")
+  def add_link(item_node)
+    nodes = item_node.children
+    anchor = nodes.reverse.find { |child| child.name == "a" }
     return unless anchor
 
-    if node.children.first.text?
-      title = node.children.first.text.strip
-
-      title.chop! if title.end_with?(":")
+    title = nodes.first(nodes.index(anchor)).map(&:text).join.strip
+    if title.present? && title.end_with?(":")
+      title.chop!
     else
       title = anchor.text.strip
     end
