@@ -186,6 +186,27 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[0]).to eq({ text: "Test", href: "/test" })
     end
 
+    it "will use the last anchor as the source of the link and extract the text from the elements before" do
+      cooked_text = <<-HTML
+      <ul>
+        <li>Another <a href="/test">test</a>: <a href="/another-test">This is another test</a></li>
+      </ul>
+      HTML
+
+      p = described_class.new(cooked_text)
+      sections = p.sections
+
+      expect(sections.size).to eq(1)
+
+      root_section = sections.first
+      expect(root_section[:text]).to be_nil
+
+      links = root_section[:links]
+      expect(links.size).to eq(1)
+
+      expect(links[0]).to eq({ text: "Another test", href: "/another-test" })
+    end
+
     it "it will use the anchor inner text as the text in case another one is not provided" do
       cooked_text = <<-HTML
       <ul>
