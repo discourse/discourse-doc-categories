@@ -32,6 +32,13 @@ RSpec.describe "Doc Category Sidebar", system: true do
     Fabricate(:post, topic: t)
     t
   end
+  fab!(:permalink) do
+    Fabricate(
+      :permalink,
+      permalink_type_value: documentation_category.id,
+      permalink_type: "category",
+    )
+  end
   fab!(:index_topic) do
     t = Fabricate(:topic, category: documentation_category)
 
@@ -142,6 +149,19 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
       expect(sidebar).to be_visible
       expect(sidebar).to have_section(docs_section_name("Subcategory Index"))
+    end
+  end
+
+  context "when admin sidebar" do
+    fab!(:admin)
+
+    before { sign_in(admin) }
+
+    it "should never display the docs sidebar" do
+      visit("/admin/customize/permalinks/#{permalink.id}")
+      expect(sidebar).to be_visible
+      expect(sidebar).to have_no_section(docs_section_name("General Usage"))
+      expect(page).to have_css(".admin-panel")
     end
   end
 

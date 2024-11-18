@@ -1,6 +1,6 @@
 import { tracked } from "@glimmer/tracking";
 import Service, { inject as service } from "@ember/service";
-import { MAIN_PANEL } from "discourse/lib/sidebar/panels";
+import { ADMIN_PANEL, MAIN_PANEL } from "discourse/lib/sidebar/panels";
 import { deepEqual } from "discourse-common/lib/object";
 import { bind } from "discourse-common/utils/decorators";
 
@@ -31,6 +31,10 @@ export default class DocCategorySidebarService extends Service {
   }
 
   get activeCategory() {
+    if (this.sidebarState.currentPanel?.key === ADMIN_PANEL) {
+      return;
+    }
+
     return (
       this.router.currentRoute?.attributes?.category ||
       this.router.currentRoute?.parent?.attributes?.category
