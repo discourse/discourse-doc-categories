@@ -1,5 +1,5 @@
 import { tracked } from "@glimmer/tracking";
-import Service, { inject as service } from "@ember/service";
+import Service, { service } from "@ember/service";
 import { ADMIN_PANEL, MAIN_PANEL } from "discourse/lib/sidebar/panels";
 import { deepEqual } from "discourse-common/lib/object";
 import { bind } from "discourse-common/utils/decorators";
