@@ -32,13 +32,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
     Fabricate(:post, topic: t)
     t
   end
-  fab!(:permalink) do
-    Fabricate(
-      :permalink,
-      permalink_type_value: documentation_category.id,
-      permalink_type: "category",
-    )
-  end
+  fab!(:permalink) { Fabricate(:permalink, category_id: documentation_category.id) }
   fab!(:index_topic) do
     t = Fabricate(:topic, category: documentation_category)
 
