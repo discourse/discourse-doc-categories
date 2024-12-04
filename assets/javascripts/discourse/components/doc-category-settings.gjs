@@ -108,7 +108,7 @@ export default class DocCategorySettings extends Component {
         />
         {{#if this.shouldDisplayErrorMessage}}
           <div class="validation-error">
-            {{dIcon "times"}}
+            {{dIcon "xmark"}}
             {{this.errorMessage}}
           </div>
         {{/if}}
