@@ -1,0 +1,26 @@
+en:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Kategorie"
+            include_topic_from_subcategories:
+              label: "Zahrnout témata v podkategoriích"
+      site_settings:
+        categories:
+          doc_categories: "Dokumentované kategorie"
+  js:
+    doc_categories:
+      category_settings:
+        title: "Dokumentace"
+        index_topic:
+          label: "Téma s obsahem"
+          errors:
+            topic_not_found: "Téma nebylo nalezeno! Obsah se nezobrazí."
+            mismatched-category: "Obsah se nezobrazí, protože téma patří do jiné kategorie: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'Nenalezli jsme nic, co by vyhovovalo filtru ‘%{filter}’.<br><br>Chcete <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">prohledat tuto kategorii</a> nebo <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">celý web</a>?'
