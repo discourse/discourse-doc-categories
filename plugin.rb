@@ -5,7 +5,7 @@
 # meta_topic_id: 322376
 # version: 0.0.1
 # authors: Discourse
-# url: TODO
+# url: https://github.com/discourse/discourse-doc-categories
 # required_version: 3.3.0.beta4-dev
 
 enabled_site_setting :doc_categories_enabled
