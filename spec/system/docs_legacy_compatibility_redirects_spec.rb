@@ -61,7 +61,7 @@ RSpec.describe "Docs Category Sidebar", system: true do
       expect(page).to have_css("div.page-not-found")
     end
 
-    context "when clicking a link to /docs" do
+    context "when clicking a link to /knowledge-explorer" do
       it "redirects to the topic if docs legacy mode is enabled" do
         SiteSetting.doc_categories_docs_legacy_enabled = true
 
