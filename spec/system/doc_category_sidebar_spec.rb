@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe "Doc Category Sidebar", system: true do
+  fab!(:admin)
   fab!(:category) { Fabricate(:category_with_definition) }
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
   fab!(:documentation_category) { Fabricate(:category_with_definition) }
@@ -13,7 +14,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
   fab!(:documentation_topic4) { Fabricate(:topic_with_op, category: documentation_category) }
   fab!(:permalink) { Fabricate(:permalink, category_id: documentation_category.id) }
   fab!(:index_topic) do
-    Fabricate(:topic, category: documentation_category).do | t |
+    Fabricate(:topic, category: documentation_category).tap do |t|
       Fabricate(:post, topic: t, raw: <<~MD)
         Lorem ipsum dolor sit amet
 
@@ -32,6 +33,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
         ## Empty section
 
       MD
+    end
   end
 
   let(:sidebar) { PageObjects::Components::NavigationMenu::Sidebar.new }
@@ -122,13 +124,11 @@ RSpec.describe "Doc Category Sidebar", system: true do
     end
   end
 
-  context "when admin sidebar" do
-    fab!(:admin)
-
+  context "when using admin sidebar" do
     before { sign_in(admin) }
 
     it "never displays the docs sidebar" do
-      visit("/admin/customize/permalinks/#{permalink.id}")
+      visit("/admin/config/permalinks/#{permalink.id}")
       expect(sidebar).to be_visible
       expect(sidebar).to have_no_section(docs_section_name("General Usage"))
       expect(page).to have_css(".admin-panel")
@@ -145,7 +145,6 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   context "when interacting with chat" do
-    fab!(:admin)
     let(:chat_page) { PageObjects::Pages::Chat.new }
 
     before do
