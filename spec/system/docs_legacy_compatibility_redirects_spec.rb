@@ -2,22 +2,14 @@
 
 RSpec.describe "Docs Category Sidebar", system: true do
   fab!(:category) { Fabricate(:category_with_definition) }
-  fab!(:topic) do
-    t = Fabricate(:topic, category: category)
-    Fabricate(:post, topic: t)
-    t
-  end
+  fab!(:topic) { Fabricate(:topic_with_op, category: category) }
   fab!(:source_topic) do
-    t = Fabricate(:topic, category: category)
-    Fabricate(:post, topic: t, raw: <<~MD)
-      - [Link to /docs?topic=ID](/docs?topic=#{topic.id})
-      - [Link to /docs](/docs)
-      - [Link to /knowledge-explorer](/knowledge-explorer)
-    MD
-
-    t
+    Fabricate(:topic, category: category).tap { |t| Fabricate(:post, topic: t, raw: <<~MD) }
+        - [Link to /docs?topic=ID](/docs?topic=#{topic.id})
+        - [Link to /docs](/docs)
+        - [Link to /knowledge-explorer](/knowledge-explorer)
+      MD
   end
-  fab!(:post) { Fabricate(:post, topic: topic) }
 
   let(:category_page) { PageObjects::Pages::Category.new }
   let(:topic_page) { PageObjects::Pages::Topic.new }
@@ -30,66 +22,62 @@ RSpec.describe "Docs Category Sidebar", system: true do
     SiteSetting.doc_categories_homepage = "/c/#{category.slug}/#{category.id}"
   end
 
-  context "when docs legacy mode is enabled" do
-    before { SiteSetting.doc_categories_docs_legacy_enabled = true }
+  context "when clicking a link to /docs?topic=ID" do
+    it "redirects to the topic if docs legacy mode is enabled" do
+      SiteSetting.doc_categories_docs_legacy_enabled = true
 
-    context "when clicking a link to /docs?topic=ID" do
-      it "should redirect to the topic if docs legacy mode is enabled" do
-        SiteSetting.doc_categories_docs_legacy_enabled = true
+      topic_page.visit_topic(source_topic)
+      topic_page.find("a[href='/docs?topic=#{topic.id}']").click
 
-        topic_page.visit_topic(source_topic)
-        topic_page.find("a[href='/docs?topic=#{topic.id}']").click
+      expect(topic_page).to have_topic_title(topic.title)
+    end
 
-        expect(topic_page).to have_topic_title(topic.title)
-      end
+    it "404s if docs legacy mode is disabled" do
+      SiteSetting.doc_categories_docs_legacy_enabled = false
 
-      it "should 404 if docs legacy mode is disabled" do
-        SiteSetting.doc_categories_docs_legacy_enabled = false
+      topic_page.visit_topic(source_topic)
+      topic_page.find("a[href='/docs?topic=#{topic.id}']").click
 
-        topic_page.visit_topic(source_topic)
-        topic_page.find("a[href='/docs?topic=#{topic.id}']").click
+      expect(page).to have_css("div.page-not-found")
+    end
+  end
 
-        expect(page).to have_css("div.page-not-found")
-      end
+  context "when clicking a link to /docs" do
+    it "redirects to the topic if docs legacy mode is enabled" do
+      SiteSetting.doc_categories_docs_legacy_enabled = true
+
+      topic_page.visit_topic(source_topic)
+      topic_page.find("a[href='/docs']").click
+
+      expect(page).to have_current_path("/c/#{category.slug}/#{category.id}")
+    end
+
+    it "404s if docs legacy mode is disabled" do
+      SiteSetting.doc_categories_docs_legacy_enabled = false
+
+      topic_page.visit_topic(source_topic)
+      topic_page.find("a[href='/docs").click
+
+      expect(page).to have_css("div.page-not-found")
     end
 
     context "when clicking a link to /docs" do
-      it "should redirect to the topic if docs legacy mode is enabled" do
+      it "redirects to the topic if docs legacy mode is enabled" do
         SiteSetting.doc_categories_docs_legacy_enabled = true
 
         topic_page.visit_topic(source_topic)
-        topic_page.find("a[href='/docs']").click
+        topic_page.find("a[href='/knowledge-explorer']").click
 
         expect(page).to have_current_path("/c/#{category.slug}/#{category.id}")
       end
 
-      it "should 404 if docs legacy mode is disabled" do
+      it "404s if docs legacy mode is disabled" do
         SiteSetting.doc_categories_docs_legacy_enabled = false
 
         topic_page.visit_topic(source_topic)
-        topic_page.find("a[href='/docs").click
+        topic_page.find("a[href='/knowledge-explorer").click
 
         expect(page).to have_css("div.page-not-found")
-      end
-
-      context "when clicking a link to /docs" do
-        it "should redirect to the topic if docs legacy mode is enabled" do
-          SiteSetting.doc_categories_docs_legacy_enabled = true
-
-          topic_page.visit_topic(source_topic)
-          topic_page.find("a[href='/knowledge-explorer']").click
-
-          expect(page).to have_current_path("/c/#{category.slug}/#{category.id}")
-        end
-
-        it "should 404 if docs legacy mode is disabled" do
-          SiteSetting.doc_categories_docs_legacy_enabled = false
-
-          topic_page.visit_topic(source_topic)
-          topic_page.find("a[href='/knowledge-explorer").click
-
-          expect(page).to have_css("div.page-not-found")
-        end
       end
     end
   end

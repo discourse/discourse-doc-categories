@@ -2,60 +2,36 @@
 
 RSpec.describe "Doc Category Sidebar", system: true do
   fab!(:category) { Fabricate(:category_with_definition) }
-  fab!(:topic) do
-    t = Fabricate(:topic, category: category)
-    Fabricate(:post, topic: t)
-    t
-  end
-  fab!(:post) { Fabricate(:post, topic: topic) }
+  fab!(:topic) { Fabricate(:topic_with_op, category: category) }
   fab!(:documentation_category) { Fabricate(:category_with_definition) }
   fab!(:documentation_subcategory) do
     Fabricate(:category_with_definition, parent_category_id: documentation_category.id)
   end
-  fab!(:documentation_topic) do
-    t = Fabricate(:topic, category: documentation_category)
-    Fabricate(:post, topic: t)
-    t
-  end
-  fab!(:documentation_topic2) do
-    t = Fabricate(:topic, category: documentation_category)
-    Fabricate(:post, topic: t)
-    t
-  end
-  fab!(:documentation_topic3) do
-    t = Fabricate(:topic, category: documentation_category)
-    Fabricate(:post, topic: t)
-    t
-  end
-  fab!(:documentation_topic4) do
-    t = Fabricate(:topic, category: documentation_category)
-    Fabricate(:post, topic: t)
-    t
-  end
+  fab!(:documentation_topic) { Fabricate(:topic_with_op, category: documentation_category) }
+  fab!(:documentation_topic2) { Fabricate(:topic_with_op, category: documentation_category) }
+  fab!(:documentation_topic3) { Fabricate(:topic_with_op, category: documentation_category) }
+  fab!(:documentation_topic4) { Fabricate(:topic_with_op, category: documentation_category) }
   fab!(:permalink) { Fabricate(:permalink, category_id: documentation_category.id) }
   fab!(:index_topic) do
-    t = Fabricate(:topic, category: documentation_category)
+    Fabricate(:topic, category: documentation_category).do | t |
+      Fabricate(:post, topic: t, raw: <<~MD)
+        Lorem ipsum dolor sit amet
 
-    Fabricate(:post, topic: t, raw: <<~MD)
-      Lorem ipsum dolor sit amet
+        ## General Usage
 
-      ## General Usage
+        * No link
+        * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
+        * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
 
-      * No link
-      * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
-      * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+        ## Writing
 
-      ## Writing
+        * [#{documentation_topic3.title}](/t/#{documentation_topic3.slug}/#{documentation_topic3.id})
+        * #{documentation_topic4.slug}: [#{documentation_topic4.title}](/t/#{documentation_topic4.slug}/#{documentation_topic4.id})
+        * No link
 
-      * [#{documentation_topic3.title}](/t/#{documentation_topic3.slug}/#{documentation_topic3.id})
-      * #{documentation_topic4.slug}: [#{documentation_topic4.title}](/t/#{documentation_topic4.slug}/#{documentation_topic4.id})
-      * No link
+        ## Empty section
 
-      ## Empty section
-
-    MD
-
-    t
+      MD
   end
 
   let(:sidebar) { PageObjects::Components::NavigationMenu::Sidebar.new }
@@ -79,7 +55,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   context "when browsing regular pages" do
-    it "should display the main sidebar" do
+    it "displays the main sidebar" do
       visit("/categories")
       expect(sidebar).to have_section("categories")
 
@@ -106,27 +82,27 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   context "when browsing a documentation category" do
-    it "should display the docs sidebar correctly" do
+    it "displays the docs sidebar correctly" do
       visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
 
       expect(sidebar).to be_visible
       expect_docs_sidebar_to_be_correct
     end
 
-    it "should inherit the docs sidebar from the parent category if available" do
+    it "inherits the docs sidebar from the parent category if available" do
       visit("/c/#{documentation_subcategory.slug}/#{documentation_subcategory.id}")
 
       expect(sidebar).to be_visible
       expect_docs_sidebar_to_be_correct
     end
 
-    it "should display correctly the subcategory index when different from the parent category" do
+    it "displays correctly the subcategory index when different from the parent category" do
       subcategory_index_topic = Fabricate(:topic, category: documentation_subcategory)
 
       Fabricate(:post, topic: subcategory_index_topic, raw: <<~MD)
-      # Subcategory Index
-      * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
-      * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+        # Subcategory Index
+        * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
+        * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
       MD
 
       documentation_subcategory.custom_fields[
@@ -151,7 +127,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
     before { sign_in(admin) }
 
-    it "should never display the docs sidebar" do
+    it "never displays the docs sidebar" do
       visit("/admin/customize/permalinks/#{permalink.id}")
       expect(sidebar).to be_visible
       expect(sidebar).to have_no_section(docs_section_name("General Usage"))
@@ -160,7 +136,7 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   context "when browsing a documentation topic" do
-    it "should display the docs sidebar correctly" do
+    it "displays the docs sidebar correctly" do
       visit("/t/#{documentation_topic.slug}/#{documentation_topic.id}")
 
       expect(sidebar).to be_visible
@@ -203,48 +179,48 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   context "when filtering" do
-    it "should suggest filtering the content when there are no results" do
+    it "suggests filtering the content when there are no results" do
       SiteSetting.max_category_nesting = 3
       documentation_subsubcategory =
         Fabricate(:category_with_definition, parent_category_id: documentation_subcategory.id)
 
       visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
 
-      filter.filter("ieeee")
+      filter.filter("missing")
       expect(page).to have_no_css(".sidebar-section-link-content-text")
       expect(page).to have_css(".sidebar-no-results")
 
       no_results_description = page.find(".sidebar-no-results__description")
       expect(no_results_description.text).to eq(
-        "We couldn’t find anything matching ‘ieeee’.\n\nDo you want to perform a search on this category or a site wide search instead?",
+        "We couldn’t find anything matching ‘missing’.\n\nDo you want to perform a search on this category or a site wide search instead?",
       )
 
       suggested_category_search = page.find(".docs-sidebar-suggested-category-search")
       expect(suggested_category_search[:href]).to end_with(
-        "/search?q=ieeee%20%23#{documentation_category.slug}",
+        "/search?q=missing%20%23#{documentation_category.slug}",
       )
 
       site_wide_search = page.find(".docs-sidebar-suggested-site-search")
-      expect(site_wide_search[:href]).to end_with("/search?q=ieeee")
+      expect(site_wide_search[:href]).to end_with("/search?q=missing")
 
       # for subcategories
       visit(
         "/c/#{documentation_category.slug}/#{documentation_subcategory.slug}/#{documentation_subcategory.id}",
       )
-      filter.filter("ieeee")
+      filter.filter("missing")
 
       suggested_category_search = page.find(".docs-sidebar-suggested-category-search")
       expect(suggested_category_search[:href]).to end_with(
-        "/search?q=ieeee%20%23#{documentation_category.slug}%3A#{documentation_subcategory.slug}",
+        "/search?q=missing%20%23#{documentation_category.slug}%3A#{documentation_subcategory.slug}",
       )
 
       # for 3 levels deep
       visit("/c/#{documentation_subsubcategory.id}")
-      filter.filter("ieeee")
+      filter.filter("missing")
 
       suggested_category_search = page.find(".docs-sidebar-suggested-category-search")
       expect(suggested_category_search[:href]).to end_with(
-        "/search?q=ieeee%20category%3A#{documentation_subsubcategory.id}",
+        "/search?q=missing%20category%3A#{documentation_subsubcategory.id}",
       )
     end
   end
