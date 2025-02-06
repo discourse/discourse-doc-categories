@@ -1,4 +1,4 @@
-import { getOwnerWithFallback } from "discourse-common/lib/get-owner";
+import { getOwnerWithFallback } from "discourse/lib/get-owner";
 
 export default function () {
   const site = getOwnerWithFallback(this).lookup("service:site");
