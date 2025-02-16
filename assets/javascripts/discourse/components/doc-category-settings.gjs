@@ -2,9 +2,9 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
+import dIcon from "discourse/helpers/d-icon";
 import Topic from "discourse/models/topic";
-import dIcon from "discourse-common/helpers/d-icon";
-import i18n from "discourse-common/helpers/i18n";
+import { i18n } from "discourse-i18n";
 import TopicChooser from "select-kit/components/topic-chooser";
 
 export default class DocCategorySettings extends Component {

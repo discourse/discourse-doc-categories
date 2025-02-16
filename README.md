@@ -1,5 +1,3 @@
-# **Plugin Name** Plugin
+# **Discourse Doc Categories** Plugin
 
-**Plugin Summary**
-
-For more information, please see: **url to meta topic**
+For more information, please see: https://meta.discourse.org/t/discourse-doc-categories/322376

@@ -1,8 +1,8 @@
 import { tracked } from "@glimmer/tracking";
 import Service, { service } from "@ember/service";
+import { bind } from "discourse/lib/decorators";
+import { deepEqual } from "discourse/lib/object";
 import { ADMIN_PANEL, MAIN_PANEL } from "discourse/lib/sidebar/panels";
-import { deepEqual } from "discourse-common/lib/object";
-import { bind } from "discourse-common/utils/decorators";
 
 export const SIDEBAR_DOCS_PANEL = "discourse-docs-sidebar";
 

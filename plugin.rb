@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # name: discourse-doc-categories
-# about: TODO
-# meta_topic_id: TODO
+# about: Provides the ability for particular categories to be set aside for documentation, enabling additional features for them.
+# meta_topic_id: 322376
 # version: 0.0.1
 # authors: Discourse
-# url: TODO
+# url: https://github.com/discourse/discourse-doc-categories
 # required_version: 3.3.0.beta4-dev
 
 enabled_site_setting :doc_categories_enabled

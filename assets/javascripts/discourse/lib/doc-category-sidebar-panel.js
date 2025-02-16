@@ -1,16 +1,13 @@
 import { cached } from "@glimmer/tracking";
 import { computed } from "@ember/object";
 import { htmlSafe } from "@ember/template";
+import { getOwnerWithFallback } from "discourse/lib/get-owner";
+import getURL, { getAbsoluteURL, samePrefix } from "discourse/lib/get-url";
 import BaseCustomSidebarSection from "discourse/lib/sidebar/base-custom-sidebar-section";
 import BaseCustomSidebarSectionLink from "discourse/lib/sidebar/base-custom-sidebar-section-link";
 import DiscourseURL from "discourse/lib/url";
 import { escapeExpression, unicodeSlugify } from "discourse/lib/utilities";
-import { getOwnerWithFallback } from "discourse-common/lib/get-owner";
-import getURL, {
-  getAbsoluteURL,
-  samePrefix,
-} from "discourse-common/lib/get-url";
-import I18n from "discourse-i18n";
+import { i18n } from "discourse-i18n";
 import { SIDEBAR_DOCS_PANEL } from "../services/doc-category-sidebar";
 
 const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
@@ -58,7 +55,7 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
       };
 
       return htmlSafe(
-        I18n.t("doc_categories.sidebar.filter.no_results.description", params)
+        i18n("doc_categories.sidebar.filter.no_results.description", params)
       );
     }
 
