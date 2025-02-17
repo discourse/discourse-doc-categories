@@ -1,0 +1,19 @@
+cs:
+  reports:
+    doc_categories_missing_topics:
+      title: "Dokumentace - neindexovaná témata"
+      description: "Zobrazí témata z dokumentovaných kategorií, která nejsou zobrazena v obsahu v postranním panelu"
+      labels:
+        index_category: "Kategorie obsahu"
+        topic: "Téma"
+    doc_categories_extraneous_items:
+      title: "Dokumentace - neplatné položky"
+      description: "Zobrazí položky, zahrnuté v obsahu dokumentovaných kategorií, které neodpovídají žádnému tématu v dané kategorii"
+      labels:
+        index_category: "Kategorie obsahu"
+        item: "Položka"
+        reason: "Důvod"
+  site_settings:
+    doc_categories_enabled: "Povolit rozšíření Discourse Doc Categories"
+    doc_categories_docs_legacy_enabled: "Povolením přesměrujete původní Docs Plugin adresy URL. Toto nastavení nemá žádný efekt, pokud je nainstalované a povolené rozšíření Docs."
+    doc_categories_homepage: "Pokud je nastaveno `doc_categories_docs_legacy_enabled`, přesměruje původní docs domovskou stránku na tuto adresu."
