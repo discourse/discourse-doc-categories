@@ -56,7 +56,7 @@ RSpec.describe "Docs Category Sidebar", system: true do
       SiteSetting.doc_categories_docs_legacy_enabled = false
 
       topic_page.visit_topic(source_topic)
-      topic_page.find("a[href='/docs").click
+      topic_page.find("a[href='/docs']").click
 
       expect(page).to have_css("div.page-not-found")
     end
@@ -75,7 +75,7 @@ RSpec.describe "Docs Category Sidebar", system: true do
         SiteSetting.doc_categories_docs_legacy_enabled = false
 
         topic_page.visit_topic(source_topic)
-        topic_page.find("a[href='/knowledge-explorer").click
+        topic_page.find("a[href='/knowledge-explorer']").click
 
         expect(page).to have_css("div.page-not-found")
       end
