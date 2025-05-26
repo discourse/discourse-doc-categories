@@ -175,4 +175,17 @@ RSpec.describe "Doc Category Sidebar", system: true do
       expect_docs_sidebar_to_be_correct
     end
   end
+
+  it "links correctly back to forum" do
+    sign_in(admin)
+
+    visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+    page.first(".sidebar-section-link-content-text").click
+    visit(
+      "/c/#{documentation_category.slug}/#{documentation_subcategory.slug}/#{documentation_subcategory.id}",
+    )
+    sidebar.click_back_to_forum
+
+    expect(page).to have_current_path("/")
+  end
 end
