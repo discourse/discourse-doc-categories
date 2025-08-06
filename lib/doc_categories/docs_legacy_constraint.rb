@@ -2,6 +2,6 @@
 
 class ::DocCategories::DocsLegacyConstraint
   def matches?(_request)
-    ::DocCategories.legacyMode?
+    ::DocCategories.legacy_mode?
   end
 end
