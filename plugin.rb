@@ -21,7 +21,7 @@ module ::DocCategories
 
   CATEGORY_INDEX_TOPIC = "doc_category_index_topic"
 
-  def self.legacyMode?
+  def self.legacy_mode?
     # disable the compatibility mode if the docs plugin is enabled
     return false if defined?(::Docs) && SiteSetting.docs_enabled
     SiteSetting.doc_categories_docs_legacy_enabled
@@ -56,13 +56,14 @@ require_relative "lib/doc_categories/engine"
 
 after_initialize do
   register_category_custom_field_type(DocCategories::CATEGORY_INDEX_TOPIC, :integer)
-  Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC
+
+  reloadable_patch { Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC }
 
   # legacy docs
   add_to_serializer(
     :site,
     :docs_legacy_path,
-    include_condition: -> { DocCategories.legacyMode? },
+    include_condition: -> { DocCategories.legacy_mode? },
   ) { GlobalSetting.docs_path }
 
   DocCategories::Initializers.apply(self)
