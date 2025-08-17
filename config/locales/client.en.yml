@@ -20,6 +20,10 @@ en:
           errors:
             topic_not_found: "Topic not found! The index won't be displayed"
             mismatched-category: "The index won't be displayed because the topic belongs to a different category: %{category_name}"
+      search:
+        advanced:
+          in:
+            docs: "In documentation"
       sidebar:
         filter:
           no_results:
