@@ -87,21 +87,11 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
-        # topics listed in the index
-        index_topic_id = category.doc_index_topic_id
-        indexed_topic_ids =
-          Topic
-            .find_by(id: index_topic_id)
-            &.yield_self do |index_topic|
-              DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
-            end
-            &.flat_map do |section|
-              section[:links].filter_map do |link|
-                DocCategories::Url.extract_topic_id_from_url(link[:href]) if link[:href].present?
-              end
-            end
-            &.uniq
-        indexed_topic_ids ||= []
+        index =
+          DocCategories::Index.includes(sidebar_sections: :sidebar_links).find_by(
+            category_id: category.id,
+          )
+        indexed_topic_ids = index&.valid_sidebar_topic_ids || []
 
         # existing topics
         topic_query =
@@ -109,6 +99,8 @@ module ::DocCategories::Reports
             Discourse.system_user,
             { limit: false, no_subcategories: !include_topic_from_subcategories },
           )
+
+        index_topic_id = category.doc_index_topic_id
 
         existing_topic_ids = topic_query.list_category_topic_ids(category)
         missing_topic_ids = existing_topic_ids - indexed_topic_ids - [index_topic_id]

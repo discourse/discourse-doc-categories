@@ -33,63 +33,59 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
-        # existing topics
-        topic_query =
-          TopicQuery.new(
-            Discourse.system_user,
-            { limit: false, no_subcategories: !include_topic_from_subcategories },
+        index =
+          DocCategories::Index.includes(sidebar_sections: :sidebar_links).find_by(
+            category_id: category.id,
           )
+        next if index.blank?
 
-        existing_topic_ids = topic_query.list_category_topic_ids(category)
-        invisible_topic_ids = Topic.where(id: existing_topic_ids, visible: false).pluck(:id)
-        existing_topic_ids -= invisible_topic_ids
+        links =
+          DocCategories::SidebarLink
+            .joins(sidebar_section: :index)
+            .includes(:topic)
+            .where(doc_categories_indexes: { category_id: category.id })
 
-        # topics listed in the index
-        index_topic_id = category.doc_index_topic_id
-        indexed_links =
-          Topic
-            .find_by(id: index_topic_id)
-            &.yield_self do |index_topic|
-              DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
-            end
-            &.flat_map do |section|
-              section[:links].filter_map do |link|
-                href = link[:href]
-                topic_id = DocCategories::Url.extract_topic_id_from_url(href)
-                route = Discourse.route_for(href) unless topic_id
+        links.each do |link|
+          reason = extraneous_reason(link, category, include_topic_from_subcategories)
+          next if reason.blank?
 
-                next nil if topic_id && existing_topic_ids.include?(topic_id)
-
-                reason =
-                  if topic_id.present?
-                    if invisible_topic_ids.include?(topic_id)
-                      :topic_not_visible
-                    else
-                      :other_category
-                    end
-                  elsif route.present?
-                    :not_a_topic
-                  else
-                    :external
-                  end
-
-                {
-                  title: link[:text] || link[:href],
-                  href:,
-                  reason:,
-                  index_category_id: category.id,
-                  index_category_name: category.name,
-                  index_category_url: "/c/#{category.id}",
-                }
-              end
-            end
-            &.uniq
-        indexed_links ||= []
-
-        data += indexed_links
+          data << {
+            title: link.title.presence || link.href,
+            href: link.href,
+            reason: reason,
+            index_category_id: category.id,
+            index_category_name: category.name,
+            index_category_url: "/c/#{category.id}",
+          }
+        end
       end
 
       @report.data = data
+    end
+
+    def extraneous_reason(link, category, include_topic_from_subcategories)
+      topic = link.topic
+
+      if topic.present?
+        if topic.category_id != category.id &&
+             !(
+               include_topic_from_subcategories &&
+                 Category.subcategory_ids(category.id).include?(topic.category_id)
+             )
+          return :other_category
+        end
+        return :topic_not_visible unless topic.visible?
+
+        return nil
+      end
+
+      route = Discourse.route_for(link.href)
+
+      return :not_a_topic if route.present?
+
+      :external
+    rescue ActionController::RoutingError
+      :external
     end
   end
 end

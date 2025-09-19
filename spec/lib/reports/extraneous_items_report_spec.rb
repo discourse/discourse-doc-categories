@@ -77,10 +77,10 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
     end
 
     before do
+      Jobs.run_immediately!
       SiteSetting.doc_categories_enabled = true
 
-      documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-      documentation_category.save!
+      DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
     end
 
     it "returns the expected data when excluding topics from subcategories" do
@@ -200,10 +200,9 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
           Fabricate(:post, topic: t, raw: index_topic.first_post.raw)
         end
 
-      other_category.custom_fields[
-        DocCategories::CATEGORY_INDEX_TOPIC
-      ] = other_category_index_topic.id
-      other_category.save!
+      DocCategories::CategoryIndexManager.new(other_category).assign!(
+        other_category_index_topic.id,
+      )
 
       generated_report = report(filters: { doc_category: -1 })
 
