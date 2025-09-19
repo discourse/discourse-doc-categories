@@ -55,9 +55,10 @@ end
 require_relative "lib/doc_categories/engine"
 
 after_initialize do
-  register_category_custom_field_type(DocCategories::CATEGORY_INDEX_TOPIC, :integer)
-
-  reloadable_patch { Site.preloaded_category_custom_fields << DocCategories::CATEGORY_INDEX_TOPIC }
+  reloadable_patch do
+    Category.prepend(DocCategories::Extensions::CategoryExtension)
+    CategoriesController.prepend(DocCategories::CategoriesControllerExtension)
+  end
 
   # legacy docs
   add_to_serializer(

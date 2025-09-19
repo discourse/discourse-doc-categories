@@ -13,8 +13,7 @@ export default class DocCategorySettings extends Component {
   }
 
   @tracked
-  indexTopicId =
-    this.args.outletArgs.category.custom_fields.doc_category_index_topic;
+  indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
   @tracked indexTopic;
   @tracked loadingIndexTopic = !!this.indexTopicId;
 
@@ -88,7 +87,7 @@ export default class DocCategorySettings extends Component {
   onChangeIndexTopic(topicId, topic) {
     this.indexTopic = topic;
     this.indexTopicId = topicId;
-    this.category.custom_fields.doc_category_index_topic = topicId;
+    this.category.set("doc_index_topic_id", topicId);
   }
 
   <template>
