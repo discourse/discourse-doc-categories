@@ -42,10 +42,9 @@ RSpec.describe Search do
       before { SiteSetting.doc_categories_enabled = true }
 
       it "includes only posts from the doc categories (including subcategories) in the results" do
-        documentation_category.custom_fields[
-          DocCategories::CATEGORY_INDEX_TOPIC
-        ] = documentation_category_topic.id
-        documentation_category.save!
+        DocCategories::CategoryIndexManager.new(documentation_category).assign!(
+          documentation_category_topic.id,
+        )
 
         results_with_advanced_search_trigger = Search.execute("looking in:docs").posts.map(&:id)
         results_without_advanced_search_trigger = Search.execute("looking").posts.map(&:id)

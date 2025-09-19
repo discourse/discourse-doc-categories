@@ -55,71 +55,69 @@ describe Topic do
   end
 
   before do
+    Jobs.run_immediately!
     SiteSetting.doc_categories_enabled = true
 
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
+  end
+
+  def doc_index_for(category)
+    DocCategories::Index.find_by(category_id: category.id)
+  end
+
+  def sidebar_links_for(category)
+    DocCategories::SidebarLink
+      .joins(sidebar_section: :index)
+      .where(doc_categories_indexes: { category_id: category.id })
+      .order("doc_categories_sidebar_sections.position", :position)
+      .pluck(:topic_id)
   end
 
   context "when changing the topic category" do
-    it "doesn't invalidate cache if the topic category wasn't changed" do
-      described_class.expects(:clear_doc_categories_cache).never
+    it "doesn't change the doc index when an unrelated topic moves between categories" do
+      original_links = sidebar_links_for(documentation_category)
 
-      index_topic.title = "This is just a test"
-      index_topic.save!
+      topic.change_category_to_id(documentation_category.id)
+      topic.save!
+
+      expect(sidebar_links_for(documentation_category)).to eq(original_links)
     end
 
-    it "doesn't invalidate the cache if the topic is not the index in a doc category" do
-      described_class.expects(:clear_doc_categories_cache).never
+    it "removes the doc index when the index topic is moved to another category" do
+      index_topic.change_category_to_id(category.id)
+      index_topic.save!
+
+      expect(doc_index_for(documentation_category)).to be_nil
+    end
+
+    it "restores the doc index when the index topic is moved back into the category" do
+      index_topic.change_category_to_id(category.id)
+      index_topic.save!
+
+      expect(doc_index_for(documentation_category)).to be_nil
+
+      index_topic.change_category_to_id(documentation_category.id)
+      index_topic.save!
+
+      expect(doc_index_for(documentation_category)).to be_present
+      expect(sidebar_links_for(documentation_category)).to include(
+        documentation_topic.id,
+        documentation_topic2.id,
+        documentation_topic3.id,
+        documentation_topic4.id,
+      )
+    end
+
+    it "removes links to topics that are moved out of the doc category" do
+      expect(sidebar_links_for(documentation_category)).to include(documentation_topic.id)
 
       documentation_topic.change_category_to_id(category.id)
       documentation_topic.save!
 
-      topic.change_category_to_id(documentation_category.id)
-      topic.save!
+      expect(sidebar_links_for(documentation_category)).not_to include(documentation_topic.id)
     end
 
-    it "invalidates the cache if the index topic is moved FROM another category" do
-      documentation_category.custom_fields["doc_category_index_topic"] = topic.id
-      documentation_category.save!
-
-      described_class.expects(:clear_doc_categories_cache).once
-      topic.change_category_to_id(documentation_category.id)
-      topic.save!
-    end
-
-    it "publishes the category via message bus when the index topic is moved FROM another category" do
-      index_topic.change_category_to_id(category.id)
-      index_topic.save!
-
-      messages =
-        MessageBus.track_publish("/categories") do
-          index_topic.change_category_to_id(documentation_category.id)
-          index_topic.save!
-        end
-
-      expect(messages.length).to eq(1)
-      message = messages.first
-
-      category_hash = message.data[:categories].first
-
-      expect(category_hash[:id]).to eq(documentation_category.id)
-      expect(category_hash.has_key?(:doc_category_index)).to eq(true)
-
-      doc_category_index = category_hash[:doc_category_index]
-      expect(doc_category_index).to be_present
-      expect(doc_category_index.size).to eq(2)
-      expect(doc_category_index[0]["links"].size).to eq(2)
-      expect(doc_category_index[1]["links"].size).to eq(2)
-    end
-
-    it "invalidates the cache if the index topic is moved TO another category" do
-      described_class.expects(:clear_doc_categories_cache).once
-      index_topic.change_category_to_id(category.id)
-      index_topic.save!
-    end
-
-    it "publishes the category via message bus when the index topic is moved TO another category" do
+    it "publishes the category via message bus when the index topic is moved" do
       messages =
         MessageBus.track_publish("/categories") do
           index_topic.change_category_to_id(category.id)
@@ -133,34 +131,61 @@ describe Topic do
 
       expect(category_hash[:id]).to eq(documentation_category.id)
       expect(category_hash.has_key?(:doc_category_index)).to eq(false)
+
+      messages =
+        MessageBus.track_publish("/categories") do
+          index_topic.change_category_to_id(documentation_category.id)
+          index_topic.save!
+        end
+
+      expect(messages.length).to be >= 1
+      category_hash = messages.last.data[:categories].first
+
+      expect(category_hash[:id]).to eq(documentation_category.id)
+      expect(category_hash[:doc_category_index]).to be_present
     end
   end
 
   context "when deleting a topic" do
-    it "invalidates the cache if the index topic is deleted" do
-      described_class.expects(:clear_doc_categories_cache).once
+    it "removes the doc index if the index topic is trashed" do
       index_topic.trash!
+
+      expect(doc_index_for(documentation_category)).to be_nil
     end
 
-    it "doesn't invalidate the cache if another topic is deleted" do
-      described_class.expects(:clear_doc_categories_cache).never
+    it "doesn't change the doc index if an unrelated topic is trashed" do
+      original_links = sidebar_links_for(documentation_category)
+
+      documentation_topic4.trash!
+
+      expect(sidebar_links_for(documentation_category)).to eq(original_links)
+    end
+
+    it "removes links to trashed topics" do
+      expect(sidebar_links_for(documentation_category)).to include(documentation_topic.id)
+
       documentation_topic.trash!
+
+      expect(sidebar_links_for(documentation_category)).not_to include(documentation_topic.id)
     end
   end
 
   context "when recovering a topic" do
-    it "invalidates the cache if the index topic is recovered" do
+    it "rebuilds the doc index when the index topic is recovered" do
       index_topic.trash!
 
-      described_class.expects(:clear_doc_categories_cache).once
       index_topic.recover!
+
+      expect(doc_index_for(documentation_category)).to be_present
+      expect(sidebar_links_for(documentation_category)).to include(documentation_topic.id)
     end
 
-    it "doesn't invalidate the cache if another topic is deleted" do
+    it "doesn't change the doc index if another topic is recovered" do
       documentation_topic.trash!
 
-      described_class.expects(:clear_doc_categories_cache).never
       documentation_topic.recover!
+
+      expect(sidebar_links_for(documentation_category)).to include(documentation_topic.id)
     end
   end
 end

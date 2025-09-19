@@ -48,12 +48,12 @@ RSpec.describe "Doc Category Sidebar", system: true do
   end
 
   before do
+    Jobs.run_immediately!
     SiteSetting.navigation_menu = "sidebar"
     SiteSetting.doc_categories_enabled = true
     Site.clear_cache
 
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
   end
 
   context "when browsing regular pages" do
@@ -100,17 +100,18 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
     it "displays correctly the subcategory index when different from the parent category" do
       subcategory_index_topic = Fabricate(:topic, category: documentation_subcategory)
+      subcategory_doc_topic = Fabricate(:topic_with_op, category: documentation_subcategory)
+      subcategory_doc_topic2 = Fabricate(:topic_with_op, category: documentation_subcategory)
 
       Fabricate(:post, topic: subcategory_index_topic, raw: <<~MD)
         # Subcategory Index
-        * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
-        * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+        * [#{subcategory_doc_topic.title}](/t/#{subcategory_doc_topic.slug}/#{subcategory_doc_topic.id})
+        * #{subcategory_doc_topic2.slug}: [#{subcategory_doc_topic2.title}](/t/#{subcategory_doc_topic2.slug}/#{subcategory_doc_topic2.id})
       MD
 
-      documentation_subcategory.custom_fields[
-        DocCategories::CATEGORY_INDEX_TOPIC
-      ] = subcategory_index_topic.id
-      documentation_subcategory.save!
+      DocCategories::CategoryIndexManager.new(documentation_subcategory).assign!(
+        subcategory_index_topic.id,
+      )
 
       visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
 
@@ -121,6 +122,14 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
       expect(sidebar).to be_visible
       expect(sidebar).to have_section(docs_section_name("Subcategory Index"))
+      expect(sidebar).to have_section_link(
+        subcategory_doc_topic.title,
+        href: %r{t/#{subcategory_doc_topic.slug}/#{subcategory_doc_topic.id}},
+      )
+      expect(sidebar).to have_section_link(
+        subcategory_doc_topic2.slug,
+        href: %r{t/#{subcategory_doc_topic2.slug}/#{subcategory_doc_topic2.id}},
+      )
     end
   end
 

@@ -8,7 +8,7 @@ module ::DocCategories
           ActiveRecord::Associations::Preloader.new(
             records: categories,
             associations: {
-              doc_categories_index: :index_topic,
+              doc_categories_index: [:index_topic, { sidebar_sections: :sidebar_links }],
             },
           )
         end

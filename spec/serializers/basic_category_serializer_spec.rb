@@ -54,96 +54,95 @@ describe BasicCategorySerializer do
   end
 
   before do
+    Jobs.run_immediately!
     SiteSetting.doc_categories_enabled = true
 
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
   end
 
-  context "#doc_category_index"
-  it "isn't serialized if the category is not a doc category" do
-    data = described_class.new(category, root: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+  context "#doc_category_index" do
+    it "isn't serialized if the category is not a doc category" do
+      data = described_class.new(category, root: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "isn't serialized if the index topic doesn't exist" do
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = 0
-    documentation_category.save!
+    it "isn't serialized if the index topic doesn't exist" do
+      index = DocCategories::Index.find_by!(category_id: documentation_category.id)
+      index.update_columns(index_topic_id: 0)
+      index.sidebar_sections.destroy_all
 
-    data = described_class.new(category, documentation_category: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+      data = described_class.new(category, documentation_category: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "isn't serialized if the index topic doesn't belong to the category" do
-    index_topic.category_id = category.id
-    index_topic.save!
+    it "isn't serialized if the index topic doesn't belong to the category" do
+      index_topic.category_id = category.id
+      index_topic.save!
 
-    data = described_class.new(category, documentation_category: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+      data = described_class.new(category, documentation_category: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "isn't serialized if the index topic doesn't belongs to a subcategory" do
-    index_topic.category_id = documentation_subcategory.id
-    index_topic.save!
+    it "isn't serialized if the index topic doesn't belongs to a subcategory" do
+      index_topic.category_id = documentation_subcategory.id
+      index_topic.save!
 
-    data = described_class.new(category, documentation_category: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+      data = described_class.new(category, documentation_category: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "isn't serialized if the index topic doesn't contain a first post" do
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = Fabricate(:topic).id
-    documentation_category.save!
+    it "isn't serialized if the index topic doesn't contain a first post" do
+      topic_without_posts = Fabricate(:topic, category: documentation_category)
+      DocCategories::CategoryIndexManager.new(documentation_category).assign!(
+        topic_without_posts.id,
+      )
 
-    data = described_class.new(category, documentation_category: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+      data = described_class.new(category, documentation_category: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "isn't serialized if the index topic doesn't contain the expected document structure to be parsed" do
-    documentation_category.custom_fields[
-      DocCategories::CATEGORY_INDEX_TOPIC
-    ] = documentation_topic.id
-    documentation_category.save!
+    it "isn't serialized if the index topic doesn't contain the expected document structure to be parsed" do
+      DocCategories::CategoryIndexManager.new(documentation_category).assign!(
+        documentation_topic.id,
+      )
 
-    data = described_class.new(category, documentation_category: false).as_json
-    expect(data.has_key?(:doc_category_index)).to eq(false)
-  end
+      data = described_class.new(category, documentation_category: false).as_json
+      expect(data.has_key?(:doc_category_index)).to eq(false)
+    end
 
-  it "is serialized as expected if the index topic can be parsed" do
-    data = described_class.new(documentation_category, root: false).as_json
+    it "is serialized as expected if the index topic can be parsed" do
+      data = described_class.new(documentation_category, root: false).as_json
 
-    parsed_index = data[:doc_category_index]
-    expect(parsed_index).to be_present
+      parsed_index = data[:doc_category_index]
+      expect(parsed_index).to be_present
 
-    expect(parsed_index.size).to eq(2)
+      expect(parsed_index.size).to eq(2)
 
-    expect(parsed_index[0]["text"]).to eq("General Usage")
-    expect(parsed_index[0]["links"].size).to eq(2)
-    expect(parsed_index[0]["links"][0]).to eq(
-      {
-        text: documentation_topic.title,
-        href: "/t/#{documentation_topic.slug}/#{documentation_topic.id}",
-      }.as_json,
-    )
-    expect(parsed_index[0]["links"][1]).to eq(
-      {
-        text: documentation_topic2.slug,
-        href: "/t/#{documentation_topic2.slug}/#{documentation_topic2.id}",
-      }.as_json,
-    )
+      expect(parsed_index[0]["text"]).to eq("General Usage")
+      expect(parsed_index[0]["links"].size).to eq(2)
+      expect(parsed_index[0]["links"][0]).to include(
+        "text" => documentation_topic.title,
+        "href" => "/t/#{documentation_topic.slug}/#{documentation_topic.id}",
+        "topic_id" => documentation_topic.id,
+      )
+      expect(parsed_index[0]["links"][1]).to include(
+        "text" => documentation_topic2.slug,
+        "href" => "/t/#{documentation_topic2.slug}/#{documentation_topic2.id}",
+        "topic_id" => documentation_topic2.id,
+      )
 
-    expect(parsed_index[1]["text"]).to eq("Writing")
-    expect(parsed_index[1]["links"].size).to eq(2)
-    expect(parsed_index[1]["links"][0]).to eq(
-      {
-        text: documentation_topic3.title,
-        href: "/t/#{documentation_topic3.slug}/#{documentation_topic3.id}",
-      }.as_json,
-    )
-    expect(parsed_index[1]["links"][1]).to eq(
-      {
-        text: documentation_topic4.slug,
-        href: "/t/#{documentation_topic4.slug}/#{documentation_topic4.id}",
-      }.as_json,
-    )
+      expect(parsed_index[1]["text"]).to eq("Writing")
+      expect(parsed_index[1]["links"].size).to eq(2)
+      expect(parsed_index[1]["links"][0]).to include(
+        "text" => documentation_topic3.title,
+        "href" => "/t/#{documentation_topic3.slug}/#{documentation_topic3.id}",
+        "topic_id" => documentation_topic3.id,
+      )
+      expect(parsed_index[1]["links"][1]).to include(
+        "text" => documentation_topic4.slug,
+        "href" => "/t/#{documentation_topic4.slug}/#{documentation_topic4.id}",
+        "topic_id" => documentation_topic4.id,
+      )
+    end
   end
 end

@@ -11,7 +11,12 @@ module DocCategories
       return unless index
 
       topic = index.index_topic
-      return unless valid_topic?(topic)
+      if !valid_topic?(topic)
+        category_id = index.category_id
+        index.destroy!
+        publish_changes(category_id)
+        return
+      end
 
       first_post = topic.first_post
       return unless first_post&.cooked.present?
@@ -59,31 +64,20 @@ module DocCategories
       raw_sections.filter_map do |section|
         links =
           section[:links].filter_map do |link|
-            topic_id = DocCategories::Url.extract_topic_id_from_url(link[:href])
-            next if topic_id.blank?
+            href = link[:href]
+            next if href.blank?
 
-            target_topic = topics_by_id[topic_id]
-            next unless valid_link_target?(target_topic)
+            topic_id = DocCategories::Url.extract_topic_id_from_url(href)
+            target_topic = topic_id.present? ? topics_by_id[topic_id] : nil
+            text = link[:text].presence || target_topic&.title || href
 
-            text = link[:text].presence || target_topic.title
-
-            { text: text, href: target_topic.relative_url, topic_id: target_topic.id }
+            { text: text, href: href, topic_id: topic_id }
           end
 
         next if links.blank?
 
         { text: section[:text], links: links }
       end
-    end
-
-    def valid_link_target?(topic)
-      return false if topic.blank?
-      return false if topic.private_message?
-      return false if topic.trashed?
-      return false unless topic.visible?
-      return false unless topic.category_id == category_id
-
-      true
     end
 
     def valid_topic?(topic)

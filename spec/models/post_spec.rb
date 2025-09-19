@@ -61,55 +61,60 @@ describe Post do
   fab!(:second_index_post) { Fabricate(:post, topic: index_topic) }
 
   before do
+    Jobs.run_immediately!
     SiteSetting.doc_categories_enabled = true
 
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
   end
 
-  it "doesn't invalidate the cache when the post is not the first of the topic" do
-    described_class.expects(:clear_doc_categories_cache).never
-
-    second_index_post.raw = "Just a test"
-    second_index_post.save!
+  def sidebar_links_for(category)
+    DocCategories::SidebarLink
+      .joins(sidebar_section: :index)
+      .where(doc_categories_indexes: { category_id: category.id })
+      .order("doc_categories_sidebar_sections.position", :position)
+      .pluck(:title, :href, :topic_id)
   end
 
-  it "doesn't invalidate the cache when the cooked text doesn't change" do
-    described_class.expects(:clear_doc_categories_cache).never
-
-    index_topic.first_post.user_id = Fabricate(:user).id
-    index_topic.first_post.save!
+  it "doesn't rebuild the index when the post is not the first of the topic" do
+    expect {
+      second_index_post.update!(raw: "Just a test")
+    }.not_to change { sidebar_links_for(documentation_category) }
   end
 
-  it "doesn't invalidate the cache when the topic doesn't belong to a category" do
-    index_topic.change_category_to_id(nil)
-    index_topic.save!
+  it "doesn't rebuild the index when the cooked text doesn't change" do
+    original_links = sidebar_links_for(documentation_category)
 
-    described_class.expects(:clear_doc_categories_cache).never
+    index_topic.first_post.update!(raw: index_topic.first_post.raw)
 
-    index_topic.first_post.raw = "This is a test"
-    index_topic.first_post.save!
+    expect(sidebar_links_for(documentation_category)).to eq(original_links)
   end
 
-  it "doesn't invalidate the cache when the topic doesn't belong to a doc category" do
-    described_class.expects(:clear_doc_categories_cache).never
+  it "doesn't rebuild the index when the topic isn't the doc index" do
+    original_links = sidebar_links_for(documentation_category)
 
-    topic.first_post.raw = "This is a test"
-    topic.first_post.save!
+    documentation_topic.first_post.update!(raw: "This is a test")
+
+    expect(sidebar_links_for(documentation_category)).to eq(original_links)
   end
 
-  it "doesn't invalidate the cache when the topic isn't the index topic of the doc category" do
-    described_class.expects(:clear_doc_categories_cache).never
+  it "updates the stored sidebar links when the index topic is edited" do
+    index_topic.first_post.update!(
+      raw: <<~MD,
+        * [#{documentation_topic.title}](/t/#{documentation_topic.slug}/#{documentation_topic.id})
+        * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
+      MD
+    )
 
-    documentation_topic.first_post.raw = "This is a test"
-    documentation_topic.first_post.save!
-  end
-
-  it "invalidates the cache when the cooked text of the first post in the index topic is updated" do
-    described_class.expects(:clear_doc_categories_cache).once
-
-    index_topic.first_post.raw = "This is a test"
-    index_topic.first_post.save!
+    expect(sidebar_links_for(documentation_category)).to eq(
+      [
+        [documentation_topic.title, "/t/#{documentation_topic.slug}/#{documentation_topic.id}", documentation_topic.id],
+        [
+          documentation_topic2.slug,
+          "/t/#{documentation_topic2.slug}/#{documentation_topic2.id}",
+          documentation_topic2.id,
+        ],
+      ],
+    )
   end
 
   it "publishes the category via message bus when the index topic is updated" do
