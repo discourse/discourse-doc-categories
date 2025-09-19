@@ -21,3 +21,19 @@ module DocCategories
     validates :title, length: { maximum: 255 }, allow_blank: true
   end
 end
+
+# == Schema Information
+#
+# Table name: doc_categories_sidebar_sections
+#
+#  id                      :bigint           not null, primary key
+#  position                :integer          not null
+#  title                   :string
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  doc_categories_index_id :bigint           not null
+#
+# Indexes
+#
+#  idx_doc_categories_sections_on_index_id_and_position  (doc_categories_index_id,position) UNIQUE
+#

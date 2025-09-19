@@ -29,9 +29,28 @@ module DocCategories
     def topic_not_deleted
       return if topic.nil?
 
-      return unless topic.deleted_at.present? || topic.deleted_by_id.present?
+      return if topic.deleted_at.blank? && topic.deleted_by_id.blank?
 
       errors.add(:topic_id, "cannot reference a deleted topic")
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: doc_categories_sidebar_links
+#
+#  id                                :bigint           not null, primary key
+#  href                              :text
+#  position                          :integer          not null
+#  title                             :string
+#  created_at                        :datetime         not null
+#  updated_at                        :datetime         not null
+#  doc_categories_sidebar_section_id :bigint           not null
+#  topic_id                          :bigint
+#
+# Indexes
+#
+#  idx_doc_categories_links_on_section_id_and_position  (doc_categories_sidebar_section_id,position) UNIQUE
+#  index_doc_categories_sidebar_links_on_topic_id       (topic_id)
+#

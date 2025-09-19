@@ -29,3 +29,19 @@ module DocCategories
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: doc_categories_indexes
+#
+#  id             :bigint           not null, primary key
+#  created_at     :datetime         not null
+#  updated_at     :datetime         not null
+#  category_id    :bigint           not null
+#  index_topic_id :bigint           not null
+#
+# Indexes
+#
+#  idx_doc_categories_indexes_on_category_id     (category_id) UNIQUE
+#  idx_doc_categories_indexes_on_index_topic_id  (index_topic_id) UNIQUE
+#
