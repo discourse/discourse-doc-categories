@@ -6,7 +6,9 @@ describe DocCategories::SidebarSection do
     Fabricate(:topic, category: category).tap { |topic| Fabricate(:post, topic: topic) }
   end
 
-  fab!(:doc_index) { DocCategories::Index.create!(category: category, index_topic: index_topic) }
+  fab!(:doc_index) do
+    Fabricate(:doc_categories_index, category: category, index_topic: index_topic)
+  end
 
   it "enforces unique positioning within an index" do
     described_class.create!(index: doc_index, position: 1, title: "General")
@@ -23,7 +25,8 @@ describe DocCategories::SidebarSection do
     other_category = Fabricate(:category_with_definition)
     other_topic =
       Fabricate(:topic, category: other_category).tap { |topic| Fabricate(:post, topic: topic) }
-    other_index = DocCategories::Index.create!(category: other_category, index_topic: other_topic)
+    other_index =
+      Fabricate(:doc_categories_index, category: other_category, index_topic: other_topic)
 
     duplicate_position = described_class.new(index: other_index, position: 1)
 
