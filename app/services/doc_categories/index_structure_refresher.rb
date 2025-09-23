@@ -19,7 +19,7 @@ module DocCategories
       end
 
       first_post = topic.first_post
-      return unless first_post&.cooked.present?
+      return if first_post&.cooked.blank?
 
       sections = DocCategories::DocIndexTopicParser.new(first_post.cooked).sections
       sections = build_sections(sections)

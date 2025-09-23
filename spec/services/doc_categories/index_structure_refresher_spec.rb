@@ -29,7 +29,7 @@ describe DocCategories::IndexStructureRefresher do
     Fabricate(:doc_categories_index, category: documentation_category, index_topic: index_topic)
   end
 
-  let(:subject) { described_class.new(documentation_category.id) }
+  let(:refresher) { described_class.new(documentation_category.id) }
 
   before { SiteSetting.doc_categories_enabled = true }
 
@@ -50,7 +50,7 @@ describe DocCategories::IndexStructureRefresher do
           section.sidebar_links.create!(position: 4, title: "Old", href: "/outdated")
         end
 
-      subject.refresh!
+      refresher.refresh!
 
       sections = sidebar_sections
       expect(sections.length).to eq(1)
@@ -98,7 +98,7 @@ describe DocCategories::IndexStructureRefresher do
 
       allow(Site).to receive(:clear_cache)
 
-      messages = MessageBus.track_publish("/categories") { subject.refresh! }
+      messages = MessageBus.track_publish("/categories") { refresher.refresh! }
 
       expect(sidebar_sections).to be_empty
       expect(Site).to have_received(:clear_cache)
@@ -112,7 +112,7 @@ describe DocCategories::IndexStructureRefresher do
 
       index_topic.update!(category: other_category)
 
-      messages = MessageBus.track_publish("/categories") { subject.refresh! }
+      messages = MessageBus.track_publish("/categories") { refresher.refresh! }
 
       expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
       expect(Site).to have_received(:clear_cache)
@@ -125,7 +125,7 @@ describe DocCategories::IndexStructureRefresher do
       doc_index.destroy!
       allow(Site).to receive(:clear_cache)
 
-      expect { subject.refresh! }.not_to change { DocCategories::SidebarSection.count }
+      expect { refresher.refresh! }.not_to change { DocCategories::SidebarSection.count }
       expect(Site).not_to have_received(:clear_cache)
     end
   end
