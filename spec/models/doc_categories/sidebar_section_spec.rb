@@ -6,7 +6,7 @@ describe DocCategories::SidebarSection do
     Fabricate(:topic, category: category).tap { |topic| Fabricate(:post, topic: topic) }
   end
 
-  let!(:doc_index) { DocCategories::Index.create!(category: category, index_topic: index_topic) }
+  fab!(:doc_index) { DocCategories::Index.create!(category: category, index_topic: index_topic) }
 
   it "enforces unique positioning within an index" do
     described_class.create!(index: doc_index, position: 1, title: "General")

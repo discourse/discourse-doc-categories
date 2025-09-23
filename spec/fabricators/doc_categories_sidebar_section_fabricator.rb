@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-Fabricator(:doc_categories_index, class_name: "DocCategories::Index") do
-  category { Fabricate(:category_with_definition) }
-
-  after_build do |index, _attrs|
-    index.index_topic ||= Fabricate(:topic_with_op, category: index.category)
-  end
+Fabricator(:doc_categories_sidebar_section, class_name: "DocCategories::SidebarSection") do
+  index { Fabricate(:doc_categories_index) }
+  title { sequence(:title) { |n| "Section Title #{n}" } }
+  position { sequence(:position) { |n| n } }
 end
