@@ -9,14 +9,9 @@ namespace :doc_categories do
       .includes(:category)
       .find_each do |index|
         category = index.category
-
-        if category.blank?
-          puts "Skipping index ##{index.id} because category #{index.category_id} is missing."
-          next
-        end
-
         puts "Processing category ##{category.id} (#{category.name})"
         DocCategories::IndexStructureRefresher.new(category.id).refresh!
+        puts " ⮑  Created #{index.sidebar_sections.count} sections and #{index.sidebar_sections.sum { |section| section.sidebar_links.count }} links"
       rescue => e
         puts "Failed to process category ##{category.id}: #{e.message}"
       end

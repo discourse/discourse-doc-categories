@@ -24,7 +24,7 @@ module ::DocCategories
         plugin.add_to_class(:category, :doc_index_topic_id) { doc_categories_index&.index_topic_id }
 
         plugin.add_to_serializer(:basic_category, :doc_index_topic_id) do
-          object.doc_categories_index&.index_topic_id
+          object&.doc_categories_index&.index_topic_id
         end
 
         plugin.register_category_update_param_with_callback(

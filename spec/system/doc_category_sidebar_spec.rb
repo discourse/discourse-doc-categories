@@ -214,20 +214,18 @@ describe "Doc Category Sidebar", system: true do
           ".doc-categories-settings__index-topic .topic-chooser",
         )
       topic_chooser.expand
-      topic_chooser.search(new_index_topic.title)
+      topic_chooser.search(new_index_topic.id)
       topic_chooser.select_row_by_index(0)
 
       category_page.save_settings
-      wait_for do
-        expect(DocCategories::Index.find_by(category: documentation_category).index_topic).to eq(
-          new_index_topic,
-        )
-      end
+      expect(category_page.find("#save-category")).to have_content(I18n.t("js.saving"))
+      expect(category_page.find("#save-category")).to have_content(I18n.t("js.category.save"))
+      expect(topic_chooser).to have_selected_name(new_index_topic.title)
 
       page.refresh
+      scroll_to(find(".doc-categories-settings__index-topic .topic-chooser"))
 
-      wait_for(timeout: Capybara.default_max_wait_time * 3) do
-        scroll_to(find(".doc-categories-settings__index-topic .topic-chooser"))
+      wait_for(timeout: Capybara.default_max_wait_time * 2) do
         expect(topic_chooser).to have_selected_name(new_index_topic.title)
       end
       expect(topic_chooser.value).to eq(new_index_topic.id.to_s)

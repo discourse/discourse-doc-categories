@@ -12,8 +12,7 @@ export default class DocCategorySettings extends Component {
     return context.siteSettings.doc_categories_enabled;
   }
 
-  @tracked indexTopicId =
-    this.args.outletArgs.category.doc_index_topic_id;
+  @tracked indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
   @tracked indexTopic;
   @tracked loadingIndexTopic = !!this.indexTopicId;
 
