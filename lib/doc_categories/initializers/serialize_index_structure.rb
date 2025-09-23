@@ -9,10 +9,10 @@ module ::DocCategories
           :basic_category,
           :doc_category_index,
           include_condition: -> do
-            index_topic_id = object.custom_fields[::DocCategories::CATEGORY_INDEX_TOPIC]
-            next false if index_topic_id.blank?
+            index = object.doc_categories_index
+            next false if index.blank?
 
-            index_topic = Topic.find_by(id: index_topic_id)
+            index_topic = index.index_topic
             next false if index_topic.blank?
 
             # ideally we should check if the current user has access to the topic above which would allow securely using
@@ -26,7 +26,7 @@ module ::DocCategories
             first_post = index_topic.first_post
             next false if first_post.blank?
 
-            @doc_category_index = DocCategories::DocIndexTopicParser.new(first_post.cooked).sections
+            @doc_category_index = index.sidebar_structure
             @doc_category_index.present?
           end,
         ) { @doc_category_index.as_json }

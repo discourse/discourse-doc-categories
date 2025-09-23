@@ -13,42 +13,49 @@ describe DocCategories::Initializers::HandleTopicChanges do
     end
   end
 
+  let!(:doc_index) do
+    Fabricate(:doc_categories_index, category: documentation_category, index_topic: index_topic)
+  end
+
   before do
     SiteSetting.doc_categories_enabled = true
-
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    Jobs::DocCategoriesRefreshIndex.jobs.clear
   end
 
-  it "clears the cache and republishes the doc category when the index topic is trashed" do
-    Topic.expects(:clear_doc_categories_cache).once
+  it "assigns and refreshes when the index topic is trashed" do
+    expect_enqueued_with(
+      job: :doc_categories_refresh_index,
+      args: {
+        category_id: documentation_category.id,
+      },
+    ) { index_topic.trash! }
 
-    messages = MessageBus.track_publish("/categories") { index_topic.trash! }
-
-    category_ids = messages.flat_map { |message| message.data[:categories].map { |c| c[:id] } }
-
-    expect(category_ids).to include(documentation_category.id)
+    expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
   end
 
-  it "publishes the category without clearing the doc cache when another topic is trashed" do
-    Topic.expects(:clear_doc_categories_cache).never
+  it "does nothing when another topic is trashed" do
+    expect_not_enqueued_with(job: :doc_categories_refresh_index) { other_topic.trash! }
 
-    messages = MessageBus.track_publish("/categories") { other_topic.trash! }
-
-    category_ids = messages.flat_map { |message| message.data[:categories].map { |c| c[:id] } }
-
-    expect(category_ids).to include(documentation_category.id)
+    expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(true)
   end
 
-  it "clears the cache when the index topic is recovered" do
+  it "reassigns the index when the topic is recovered" do
     index_topic.trash!
+    expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
+    Jobs::DocCategoriesRefreshIndex.jobs.clear
 
-    Topic.expects(:clear_doc_categories_cache).once
+    expect_enqueued_with(
+      job: :doc_categories_refresh_index,
+      args: {
+        category_id: documentation_category.id,
+      },
+    ) { index_topic.recover! }
 
-    messages = MessageBus.track_publish("/categories") { index_topic.recover! }
-
-    category_ids = messages.flat_map { |message| message.data[:categories].map { |c| c[:id] } }
-
-    expect(category_ids).to include(documentation_category.id)
+    expect(
+      DocCategories::Index.exists?(
+        category_id: documentation_category.id,
+        index_topic_id: index_topic.id,
+      ),
+    ).to eq(true)
   end
 end

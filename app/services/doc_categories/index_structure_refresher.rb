@@ -94,7 +94,7 @@ module DocCategories
       category = ::Category.find_by(id: category_id)
       return unless category
 
-      ::Site.clear_cache
+      Site.clear_cache
       category.publish_category
     end
   end
