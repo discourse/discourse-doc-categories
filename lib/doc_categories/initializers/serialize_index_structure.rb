@@ -9,7 +9,7 @@ module ::DocCategories
           :basic_category,
           :doc_category_index,
           include_condition: -> do
-            index = object.doc_categories_index
+            index = object&.doc_categories_index
             next false if index.blank?
 
             index_topic = index.index_topic
