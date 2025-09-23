@@ -46,17 +46,17 @@ end
 #
 # Table name: doc_categories_sidebar_links
 #
-#  id                                :bigint           not null, primary key
-#  href                              :text
-#  position                          :integer          not null
-#  title                             :string
-#  created_at                        :datetime         not null
-#  updated_at                        :datetime         not null
+#  id                 :bigint           not null, primary key
+#  href               :text             not null
+#  position           :integer          not null
+#  title              :string
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
 #  sidebar_section_id :bigint           not null
-#  topic_id                          :bigint
+#  topic_id           :bigint
 #
 # Indexes
 #
-#  idx_doc_categories_links_on_section_id_and_position  (doc_categories_sidebar_section_id,position) UNIQUE
+#  idx_doc_categories_links_on_section_id_and_position  (sidebar_section_id,position) UNIQUE
 #  index_doc_categories_sidebar_links_on_topic_id       (topic_id)
 #

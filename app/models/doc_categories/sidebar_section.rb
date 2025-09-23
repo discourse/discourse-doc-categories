@@ -26,12 +26,12 @@ end
 #
 # Table name: doc_categories_sidebar_sections
 #
-#  id                      :bigint           not null, primary key
-#  position                :integer          not null
-#  title                   :string
-#  created_at              :datetime         not null
-#  updated_at              :datetime         not null
-#  index_id :bigint           not null
+#  id         :bigint           not null, primary key
+#  position   :integer          not null
+#  title      :string
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#  index_id   :bigint           not null
 #
 # Indexes
 #
