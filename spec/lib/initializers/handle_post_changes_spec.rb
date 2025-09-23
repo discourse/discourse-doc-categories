@@ -38,17 +38,14 @@ describe DocCategories::Initializers::HandlePostChanges do
     end
   end
 
-  it "reassigns the index and refreshes the index's category when the index topic moves" do
-    expect_enqueued_with(
-      job: :doc_categories_refresh_index,
-      args: {
-        category_id: documentation_category.id,
-      },
-    ) { revise(index_topic.first_post, category_id: other_category.id) }
+  it "clears the index and refreshes the index's category when the index topic moves" do
+    Jobs.run_immediately!
+    revise(index_topic.first_post, category_id: other_category.id)
 
     expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
+    # topic *should not* be the new category's index topic
     expect(
       DocCategories::Index.exists?(category_id: other_category.id, index_topic_id: index_topic.id),
-    ).to eq(true)
+    ).to eq(false)
   end
 end

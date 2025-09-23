@@ -35,8 +35,6 @@ module ::DocCategories
           enqueue_refresh(category.id)
         elsif existing_index.nil?
           DocCategories::CategoryIndexManager.new(category).assign!(topic.id)
-        else
-          return
         end
       end
 
