@@ -85,7 +85,7 @@ module DocCategories
       return false if topic.blank?
       return false if topic.private_message?
       return false if topic.trashed?
-      return false unless topic.category_id == category_id
+      return false if topic.category_id != category_id
 
       true
     end
