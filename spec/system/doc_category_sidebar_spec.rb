@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe "Doc Category Sidebar", system: true do
+describe "Doc Category Sidebar", system: true do
   fab!(:admin)
   fab!(:category) { Fabricate(:category_with_definition) }
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
@@ -39,21 +39,65 @@ RSpec.describe "Doc Category Sidebar", system: true do
   let(:sidebar) { PageObjects::Components::NavigationMenu::Sidebar.new }
   let(:filter) { PageObjects::Components::Filter.new }
 
+  let(:default_sidebar_sections) do
+    [
+      {
+        title: "General Usage",
+        links: [
+          doc_link_for(documentation_topic),
+          doc_link_for(documentation_topic2, title: documentation_topic2.slug),
+        ],
+      },
+      {
+        title: "Writing",
+        links: [
+          doc_link_for(documentation_topic3),
+          doc_link_for(documentation_topic4, title: documentation_topic4.slug),
+        ],
+      },
+    ]
+  end
+
+  let!(:documentation_index) do
+    create_doc_categories_index(
+      category: documentation_category,
+      index_topic: index_topic,
+      sections: default_sidebar_sections,
+    )
+  end
+
   def docs_section_name(title)
     "discourse-docs-sidebar__#{Slug.for(title)}"
   end
 
-  def docs_link_name(title, section_title)
-    "#{docs_section_name(section_title)}___#{Slug.for(title)}"
+  def doc_link_for(topic, title: nil)
+    { title: title || topic.title, href: topic.relative_url, topic: topic }
+  end
+
+  def create_doc_categories_index(category:, index_topic:, sections: [])
+    DocCategories::Index
+      .create!(category: category, index_topic: index_topic)
+      .tap do |index|
+        sections.each_with_index do |section_data, section_position|
+          section =
+            index.sidebar_sections.create!(title: section_data[:title], position: section_position)
+
+          section_data[:links].each_with_index do |link_data, link_position|
+            section.sidebar_links.create!(
+              title: link_data[:title],
+              href: link_data[:href],
+              topic: link_data[:topic],
+              position: link_position,
+            )
+          end
+        end
+      end
   end
 
   before do
     SiteSetting.navigation_menu = "sidebar"
     SiteSetting.doc_categories_enabled = true
     Site.clear_cache
-
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
   end
 
   context "when browsing regular pages" do
@@ -107,10 +151,20 @@ RSpec.describe "Doc Category Sidebar", system: true do
         * #{documentation_topic2.slug}: [#{documentation_topic2.title}](/t/#{documentation_topic2.slug}/#{documentation_topic2.id})
       MD
 
-      documentation_subcategory.custom_fields[
-        DocCategories::CATEGORY_INDEX_TOPIC
-      ] = subcategory_index_topic.id
-      documentation_subcategory.save!
+      create_doc_categories_index(
+        category: documentation_subcategory,
+        index_topic: subcategory_index_topic,
+        sections: [
+          {
+            title: "Subcategory Index",
+            links: [
+              doc_link_for(documentation_topic),
+              doc_link_for(documentation_topic2, title: documentation_topic2.slug),
+            ],
+          },
+        ],
+      )
+      Site.clear_cache
 
       visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
 
@@ -121,6 +175,76 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
       expect(sidebar).to be_visible
       expect(sidebar).to have_section(docs_section_name("Subcategory Index"))
+    end
+  end
+
+  context "when in category settings" do
+    before do
+      Jobs.run_immediately!
+      sign_in(admin)
+    end
+
+    it "correctly saves the new index topic" do
+      new_doc_topic = Fabricate(:topic_with_op, category: documentation_category)
+      another_doc_topic = Fabricate(:topic_with_op, category: documentation_category)
+      new_index_topic =
+        Fabricate(:topic, category: documentation_category).tap do |t|
+          Fabricate(:post, topic: t, raw: <<~MD)
+            ## Getting Started
+
+            * [#{new_doc_topic.title}](/t/#{new_doc_topic.slug}/#{new_doc_topic.id})
+
+            ## Additional Resources
+
+            * #{another_doc_topic.slug}: [#{another_doc_topic.title}](/t/#{another_doc_topic.slug}/#{another_doc_topic.id})
+          MD
+        end
+
+      SearchIndexer.enable
+      SearchIndexer.index(new_index_topic, force: true)
+
+      visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+      expect_docs_sidebar_to_be_correct
+
+      category_page = PageObjects::Pages::Category.new
+      category_page.visit_settings(documentation_category)
+
+      topic_chooser =
+        PageObjects::Components::SelectKit.new(
+          ".doc-categories-settings__index-topic .topic-chooser",
+        )
+      topic_chooser.expand
+      topic_chooser.search(new_index_topic.id)
+      topic_chooser.select_row_by_index(0)
+
+      category_page.save_settings
+      expect(category_page.find("#save-category")).to have_content(I18n.t("js.saving"))
+      expect(category_page.find("#save-category")).to have_content(I18n.t("js.category.save"))
+      expect(topic_chooser).to have_selected_name(new_index_topic.title)
+
+      page.refresh
+      scroll_to(find(".doc-categories-settings__index-topic .topic-chooser"))
+
+      wait_for(timeout: Capybara.default_max_wait_time * 2) do
+        expect(topic_chooser).to have_selected_name(new_index_topic.title)
+      end
+      expect(topic_chooser.value).to eq(new_index_topic.id.to_s)
+
+      visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+
+      expect(sidebar).to be_visible
+      expect(sidebar).to have_section(docs_section_name("Getting Started"))
+      expect(sidebar).to have_section_link(
+        new_doc_topic.title,
+        href: %r{t/#{new_doc_topic.slug}/#{new_doc_topic.id}},
+      )
+      expect(sidebar).to have_section(docs_section_name("Additional Resources"))
+      expect(sidebar).to have_section_link(
+        another_doc_topic.slug,
+        href: %r{t/#{another_doc_topic.slug}/#{another_doc_topic.id}},
+      )
+      expect(sidebar).to have_no_section(docs_section_name("General Usage"))
+      expect(sidebar).to have_no_section(docs_section_name("Writing"))
     end
   end
 
@@ -203,6 +327,11 @@ RSpec.describe "Doc Category Sidebar", system: true do
       expect(site_wide_search[:href]).to end_with("/search?q=missing")
 
       # for subcategories
+      create_doc_categories_index(
+        category: documentation_subcategory,
+        index_topic: Fabricate(:topic, category: documentation_subcategory),
+        sections: [{ title: "Subcategory Docs", links: [doc_link_for(documentation_topic)] }],
+      )
       visit(
         "/c/#{documentation_category.slug}/#{documentation_subcategory.slug}/#{documentation_subcategory.id}",
       )
@@ -215,6 +344,11 @@ RSpec.describe "Doc Category Sidebar", system: true do
 
       # for 3 levels deep
       visit("/c/#{documentation_subsubcategory.id}")
+      create_doc_categories_index(
+        category: documentation_subsubcategory,
+        index_topic: Fabricate(:topic, category: documentation_subsubcategory),
+        sections: [{ title: "Third Level Docs", links: [doc_link_for(documentation_topic)] }],
+      )
       filter.filter("missing")
 
       suggested_category_search = page.find(".docs-sidebar-suggested-category-search")

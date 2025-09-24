@@ -2,22 +2,44 @@
 
 module ::DocCategories
   module Initializers
-    # since the index structure is serialized into the category data, we need to invalidate the site cache when
-    # an index topic changes category or is deleted
-
     class HandleTopicChanges < Initializer
       def apply
         plugin.add_class_method(:topic, :clear_doc_categories_cache) { Site.clear_cache }
 
-        plugin.on(:topic_trashed) do |topic|
-          Topic.clear_doc_categories_cache if topic.category&.doc_index_topic_id == topic.id
-          topic.category&.publish_category
-        end
+        plugin.on(:topic_trashed) { |topic| handle_topic_trashed(topic) }
 
-        plugin.on(:topic_recovered) do |topic|
-          Topic.clear_doc_categories_cache if topic.category&.doc_index_topic_id == topic.id
-          topic.category&.publish_category
+        plugin.on(:topic_recovered) { |topic| handle_topic_recovered(topic) }
+      end
+
+      private
+
+      def handle_topic_trashed(topic)
+        index = DocCategories::Index.find_by(index_topic_id: topic.id)
+        return if !index
+
+        category = index.category
+        return if !category
+
+        DocCategories::CategoryIndexManager.new(category).assign!(nil)
+      end
+
+      def handle_topic_recovered(topic)
+        category = topic.category
+        return if !category
+
+        existing_index = DocCategories::Index.find_by(category_id: category.id)
+
+        return if existing_index.present? && existing_index.index_topic_id != topic.id
+
+        if existing_index&.index_topic_id == topic.id
+          enqueue_refresh(category.id)
+        elsif existing_index.nil?
+          DocCategories::CategoryIndexManager.new(category).assign!(topic.id)
         end
+      end
+
+      def enqueue_refresh(category_id)
+        ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category_id)
       end
     end
   end

@@ -4,19 +4,19 @@ describe DocCategories::Initializers::HandlePostChanges do
   fab!(:documentation_category) { Fabricate(:category_with_definition) }
   fab!(:other_category) { Fabricate(:category_with_definition) }
   fab!(:index_topic) do
-    Fabricate(:topic, category: documentation_category).tap do |topic|
-      Fabricate(:post, topic: topic)
-    end
+    Fabricate(:topic, category: documentation_category).tap { |topic| Fabricate(:post, topic:) }
   end
   fab!(:other_topic) do
-    Fabricate(:topic, category: other_category).tap { |topic| Fabricate(:post, topic: topic) }
+    Fabricate(:topic, category: other_category).tap { |topic| Fabricate(:post, topic:) }
+  end
+
+  let!(:doc_index) do
+    Fabricate(:doc_categories_index, category: documentation_category, index_topic:)
   end
 
   before do
     SiteSetting.doc_categories_enabled = true
-
-    documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-    documentation_category.save!
+    Jobs::DocCategoriesRefreshIndex.jobs.clear
   end
 
   def revise(post, topic = post.topic, **attributes)
@@ -24,37 +24,28 @@ describe DocCategories::Initializers::HandlePostChanges do
   end
 
   it "clears the cache and republishes the doc category when the index post cooked changes" do
-    Site.expects(:clear_cache).once
-
-    messages =
-      MessageBus.track_publish("/categories") do
-        revise(index_topic.first_post, raw: index_topic.first_post.raw + "\nUpdated")
-      end
-
-    category_ids = messages.flat_map { |message| message.data[:categories].map { |c| c[:id] } }
-
-    expect(category_ids).to include(documentation_category.id)
+    expect_enqueued_with(
+      job: :doc_categories_refresh_index,
+      args: {
+        category_id: documentation_category.id,
+      },
+    ) { revise(index_topic.first_post, raw: index_topic.first_post.raw + "\nUpdated") }
   end
 
   it "does not clear the cache for edits outside the doc index" do
-    Site.expects(:clear_cache).never
-
-    messages =
-      MessageBus.track_publish("/categories") { revise(other_topic.first_post, raw: "Changed") }
-
-    expect(messages).to be_empty
+    expect_not_enqueued_with(job: :doc_categories_refresh_index) do
+      revise(other_topic.first_post, raw: "Changed")
+    end
   end
 
-  it "clears the cache when the index topic leaves the doc category" do
-    Site.expects(:clear_cache).once
+  it "clears the index and refreshes the index's category when the index topic moves" do
+    Jobs.run_immediately!
+    revise(index_topic.first_post, category_id: other_category.id)
 
-    messages =
-      MessageBus.track_publish("/categories") do
-        revise(index_topic.first_post, category_id: other_category.id)
-      end
-
-    category_ids = messages.flat_map { |message| message.data[:categories].map { |c| c[:id] } }
-
-    expect(category_ids).to include(documentation_category.id)
+    expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
+    # topic *should not* be the new category's index topic
+    expect(
+      DocCategories::Index.exists?(category_id: other_category.id, index_topic_id: index_topic.id),
+    ).to eq(false)
   end
 end

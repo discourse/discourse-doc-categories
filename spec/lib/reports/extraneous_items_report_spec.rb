@@ -79,8 +79,9 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
     before do
       SiteSetting.doc_categories_enabled = true
 
-      documentation_category.custom_fields[DocCategories::CATEGORY_INDEX_TOPIC] = index_topic.id
-      documentation_category.save!
+      Jobs.with_immediate_jobs do
+        DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
+      end
     end
 
     it "returns the expected data when excluding topics from subcategories" do
@@ -200,17 +201,22 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
           Fabricate(:post, topic: t, raw: index_topic.first_post.raw)
         end
 
-      other_category.custom_fields[
-        DocCategories::CATEGORY_INDEX_TOPIC
-      ] = other_category_index_topic.id
-      other_category.save!
+      Jobs.with_immediate_jobs do
+        DocCategories::CategoryIndexManager.new(other_category).assign!(
+          other_category_index_topic.id,
+        )
+      end
 
       generated_report = report(filters: { doc_category: -1 })
 
       expect(generated_report.filters[:doc_category]).to eq(-1)
       expect(generated_report.filters.has_key?(:include_topic_from_subcategories)).to eq(false)
 
-      expect(generated_report.data).to match_array(
+      grouped = generated_report.data.group_by { |row| row[:index_category_id] }
+
+      expect(grouped.keys).to contain_exactly(documentation_category.id, other_category.id)
+
+      expect(grouped[documentation_category.id]).to match_array(
         [
           {
             title: documentation_invisible_topic.title,
@@ -260,6 +266,11 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
             index_category_name: documentation_category.name,
             index_category_url: "/c/#{documentation_category.id}",
           },
+        ],
+      )
+
+      expect(grouped[other_category.id]).to match_array(
+        [
           {
             title: documentation_topic.title,
             href: "/t/#{documentation_topic.slug}/#{documentation_topic.id}",

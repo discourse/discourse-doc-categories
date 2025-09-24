@@ -12,7 +12,6 @@ module DocCategories
       if topic_id.nil?
         if (index = DocCategories::Index.find_by(category_id: category.id))
           index.destroy!
-          reset_category_index_association
           category.reload
           enqueue_refresh
           return true
@@ -29,7 +28,6 @@ module DocCategories
 
       index.index_topic = topic
       index.save!
-      assign_category_index_association(index)
       enqueue_refresh
 
       true
@@ -57,22 +55,6 @@ module DocCategories
 
     def enqueue_refresh
       ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id)
-    end
-
-    def reset_category_index_association
-      association = category.association(:doc_categories_index)
-      return unless association
-
-      association.target = nil
-      association.loaded!
-    end
-
-    def assign_category_index_association(index)
-      association = category.association(:doc_categories_index)
-      return unless association
-
-      association.target = index
-      association.loaded!
     end
   end
 end

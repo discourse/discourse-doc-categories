@@ -19,6 +19,39 @@ module DocCategories
 
     validate :index_topic_matches_category
 
+    def sidebar_structure
+      sidebar_sections
+        .includes(sidebar_links: :topic)
+        .map do |section|
+          links =
+            section.sidebar_links.filter_map do |link|
+              # for text: always use link[:title] if present, otherwise use topic title if topic is valid
+              # for href: always use link[:href] if present, otherwise use topic relative_url if topic is valid
+
+              topic = valid_topic(topic)
+
+              text = link.title.presence || (topic&.title)
+              href = link.href.presence || (topic&.relative_url)
+              next if text.blank? || href.blank?
+              { text:, href: }
+            end
+
+          next if links.blank?
+
+          { text: section.title, links: links }
+        end
+        .compact
+    end
+
+    def valid_topic(topic)
+      return nil if topic.blank?
+      return nil if topic.private_message?
+      return nil if topic.trashed?
+      return nil unless topic.visible?
+
+      topic
+    end
+
     private
 
     def index_topic_matches_category
