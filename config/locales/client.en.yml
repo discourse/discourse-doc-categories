@@ -24,3 +24,14 @@ en:
         filter:
           no_results:
             description: 'We couldn’t find anything matching ‘%{filter}’.<br><br>Do you want to perform a <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">search on this category</a> or a <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">site wide search</a> instead?'
+      comments:
+        title: "Discussion"
+        collapsed_summary:
+          one: "%{count} comment hidden"
+          other: "%{count} comments hidden"
+        collapsed_hint: "Expand to read the discussion."
+        expanded_hint: "Replies are visible below."
+        none: "No comments yet."
+        none_hint: "Share your perspective to start the conversation."
+        expand: "Show discussion"
+        collapse: "Hide discussion"
