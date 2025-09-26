@@ -115,6 +115,7 @@ RSpec.describe ::DocCategories::DocsLegacyController do
 
         it "should redirect /knowledge-explorer to 404" do
           get "/knowledge-explorer"
+          follow_redirect!
 
           expect(response.status).to eq(404)
         end
