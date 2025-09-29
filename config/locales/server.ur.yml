@@ -1,0 +1,14 @@
+# WARNING: Never edit this file.
+# It will be overwritten when translations are pulled from Crowdin.
+#
+# To work with us on translations, join this project:
+# https://translate.discourse.org/
+
+ur:
+  reports:
+    doc_categories_missing_topics:
+      labels:
+        topic: "موضوع"
+    doc_categories_extraneous_items:
+      labels:
+        reason: "وجہ"

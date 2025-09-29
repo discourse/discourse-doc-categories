@@ -1,0 +1,19 @@
+# WARNING: Never edit this file.
+# It will be overwritten when translations are pulled from Crowdin.
+#
+# To work with us on translations, join this project:
+# https://translate.discourse.org/
+
+he:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "קטגוריה"
+            include_topic_from_subcategories:
+              label: "לכלול נושאים מתת־קטגוריות"
+      site_settings:
+        categories:
+          doc_categories: "קטגוריות תיעוד"
