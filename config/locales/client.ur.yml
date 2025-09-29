@@ -1,0 +1,16 @@
+# WARNING: Never edit this file.
+# It will be overwritten when translations are pulled from Crowdin.
+#
+# To work with us on translations, join this project:
+# https://translate.discourse.org/
+
+ur:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "زمرہ"
+            include_topic_from_subcategories:
+              label: "ذیلی زمرہ جات سے موضوعات شامل کریں"
