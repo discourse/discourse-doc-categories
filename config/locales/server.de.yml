@@ -5,3 +5,12 @@
 # https://translate.discourse.org/
 
 de:
+  reports:
+    doc_categories_missing_topics:
+      title: "Dokumente – Themen nicht indiziert"
+      labels:
+        index_category: "Index-Kategorie"
+        topic: "Thema"
+    doc_categories_extraneous_items:
+      labels:
+        reason: "Grund"
