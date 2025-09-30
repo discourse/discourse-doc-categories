@@ -5,3 +5,23 @@
 # https://translate.discourse.org/
 
 de:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Kategorie"
+            include_topic_from_subcategories:
+              label: "Themen aus Unterkategorien einbeziehen"
+      site_settings:
+        categories:
+          doc_categories: "Dokumentationskategorien"
+  js:
+    doc_categories:
+      category_settings:
+        title: "Dokumentationsmodus"
+        index_topic:
+          label: "Indexthema"
+          errors:
+            topic_not_found: "Thema nicht gefunden! Der Index wird nicht angezeigt"
