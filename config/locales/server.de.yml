@@ -7,10 +7,19 @@
 de:
   reports:
     doc_categories_missing_topics:
-      title: "Dokumente – Themen nicht indiziert"
+      title: "Dokumentation – nicht indizierte Themen"
+      description: "Themen aus den Dokumentationskategorien auflisten, die nicht in der Seitenleiste indiziert sind"
       labels:
         index_category: "Index-Kategorie"
         topic: "Thema"
     doc_categories_extraneous_items:
+      title: "Dokumentation - Fremde Elemente"
+      description: "In den Dokumentationskategorien indizierte Elemente auflisten, die nicht mit einem Thema in der Kategorie übereinstimmen"
       labels:
+        index_category: "Index-Kategorie"
+        item: "Element"
         reason: "Grund"
+  site_settings:
+    doc_categories_enabled: "Aktiviere das Discourse Doc Categories Plugin"
+    doc_categories_docs_legacy_enabled: "Aktiviere Weiterleitungen für alte Docs-Plugin-URLs. Diese Einstellung hat keine Auswirkungen, wenn das Docs-Plugin installiert und aktiviert ist"
+    doc_categories_homepage: "Wenn die Einstellung `doc_categories_docs_legacy_enabled` aktiviert ist, wird die alte Docs-Homepage auf diese Adresse umgeleitet."

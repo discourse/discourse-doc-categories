@@ -25,3 +25,8 @@ de:
           label: "Indexthema"
           errors:
             topic_not_found: "Thema nicht gefunden! Der Index wird nicht angezeigt"
+            mismatched-category: "Der Index wird nicht angezeigt, weil das Thema zu einer anderen Kategorie gehört: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'Wir konnten nichts finden, das mit ''%{filter}'' übereinstimmt.<br><br>Willst du stattdessen eine <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">Suche in dieser Kategorie</a> oder eine <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">allgemeine Suche</a> durchführen?'
