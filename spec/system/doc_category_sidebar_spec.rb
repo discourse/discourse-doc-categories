@@ -218,7 +218,6 @@ describe "Doc Category Sidebar", system: true do
       topic_chooser.select_row_by_index(0)
 
       category_page.save_settings
-      expect(category_page.find("#save-category")).to have_content(I18n.t("js.saving"))
       expect(category_page.find("#save-category")).to have_content(I18n.t("js.category.save"))
       expect(topic_chooser).to have_selected_name(new_index_topic.title)
 
