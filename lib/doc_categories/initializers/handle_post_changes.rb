@@ -30,7 +30,8 @@ module ::DocCategories
         prev_id, curr_id = revisor.topic_diff["category_id"]
 
         # topic is moved into a doc category which it is the index for
-        if curr_id == current_category.id && doc_index_topic?(topic, current_category)
+        if current_category && curr_id == current_category.id &&
+             doc_index_topic?(topic, current_category)
           enqueue_refresh(curr_id)
           return
         end
