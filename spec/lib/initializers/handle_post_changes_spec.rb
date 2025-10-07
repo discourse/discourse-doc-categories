@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 describe DocCategories::Initializers::HandlePostChanges do
-  fab!(:documentation_category) { Fabricate(:category_with_definition) }
-  fab!(:other_category) { Fabricate(:category_with_definition) }
+  fab!(:documentation_category, :category_with_definition)
+  fab!(:other_category, :category_with_definition)
   fab!(:index_topic) do
     Fabricate(:topic, category: documentation_category).tap { |topic| Fabricate(:post, topic:) }
   end
@@ -36,6 +36,12 @@ describe DocCategories::Initializers::HandlePostChanges do
     expect_not_enqueued_with(job: :doc_categories_refresh_index) do
       revise(other_topic.first_post, raw: "Changed")
     end
+  end
+
+  it "does not clear cache when topic is revised to PM" do
+    expect {
+      revise(index_topic.first_post, archetype: Archetype.private_message, category_id: nil)
+    }.not_to raise_error
   end
 
   it "clears the index and refreshes the index's category when the index topic moves" do
