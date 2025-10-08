@@ -3,8 +3,8 @@
 require "rails_helper"
 
 RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
-  fab!(:category) { Fabricate(:category_with_definition) }
-  fab!(:documentation_category) { Fabricate(:category_with_definition) }
+  fab!(:category, :category_with_definition)
+  fab!(:documentation_category, :category_with_definition)
   fab!(:documentation_subcategory) do
     Fabricate(:category_with_definition, parent_category_id: documentation_category.id)
   end

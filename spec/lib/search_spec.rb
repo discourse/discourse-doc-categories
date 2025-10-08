@@ -2,10 +2,10 @@
 
 RSpec.describe Search do
   describe "in:docs" do
-    fab!(:category) { Fabricate(:category_with_definition) }
+    fab!(:category, :category_with_definition)
     fab!(:topic) { Fabricate(:topic, category: category, title: "looking for this?") }
     fab!(:post) { Fabricate(:post, topic: topic, post_number: 1) }
-    fab!(:documentation_category) { Fabricate(:category_with_definition) }
+    fab!(:documentation_category, :category_with_definition)
     fab!(:documentation_category_index_topic) do
       Fabricate(:topic, category: documentation_category)
     end

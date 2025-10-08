@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 describe DocCategories::CategoryIndexManager do
-  fab!(:category) { Fabricate(:category_with_definition) }
+  fab!(:category, :category_with_definition)
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
-  fab!(:other_category) { Fabricate(:category_with_definition) }
+  fab!(:other_category, :category_with_definition)
   fab!(:other_topic) { Fabricate(:topic_with_op, category: other_category) }
-  fab!(:private_message) { Fabricate(:private_message_topic) }
+  fab!(:private_message, :private_message_topic)
 
   subject(:manager) { described_class.new(category) }
 

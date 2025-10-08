@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 describe DocCategories::Initializers::HandleTopicChanges do
-  fab!(:documentation_category) { Fabricate(:category_with_definition) }
+  fab!(:documentation_category, :category_with_definition)
   fab!(:index_topic) do
     Fabricate(:topic, category: documentation_category).tap do |topic|
       Fabricate(:post, topic: topic)

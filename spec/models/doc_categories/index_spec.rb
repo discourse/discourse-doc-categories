@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 describe DocCategories::Index do
-  fab!(:category) { Fabricate(:category_with_definition) }
+  fab!(:category, :category_with_definition)
   fab!(:index_topic) do
     Fabricate(:topic, category: category).tap { |topic| Fabricate(:post, topic: topic) }
   end

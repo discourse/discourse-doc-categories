@@ -7,11 +7,9 @@ import { ADMIN_PANEL, MAIN_PANEL } from "discourse/lib/sidebar/panels";
 export const SIDEBAR_DOCS_PANEL = "discourse-docs-sidebar";
 
 export default class DocCategorySidebarService extends Service {
-  @service appEvents;
   @service router;
   @service messageBus;
   @service sidebarState;
-  @service store;
 
   @tracked _indexCategoryId = null;
   @tracked _indexConfig = null;
