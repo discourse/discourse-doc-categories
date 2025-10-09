@@ -2,9 +2,9 @@
 
 describe "Doc Category Sidebar", system: true do
   fab!(:admin)
-  fab!(:category) { Fabricate(:category_with_definition) }
+  fab!(:category, :category_with_definition)
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
-  fab!(:documentation_category) { Fabricate(:category_with_definition) }
+  fab!(:documentation_category, :category_with_definition)
   fab!(:documentation_subcategory) do
     Fabricate(:category_with_definition, parent_category_id: documentation_category.id)
   end

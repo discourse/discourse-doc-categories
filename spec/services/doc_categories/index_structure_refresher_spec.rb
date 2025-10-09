@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 describe DocCategories::IndexStructureRefresher do
-  fab!(:documentation_category) { Fabricate(:category_with_definition) }
-  fab!(:other_category) { Fabricate(:category_with_definition) }
+  fab!(:documentation_category, :category_with_definition)
+  fab!(:other_category, :category_with_definition)
 
   fab!(:doc_topic) { Fabricate(:topic_with_op, category: documentation_category) }
   fab!(:doc_topic_two) { Fabricate(:topic_with_op, category: documentation_category) }

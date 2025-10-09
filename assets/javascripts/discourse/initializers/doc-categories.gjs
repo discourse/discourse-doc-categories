@@ -7,7 +7,7 @@ export default {
   initialize(container) {
     container.lookup("service:doc-category-sidebar");
 
-    withPluginApi("1.34.0", (api) => {
+    withPluginApi((api) => {
       api.registerCategorySaveProperty("doc_index_topic_id");
       api.renderInOutlet("category-custom-settings", DocCategorySettings);
       api.addSidebarPanel(DocCategorySidebarPanel);
