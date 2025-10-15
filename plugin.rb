@@ -60,6 +60,8 @@ after_initialize do
     include_condition: -> { DocCategories.legacy_mode? },
   ) { GlobalSetting.docs_path }
 
+  reloadable_patch { Category.prepend ::DocCategories::Initializers::CategoryExtension }
+
   DocCategories::Initializers.apply(self)
 
   # this plugin uses a plugin initializer pattern to (hopefully) better organize plugin API calls
