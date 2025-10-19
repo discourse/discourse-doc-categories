@@ -24,3 +24,54 @@
     color: var(--danger);
   }
 }
+
+body.doc-topic-comments.doc-topic-comments--collapsed {
+  .topic-area {
+    .topic-post[data-post-number]:not([data-post-number="1"]),
+    .small-action[data-post-number]:not([data-post-number="1"]),
+    .gap[data-post-number]:not([data-post-number="1"]),
+    .time-gap[data-post-number]:not([data-post-number="1"]) {
+      display: none;
+    }
+  }
+
+  .topic-navigation {
+    display: none;
+  }
+}
+
+.doc-topic-comments-panel {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--primary-low);
+  border-radius: var(--d-border-radius-large, 0.75rem);
+  background: var(--primary-very-low);
+  color: var(--primary-high);
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__title {
+    font-weight: 600;
+    font-size: var(--font-up-1);
+  }
+
+  &__summary {
+    font-weight: 500;
+    color: var(--primary-high);
+  }
+
+  &__toggle {
+    margin-left: auto;
+  }
+
+  &__hint {
+    margin: 0.5rem 0 0;
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+  }
+}
