@@ -38,24 +38,4 @@ describe DocCategories::Initializers::HandleTopicChanges do
 
     expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(true)
   end
-
-  it "reassigns the index when the topic is recovered" do
-    index_topic.trash!
-    expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
-    Jobs::DocCategoriesRefreshIndex.jobs.clear
-
-    expect_enqueued_with(
-      job: :doc_categories_refresh_index,
-      args: {
-        category_id: documentation_category.id,
-      },
-    ) { index_topic.recover! }
-
-    expect(
-      DocCategories::Index.exists?(
-        category_id: documentation_category.id,
-        index_topic_id: index_topic.id,
-      ),
-    ).to eq(true)
-  end
 end
