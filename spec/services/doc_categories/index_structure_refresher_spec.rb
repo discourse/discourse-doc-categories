@@ -6,6 +6,7 @@ describe DocCategories::IndexStructureRefresher do
 
   fab!(:doc_topic) { Fabricate(:topic_with_op, category: documentation_category) }
   fab!(:doc_topic_two) { Fabricate(:topic_with_op, category: documentation_category) }
+  fab!(:doc_topic_bare_url) { Fabricate(:topic_with_op, category: documentation_category) }
   fab!(:other_category_topic) { Fabricate(:topic_with_op, category: other_category) }
   fab!(:invisible_topic) do
     Fabricate(:topic_with_op, category: documentation_category, visible: false)
@@ -18,6 +19,7 @@ describe DocCategories::IndexStructureRefresher do
           * #{doc_topic_two.slug}: [#{doc_topic_two.title}](/t/#{doc_topic_two.slug}/#{doc_topic_two.id})
           * [#{other_category_topic.title}](/t/#{other_category_topic.slug}/#{other_category_topic.id})
           * [#{invisible_topic.title}](/t/#{invisible_topic.slug}/#{invisible_topic.id})
+          * #{Discourse.base_url}/t/#{doc_topic_bare_url.slug}/#{doc_topic_bare_url.id}
           * [External](https://example.com/docs)
           * No link here
         MD
@@ -77,7 +79,13 @@ describe DocCategories::IndexStructureRefresher do
             invisible_topic.title,
             invisible_topic.id,
           ],
-          [4, "https://example.com/docs", "External", nil],
+          [
+            4,
+            "#{Discourse.base_url}/t/#{doc_topic_bare_url.slug}/#{doc_topic_bare_url.id}",
+            doc_topic_bare_url.title,
+            doc_topic_bare_url.id,
+          ],
+          [5, "https://example.com/docs", "External", nil],
         ],
       )
     end
