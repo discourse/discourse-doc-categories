@@ -68,9 +68,12 @@ module DocCategories
             href = link[:href]
             next if href.blank?
 
+            link_text = link[:text]
+
             topic_id = DocCategories::Url.extract_topic_id_from_url(href)
             target_topic = topic_id.present? ? topics_by_id[topic_id] : nil
-            text = link[:text].presence || target_topic&.title || href
+            has_explicit_title = link_text.present? && link_text != href
+            text = has_explicit_title ? link_text : (target_topic&.title || href)
 
             { text: text, href: href, topic_id: topic_id }
           end
