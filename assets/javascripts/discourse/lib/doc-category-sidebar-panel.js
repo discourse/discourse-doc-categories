@@ -2,7 +2,7 @@ import { cached } from "@glimmer/tracking";
 import { computed } from "@ember/object";
 import { htmlSafe } from "@ember/template";
 import { getOwnerWithFallback } from "discourse/lib/get-owner";
-import getURL, { getAbsoluteURL, samePrefix } from "discourse/lib/get-url";
+import getURL, { samePrefix } from "discourse/lib/get-url";
 import BaseCustomSidebarSection from "discourse/lib/sidebar/base-custom-sidebar-section";
 import BaseCustomSidebarSectionLink from "discourse/lib/sidebar/base-custom-sidebar-section-link";
 import DiscourseURL from "discourse/lib/url";
@@ -143,22 +143,26 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get currentWhen() {
-    if (DiscourseURL.isInternal(this.href) && samePrefix(this.href)) {
-      const topicRouteInfo = this.#router
-        .recognize(this.href.replace(getAbsoluteURL("/"), "/"), "")
-        .find((route) => route.name === "topic");
-
-      const currentTopicRouteInfo = this.#router.currentRoute.find(
-        (route) => route.name === "topic"
-      );
-
-      return (
-        currentTopicRouteInfo &&
-        currentTopicRouteInfo?.params?.id === topicRouteInfo?.params?.id
-      );
+    if (!DiscourseURL.isInternal(this.href) || !samePrefix(this.href)) {
+      return false;
     }
 
-    return false;
+    const currentTopicRouteInfo = this.#router.currentRoute.find(
+      (route) => route.name === "topic"
+    );
+
+    if (!currentTopicRouteInfo) {
+      return false;
+    }
+
+    const { slug, id } = currentTopicRouteInfo.params;
+
+    const path = new URL(this.href, window.location.origin).pathname;
+    return (
+      path === `/t/${slug}/${id}` ||
+      path === `/t/${slug}` ||
+      path === `/t/${id}`
+    );
   }
 
   get name() {

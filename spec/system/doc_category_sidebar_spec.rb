@@ -27,6 +27,7 @@ describe "Doc Category Sidebar", system: true do
         ## Writing
 
         * [#{documentation_topic3.title}](/t/#{documentation_topic3.slug}/#{documentation_topic3.id})
+        * [#{documentation_topic3.title}](/t/#{documentation_topic3.slug})
         * #{documentation_topic4.slug}: [#{documentation_topic4.title}](/t/#{documentation_topic4.slug}/#{documentation_topic4.id})
         * No link
 
@@ -52,6 +53,7 @@ describe "Doc Category Sidebar", system: true do
         title: "Writing",
         links: [
           doc_link_for(documentation_topic3),
+          doc_link_for(documentation_topic3, slug_only: true),
           doc_link_for(documentation_topic4, title: documentation_topic4.slug),
         ],
       },
@@ -70,8 +72,9 @@ describe "Doc Category Sidebar", system: true do
     "discourse-docs-sidebar__#{Slug.for(title)}"
   end
 
-  def doc_link_for(topic, title: nil)
-    { title: title || topic.title, href: topic.relative_url, topic: topic }
+  def doc_link_for(topic, title: nil, slug_only: false)
+    href = slug_only ? "/t/#{topic.slug}" : topic.relative_url
+    { title: title || topic.title, href: href, topic: topic }
   end
 
   def create_doc_categories_index(category:, index_topic:, sections: [])
@@ -119,6 +122,11 @@ describe "Doc Category Sidebar", system: true do
     [documentation_topic, documentation_topic3].each do |topic|
       expect(sidebar).to have_section_link(topic.title, href: %r{t/#{topic.slug}/#{topic.id}})
     end
+
+    expect(sidebar).to have_section_link(
+      documentation_topic3.title,
+      href: %r{t/#{documentation_topic3.slug}$},
+    )
 
     [documentation_topic2, documentation_topic4].each do |topic|
       expect(sidebar).to have_section_link(topic.slug, href: %r{t/#{topic.slug}/#{topic.id}})
@@ -264,6 +272,14 @@ describe "Doc Category Sidebar", system: true do
 
       expect(sidebar).to be_visible
       expect_docs_sidebar_to_be_correct
+      expect(page).to have_css(
+        ".sidebar-section-link.active[data-link-name*='#{documentation_topic.title.parameterize}']",
+      )
+
+      visit("/t/#{documentation_topic3.slug}/#{documentation_topic3.id}")
+      expect(page).to have_css(
+        ".sidebar-section-link.active[data-link-name*='#{documentation_topic3.title.parameterize}']",
+      )
     end
   end
 
