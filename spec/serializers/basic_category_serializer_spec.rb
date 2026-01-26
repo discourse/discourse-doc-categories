@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "rails_helper"
-
 describe BasicCategorySerializer do
   fab!(:category, :category_with_definition)
   fab!(:documentation_category, :category_with_definition)
