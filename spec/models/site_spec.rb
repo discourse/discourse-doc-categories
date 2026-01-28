@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "rails_helper"
-
 describe Site do
   context "when the plugin enabled status is changed" do
     it "invalidates the site cache when the plugin is turned on" do
