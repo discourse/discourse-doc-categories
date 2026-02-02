@@ -5,3 +5,16 @@
 # https://translate.discourse.org/
 
 el:
+  reports:
+    doc_categories_missing_topics:
+      title: "Έγγραφα - Θέματα που δεν έχουν ευρετηριαστεί"
+      description: "Λίστα θεμάτων από τις κατηγορίες τεκμηρίωσης που δεν έχουν ευρετηριαστεί στην πλαϊνή μπάρα"
+      labels:
+        index_category: "Κατηγορία ευρετηρίου"
+        topic: "Θέμα"
+    doc_categories_extraneous_items:
+      description: "Λίστα αντικειμένων που έχουν ευρετηριαστεί στις κατηγορίες τεκμηρίωσης και δεν αντιστοιχούν σε κάποιο θέμα στην κατηγορία"
+      labels:
+        index_category: "Κατηγορία ευρετηρίου"
+        item: "Αντικείμενο"
+        reason: "Αιτία"
