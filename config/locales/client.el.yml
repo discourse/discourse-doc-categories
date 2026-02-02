@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 el:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Κατηγορία"
+            include_topic_from_subcategories:
+              label: "Συμπερίληψη θεμάτων από υποκατηγορίες"
+      site_settings:
+        categories:
+          doc_categories: "Κατηγορίες τεκμηρίωσης"
+  js:
+    doc_categories:
+      category_settings:
+        title: "Λειτουργία τεκμηρίωσης"
+        index_topic:
+          label: "Θέμα ευρετηρίου"
+          errors:
+            topic_not_found: "Το θέμα δεν βρέθηκε! Το ευρετήριο δεν θα εμφανιστεί"
+            mismatched-category: "Το ευρετήριο δεν θα εμφανίζεται επειδή το θέμα ανήκει σε διαφορετική κατηγορία: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'Δεν μπορέσαμε να βρούμε κάτι που να αντιστοιχεί με ''%{filter}''.<br><br>Θέλετε να πραγματοποιήσετε αναζήτηση <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">σε αυτήν την κατηγορία</a> ή αναζήτηση <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">σε ολόκληρο τον ιστότοπο</a>;'
