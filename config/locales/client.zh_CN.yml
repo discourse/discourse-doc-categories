@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 zh_CN:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "分类"
+            include_topic_from_subcategories:
+              label: "包括子分类的话题"
+      site_settings:
+        categories:
+          doc_categories: "文档目录"
+  js:
+    doc_categories:
+      category_settings:
+        title: "文档模式"
+        index_topic:
+          label: "话题索引"
+          errors:
+            topic_not_found: "话题不存在！索引不显示"
+            mismatched-category: "因为话题属于一个不同的分类：%{category_name}所以不展示索引"
+      sidebar:
+        filter:
+          no_results:
+            description: '我们找不到任何与“%{filter}”匹配的内容。<br><br>你想改为在<a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">此分类中搜索</a>，还是进行<a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">全站搜索</a>？'
