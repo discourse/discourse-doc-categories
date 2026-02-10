@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 zh_CN:
+  reports:
+    doc_categories_missing_topics:
+      title: "Docs - 话题未索引"
+      description: "来自文档分类的话题列表未在侧边栏索引"
+      labels:
+        index_category: "索引目录"
+        topic: "话题"
+    doc_categories_extraneous_items:
+      title: "Docs - 外来项"
+      description: "在文档分类被索引的当前列表项不匹配分类中的任何话题"
+      labels:
+        index_category: "索引目录"
+        item: "项"
+        reason: "原因"
+  site_settings:
+    doc_categories_enabled: "启用 Discourse 文档分类插件"
+    doc_categories_docs_legacy_enabled: "为旧版 Docs 插件 URL 启用重定向。如果已安装并启用了 Docs 插件，此设置不生效。"
+    doc_categories_homepage: "当启用 `doc_categories_docs_legacy_enabled` 时，旧版文档首页将重定向到此地址。"
