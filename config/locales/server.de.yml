@@ -13,7 +13,7 @@ de:
         index_category: "Index-Kategorie"
         topic: "Thema"
     doc_categories_extraneous_items:
-      title: "Dokumentation - Fremde Elemente"
+      title: "Dokumentation - fremde Elemente"
       description: "In den Dokumentationskategorien indizierte Elemente auflisten, die nicht mit einem Thema in der Kategorie übereinstimmen"
       labels:
         index_category: "Index-Kategorie"

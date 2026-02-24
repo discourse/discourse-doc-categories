@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 ar:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "الفئة"
+            include_topic_from_subcategories:
+              label: "تضمين موضوعات من الفئات الفرعية"
+      site_settings:
+        categories:
+          doc_categories: "فئات المستندات"
+  js:
+    doc_categories:
+      category_settings:
+        title: "وضع المستندات"
+        index_topic:
+          label: "موضوع الفهرس"
+          errors:
+            topic_not_found: "لم يتم العثور على الموضوع! لن يتم عرض الفهرس"
+            mismatched-category: "لن يتم عرض الفهرس لأن الموضوع ينتمي إلى فئة مختلفة: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'لم نتمكن من العثور على أي شيء يطابق ''%{filter}''.<br><br>هل تريد إجراء <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">بحث في هذه الفئة</a> أو <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">بحث على مستوى الموقع</a> بدلًا من ذلك؟'

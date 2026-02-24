@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 ja:
+  reports:
+    doc_categories_missing_topics:
+      title: "ドキュメント - インデックス未作成のトピック"
+      description: "インデックスが作成されていないドキュメントカテゴリのトピックをサイドバーにリストします"
+      labels:
+        index_category: "カテゴリのインデックス"
+        topic: "トピック"
+    doc_categories_extraneous_items:
+      title: "ドキュメント - その他の項目"
+      description: "ドキュメントカテゴリでインデックス作成されており、カテゴリ内のトピックに一致しない項目をリストします"
+      labels:
+        index_category: "カテゴリのインデックス"
+        item: "項目"
+        reason: "理由"
+  site_settings:
+    doc_categories_enabled: "Discourse Doc Categories プラグインを有効にする"
+    doc_categories_docs_legacy_enabled: "Docs プラグイン URL のリダイレクトを有効にする。Docs プラグインがインストールされ、有効になっている場合、この設定の効果はありません"
+    doc_categories_homepage: "`doc_categories_docs_legacy_enabled` の場合、古いドキュメントホームページはこのアドレスにリダイレクトされます。"

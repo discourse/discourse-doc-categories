@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 ja:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "カテゴリ"
+            include_topic_from_subcategories:
+              label: "サブカテゴリのトピックを含める"
+      site_settings:
+        categories:
+          doc_categories: "ドキュメントのカテゴリ"
+  js:
+    doc_categories:
+      category_settings:
+        title: "ドキュメントモード"
+        index_topic:
+          label: "トピックのインデックス"
+          errors:
+            topic_not_found: "トピックが見つかりません！インデックスは表示されません"
+            mismatched-category: "トピックが別のカテゴリに属しているため、インデックスは表示されません: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: '‘%{filter}’ に一致するものは見つかりませんでした。<br><br><a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">このカテゴリで検索</a>しますか？それとも<a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">サイト全体を検索</a>しますか？'

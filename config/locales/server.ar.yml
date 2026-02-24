@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 ar:
+  reports:
+    doc_categories_missing_topics:
+      title: "المستندات - المواضيع غير المفهرسة"
+      description: "سرد الموضوعات من فئات المستندات غير المفهرسة في الشريط الجانبي"
+      labels:
+        index_category: "فهرسة الفئة"
+        topic: "الموضوع"
+    doc_categories_extraneous_items:
+      title: "المستندات - العناصر غير الضرورية"
+      description: "سرد العناصر المفهرسة في فئات المستندات التي لا تتطابق مع موضوع في الفئة"
+      labels:
+        index_category: "فهرسة الفئة"
+        item: "العنصر"
+        reason: "السبب"
+  site_settings:
+    doc_categories_enabled: "تمكين المكون الإضافي لفئات مستندات Discourse"
+    doc_categories_docs_legacy_enabled: "تمكين عمليات إعادة التوجيه لعناوين URL لإضافات المستندات القديمة. هذا الإعداد ليس له أي تأثير إذا كان المكون الإضافي المستندات مثبتًا وممكّنًا"
+    doc_categories_homepage: "عندما يتم تمكين 'doc_coc_categories_docs_docs_legacy_enabled' ستتم إعادة توجيه الصفحة الرئيسية للمستندات القديمة إلى هذا العنوان."
