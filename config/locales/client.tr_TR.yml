@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 tr_TR:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Kategori"
+            include_topic_from_subcategories:
+              label: "Alt kategorilerden konuları dahil edin"
+      site_settings:
+        categories:
+          doc_categories: "Dokümantasyon Kategorileri"
+  js:
+    doc_categories:
+      category_settings:
+        title: "Dokümantasyon Modu"
+        index_topic:
+          label: "Dizin Konusu"
+          errors:
+            topic_not_found: "Konu bulunamadı! Dizin görüntülenmeyecek."
+            mismatched-category: "Konu farklı bir kategoriye ait olduğu için dizin görüntülenmeyecektir: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: '''%{filter}'' ile eşleşen hiçbir şey bulamadık. <br><br>Bu kategoride <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">arama</a> mı yoksa <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">site genelinde arama</a> mı yapmak istersiniz?'
