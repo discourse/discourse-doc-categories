@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 tr_TR:
+  reports:
+    doc_categories_missing_topics:
+      title: "Belgeler - İndekslenmemiş konular"
+      description: "Kenar çubuğunda indekslenmemiş dokümantasyon kategorilerinden konuları listeleyin"
+      labels:
+        index_category: "Dizin Kategorisi"
+        topic: "Konu"
+    doc_categories_extraneous_items:
+      title: "Belgeler - Gereksiz öğeler"
+      description: "Kategorideki bir konuyla eşleşmeyen, dokümantasyon kategorilerinde indekslenen öğeleri listeleyin."
+      labels:
+        index_category: "Dizin Kategorisi"
+        item: "Öğe"
+        reason: "Neden"
+  site_settings:
+    doc_categories_enabled: "Discourse Doküman Kategorileri Eklentisini Etkinleştirin"
+    doc_categories_docs_legacy_enabled: "Eski Dökümanlar Eklentisi URL'leri için yönlendirmeleri etkinleştirin. Dökümanlar eklentisi yüklü ve etkinleştirilmişse bu ayar hiçbir etkiye sahip değildir."
+    doc_categories_homepage: "`doc_categories_docs_legacy_enabled` olduğunda, eski dokümanlar ana sayfası bu adrese yönlendirilecektir."
