@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 pt_BR:
+  reports:
+    doc_categories_missing_topics:
+      title: "Docs – tópicos não indexados"
+      description: "Listar tópicos das categorias de documentação que não estão indexados na barra lateral"
+      labels:
+        index_category: "Categoria do índice"
+        topic: "Tópico"
+    doc_categories_extraneous_items:
+      title: "Docs – itens desnecessários"
+      description: "Listar itens indexados nas categorias de documentação que não correspondem a um tópico na categoria."
+      labels:
+        index_category: "Categoria do índice"
+        item: "Item"
+        reason: "Motivo"
+  site_settings:
+    doc_categories_enabled: "Ativar o plug-in Discourse Doc Categories"
+    doc_categories_docs_legacy_enabled: "Ativar redirecionamentos para URLs antigas do plug-in Docs. Essa configuração não terá efeito se o plug-in Docs estiver instalado e ativado"
+    doc_categories_homepage: "Quando `doc_categories_docs_legacy_enabled` estiver ativado, a página inicial da documentação antiga será redirecionada para este endereço."
