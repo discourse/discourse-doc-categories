@@ -3,19 +3,21 @@ import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
-import dIcon from "discourse/helpers/d-icon";
+import icon from "discourse/helpers/d-icon";
+import { resettableTracked } from "discourse/lib/tracked-tools";
 import Topic from "discourse/models/topic";
+import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
-import TopicChooser from "select-kit/components/topic-chooser";
 
 export default class DocCategorySettings extends Component {
   static shouldRender(args, context) {
     return context.siteSettings.doc_categories_enabled;
   }
 
-  @tracked indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
   @tracked indexTopic;
   @tracked loadingIndexTopic = !!this.indexTopicId;
+  @resettableTracked
+  indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
 
   constructor() {
     super(...arguments);
@@ -113,7 +115,7 @@ export default class DocCategorySettings extends Component {
         />
         {{#if this.shouldDisplayErrorMessage}}
           <div class="validation-error">
-            {{dIcon "xmark"}}
+            {{icon "xmark"}}
             {{this.errorMessage}}
           </div>
         {{/if}}

@@ -3,6 +3,7 @@ import { tracked } from "@glimmer/tracking";
 import { fn, hash } from "@ember/helper";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { bind } from "discourse/lib/decorators";
+import { resettableTracked } from "discourse/lib/tracked-tools";
 import Topic from "discourse/models/topic";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
@@ -12,11 +13,11 @@ export default class DocCategorySettingsForm extends Component {
     return context.siteSettings.doc_categories_enabled;
   }
 
-  @tracked
-  indexTopicId = this.args.outletArgs?.category?.doc_index_topic_id ?? null;
   @tracked indexTopic = null;
   @tracked loadingIndexTopic = !!this.indexTopicId;
   @tracked indexTopicContent = this.calculateIndexTopicContent();
+  @resettableTracked
+  indexTopicId = this.args.outletArgs?.category?.doc_index_topic_id ?? null;
 
   get category() {
     return this.args.outletArgs?.category;
