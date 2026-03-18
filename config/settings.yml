@@ -4,6 +4,9 @@ doc_categories:
     client: true
   doc_categories_docs_legacy_enabled:
     default: false
+  doc_categories_simple_mode:
+    default: false
+    client: true
   doc_categories_homepage:
     default: ""
     client: true
