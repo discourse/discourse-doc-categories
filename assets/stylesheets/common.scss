@@ -29,71 +29,48 @@
 
 // Simple mode: topic view
 body.doc-simple-mode {
-  overflow-anchor: none;
+  &--collapsed {
+    .timeline-container {
+      display: none;
+    }
+  }
 
   .post__topic-map.topic-map.--op {
     display: none;
   }
 
-  .topic-post[data-post-number="1"] .post-menu-area .like,
-  .topic-post[data-post-number="1"] .post-menu-area .reply {
-    display: none;
-  }
+  .topic-post[data-post-number="1"] {
+    .post-menu-area .like,
+    .post-menu-area .reply {
+      display: none;
+    }
 
-  .topic-post[data-post-number="1"] .topic-avatar {
-    display: none;
-  }
+    .topic-avatar {
+      display: none;
+    }
 
-  .topic-post[data-post-number="1"] .topic-meta-data .names {
-    display: none;
-  }
+    .topic-meta-data .names {
+      display: none;
+    }
 
-  .topic-post[data-post-number="1"] .topic-meta-data .post-infos {
-    position: absolute;
-    right: 0;
-    top: 0;
-    transform: translateY(-100%);
-    margin-top: -1em;
-  }
+    .topic-meta-data .post-infos {
+      position: absolute;
+      right: 0;
+      top: 0;
+      transform: translateY(-100%);
+      margin-top: -1em;
+    }
 
-  .topic-post[data-post-number="1"] .topic-body {
-    position: relative;
-    width: 100%;
-    margin-left: 0;
-  }
+    .topic-body {
+      position: relative;
+      width: 100%;
+      margin-left: 0;
+    }
 
-  .topic-post[data-post-number="1"] .cooked,
-  .topic-post[data-post-number="1"] .post-menu-area {
-    padding-left: 0;
-  }
-}
-
-body.doc-simple-mode:not(.doc-simple-mode--comments-visible) {
-  // Hide reply posts. The toggle component calls preventCloaking() for all
-  // reply posts so the cloaking system doesn't cache 0-height values from
-  // display:none and create an unrecoverable cloaking deadlock.
-  .post-stream .topic-post:not([data-post-number="1"]) {
-    display: none;
-  }
-
-  // Hide the load-more sentinel so the post stream doesn't keep fetching
-  // batches while reply posts are off-screen (the collapsed container
-  // keeps the sentinel in the viewport, triggering an appendMore loop).
-  .post-stream .load-more-sentinel,
-  .post-stream .post-stream__bottom-boundary {
-    display: none;
-  }
-
-  .topic-map.--bottom {
-    display: none;
-  }
-
-  .container.posts .topic-navigation {
-    display: none;
-  }
-
-  #topic-footer-buttons .topic-footer-main-buttons {
-    display: none;
+    .cooked,
+    .post-menu-area {
+      padding-left: 0;
+    }
   }
 }
 

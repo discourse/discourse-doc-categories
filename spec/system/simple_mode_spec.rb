@@ -24,6 +24,7 @@ describe "Doc Categories Simple Mode", system: true do
   end
 
   let(:topic_page) { PageObjects::Pages::Topic.new }
+  let(:toggle) { PageObjects::Components::DocSimpleModeToggle.new }
 
   before do
     SiteSetting.doc_categories_enabled = true
@@ -54,107 +55,74 @@ describe "Doc Categories Simple Mode", system: true do
     topic_page.visit_topic(documentation_topic)
 
     expect(page).to have_css("[data-post-number='1']")
-    expect(page).to have_no_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_no_css("[data-post-number='3']", visible: :visible)
-    expect(page).to have_no_css("[data-post-number='4']", visible: :visible)
+    expect(page).to have_no_css("[data-post-number='2']")
+    expect(page).to have_no_css("[data-post-number='3']")
+    expect(page).to have_no_css("[data-post-number='4']")
     expect(page).to have_no_css(".post__topic-map.--op", visible: :visible)
-    expect(page).to have_no_css(".topic-map.--bottom", visible: :visible)
 
-    expect(page).to have_css(".doc-simple-mode-toggle__button", text: /Show 3 comments/)
+    expect(toggle).to have_show_comments_button(count: 3)
 
-    find(".doc-simple-mode-toggle__button").click
+    toggle.click_toggle
 
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_css("[data-post-number='3']", visible: :visible)
-    expect(page).to have_css("[data-post-number='4']", visible: :visible)
-    expect(page).to have_no_css(".post__topic-map.--op", visible: :visible)
-    expect(page).to have_css(".topic-map.--bottom", visible: :visible)
+    expect(page).to have_css("[data-post-number='2']")
+    expect(page).to have_css("[data-post-number='3']")
+    expect(page).to have_css("[data-post-number='4']")
 
-    expect(page).to have_css(".doc-simple-mode-toggle__button", text: "Hide comments")
+    expect(toggle).to have_hide_comments_button
 
-    find(".doc-simple-mode-toggle__button").click
+    toggle.click_toggle
 
-    expect(page).to have_no_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_no_css("[data-post-number='3']", visible: :visible)
-    expect(page).to have_no_css("[data-post-number='4']", visible: :visible)
-    expect(page).to have_no_css(".post__topic-map.--op", visible: :visible)
-    expect(page).to have_no_css(".topic-map.--bottom", visible: :visible)
+    expect(page).to have_no_css("[data-post-number='2']")
+    expect(page).to have_no_css("[data-post-number='3']")
+    expect(page).to have_no_css("[data-post-number='4']")
 
-    find(".doc-simple-mode-toggle__button").click
+    toggle.click_toggle
 
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_css("[data-post-number='3']", visible: :visible)
-    expect(page).to have_css("[data-post-number='4']", visible: :visible)
-    expect(page).to have_no_css(".post__topic-map.--op", visible: :visible)
-    expect(page).to have_css(".topic-map.--bottom", visible: :visible)
+    expect(page).to have_css("[data-post-number='2']")
+    expect(page).to have_css("[data-post-number='3']")
+    expect(page).to have_css("[data-post-number='4']")
 
-    expect(page).to have_css(".doc-simple-mode-toggle__button", text: "Hide comments")
+    expect(toggle).to have_hide_comments_button
   end
 
-  it "does not jump to the bottom when showing comments" do
-    topic_page.visit_topic(documentation_topic)
-
-    page.execute_script(<<~JS)
-      window.scrollTo(0, document.scrollingElement.scrollHeight);
-    JS
-
-    initial_scroll_y = page.evaluate_script("window.scrollY")
-    initial_button_top = page.evaluate_script(<<~JS)
-      document
-        .querySelector(".doc-simple-mode-toggle__button")
-        .getBoundingClientRect()
-        .top
-    JS
-
-    find(".doc-simple-mode-toggle__button").click
-
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_current_path(documentation_topic.url, ignore_query: true)
-
-    current_scroll_y = page.evaluate_script("window.scrollY")
-    current_button_top = page.evaluate_script(<<~JS)
-      document
-        .querySelector(".doc-simple-mode-toggle__button")
-        .getBoundingClientRect()
-        .top
-    JS
-
-    expect(current_scroll_y).to be_within(5).of(initial_scroll_y)
-    expect(current_button_top).to be_within(5).of(initial_button_top)
-  end
-
-  it "shows comments after entering the topic on a reply url" do
+  it "auto-expands comments when entering on a reply url" do
     visit("#{documentation_topic.relative_url}/#{reply_3.post_number}")
 
-    expect(page).to have_css(".doc-simple-mode-toggle__button", text: /Show 3 comments/)
-    expect(page).to have_current_path(documentation_topic.url, ignore_query: true)
-
-    page.execute_script(<<~JS)
-      document
-        .querySelector(".doc-simple-mode-toggle__button")
-        .scrollIntoView({ block: "center" });
-    JS
-
-    find(".doc-simple-mode-toggle__button").click
-
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_css("[data-post-number='3']", visible: :visible)
-    expect(page).to have_css("[data-post-number='4']", visible: :visible)
+    expect(toggle).to have_hide_comments_button
+    expect(page).to have_css("[data-post-number='2']")
+    expect(page).to have_css("[data-post-number='3']")
+    expect(page).to have_css("[data-post-number='4']")
   end
 
   it "resets comments state when navigating between doc topics" do
     topic_page.visit_topic(documentation_topic)
 
-    find(".doc-simple-mode-toggle__button").click
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
+    toggle.click_toggle
+    expect(page).to have_css("[data-post-number='2']")
 
     find(
       ".sidebar-section-link[data-link-name*='#{documentation_topic_2.title.parameterize}']",
     ).click
 
     expect(page).to have_css("h1 .fancy-title", text: documentation_topic_2.title)
-    expect(page).to have_no_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_css(".doc-simple-mode-toggle__button", text: /Show 1 comment/)
+    expect(page).to have_no_css("[data-post-number='2']")
+    expect(toggle).to have_show_comments_button(count: 1)
+  end
+
+  it "simplifies the topic list for doc categories" do
+    visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+
+    expect(page).to have_css(".topic-list.doc-simple-mode")
+    expect(page).to have_no_css(".topic-list .posters")
+    expect(page).to have_no_css(".topic-list .replies")
+    expect(page).to have_css(".topic-list th", text: "Updated")
+  end
+
+  it "does not simplify the topic list for non-doc categories" do
+    visit("/c/#{category.slug}/#{category.id}")
+
+    expect(page).to have_no_css(".topic-list.doc-simple-mode")
+    expect(page).to have_css(".topic-list .posters")
   end
 
   it "does not affect non-doc categories" do
@@ -164,8 +132,8 @@ describe "Doc Categories Simple Mode", system: true do
     topic_page.visit_topic(regular_topic)
 
     expect(page).to have_css("[data-post-number='1']")
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_no_css(".doc-simple-mode-toggle")
+    expect(page).to have_css("[data-post-number='2']")
+    expect(toggle).to have_no_toggle
   end
 
   it "does not apply when setting is disabled" do
@@ -174,7 +142,7 @@ describe "Doc Categories Simple Mode", system: true do
     topic_page.visit_topic(documentation_topic)
 
     expect(page).to have_css("[data-post-number='1']")
-    expect(page).to have_css("[data-post-number='2']", visible: :visible)
-    expect(page).to have_no_css(".doc-simple-mode-toggle")
+    expect(page).to have_css("[data-post-number='2']")
+    expect(toggle).to have_no_toggle
   end
 end

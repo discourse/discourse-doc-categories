@@ -15,6 +15,6 @@ en:
         reason: "Reason"
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
-    doc_categories_simple_mode: "Enable simple mode for doc categories. Hides forum noise (posters, reply counts, visited styling) from topic lists and collapses replies behind a toggle on topic pages."
+    doc_categories_simple_mode: "Enable simple mode for doc categories. Simplifies topic lists and collapses comments behind a toggle on topic pages."
     doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"
     doc_categories_homepage: "When `doc_categories_docs_legacy_enabled` the old docs homepage will redirect to this address."
