@@ -83,3 +83,257 @@ body.doc-simple-mode {
   margin-top: 1em;
   margin-bottom: 1em;
 }
+
+/* Doc category index tab */
+.doc-category-index-tab {
+  &__mode-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+
+    label {
+      font-weight: bold;
+    }
+  }
+
+  &__mode-dropdown {
+    width: auto;
+  }
+
+  &__topic-mode {
+    margin-top: 1em;
+
+    > label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.25em;
+    }
+  }
+
+  &__error {
+    color: var(--danger);
+    font-size: var(--font-down-1);
+    margin-top: 0.25em;
+  }
+}
+
+/* Doc category index editor */
+.doc-category-index-editor {
+  &__toolbar {
+    display: flex;
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  &__auto-index-menu,
+  &__add-menu {
+    .fk-d-menu__trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+    }
+  }
+
+  &__empty {
+    color: var(--primary-medium);
+    font-style: italic;
+    margin: 1em 0;
+  }
+
+  &__sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+  }
+
+  &__section {
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 0.75em;
+    background: var(--secondary);
+    transition: border-color 0.15s;
+
+    &.dragging {
+      opacity: 0.5;
+    }
+
+    &.drag-above {
+      border-top: 3px solid var(--tertiary);
+    }
+
+    &.drag-below {
+      border-bottom: 3px solid var(--tertiary);
+    }
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+  }
+
+  &__collapse-btn {
+    flex-shrink: 0;
+    padding: 0.25em;
+  }
+
+  &__section-title {
+    flex: 1;
+    font-weight: bold;
+    font-size: var(--font-up-1);
+    min-width: 0;
+  }
+
+  &__link-count {
+    background: var(--primary-low);
+    color: var(--primary-high);
+    border-radius: 10px;
+    padding: 0.1em 0.5em;
+    font-size: var(--font-down-1);
+    flex-shrink: 0;
+  }
+
+  &__section-body {
+    margin-top: 0.5em;
+  }
+
+  &__links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin-left: 1.75em;
+  }
+
+  &__section-body {
+    transition: opacity 0.15s ease-out;
+
+    &.--collapsed {
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.25em 0;
+    min-height: 2em;
+
+    &.dragging {
+      opacity: 0.5;
+    }
+
+    &.drag-above {
+      border-top: 2px solid var(--tertiary);
+    }
+
+    &.drag-below {
+      border-bottom: 2px solid var(--tertiary);
+    }
+
+    &.--duplicate {
+      border-left: 3px solid var(--highlight);
+      padding-left: 0.5em;
+    }
+
+    input {
+      margin: 0;
+    }
+  }
+
+  &__duplicate-icon {
+    color: var(--highlight);
+    flex-shrink: 0;
+  }
+
+  &__link-title,
+  &__link-url {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__link-topic-href {
+    flex: 1;
+    min-width: 0;
+    color: var(--tertiary);
+    font-size: var(--font-down-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+
+    &:hover {
+      color: var(--tertiary-hover);
+    }
+  }
+
+  &__swap-chooser {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+
+    .select-kit {
+      flex: 1;
+    }
+  }
+
+  &__subcategory-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.25em 0.5em;
+    cursor: pointer;
+  }
+
+  &__drag-handle {
+    cursor: grab;
+    color: var(--primary-medium);
+    padding: 0.25em;
+    flex-shrink: 0;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  &__remove-btn {
+    flex-shrink: 0;
+  }
+
+  &__inline-topic-chooser {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0.5em 0 0.5em 1.75em;
+
+    .select-kit {
+      flex: 1;
+    }
+  }
+
+  &__section-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 0.5em;
+    margin-left: 1.75em;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 1em;
+  }
+
+  &__save-btn {
+    margin-left: auto;
+  }
+}

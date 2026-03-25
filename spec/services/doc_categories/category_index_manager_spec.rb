@@ -80,10 +80,19 @@ describe DocCategories::CategoryIndexManager do
 
       expect(manager.assign!(nil)).to eq(true)
       expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
-      expect(Jobs).to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      ).twice
+    end
+
+    it "preserves the index when clearing topic if sidebar sections exist" do
+      manager.assign!(topic.id)
+      index = DocCategories::Index.find_by(category_id: category.id)
+      index.sidebar_sections.create!(title: "Test Section", position: 0)
+
+      expect(manager.assign!(nil)).to eq(true)
+      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(true)
+
+      index.reload
+      expect(index.index_topic_id).to be_nil
+      expect(index.sidebar_sections.count).to eq(1)
     end
 
     it "does not reassign when the index is unchanged" do

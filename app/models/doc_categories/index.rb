@@ -15,9 +15,9 @@ module DocCategories
              dependent: :destroy
 
     validates :category_id, presence: true, uniqueness: true
-    validates :index_topic_id, presence: true, uniqueness: true
+    validates :index_topic_id, uniqueness: true, allow_nil: true
 
-    validate :index_topic_matches_category
+    validate :index_topic_matches_category, if: -> { index_topic_id.present? }
 
     def sidebar_structure
       sidebar_sections
@@ -28,12 +28,14 @@ module DocCategories
               # for text: always use link[:title] if present, otherwise use topic title if topic is valid
               # for href: always use link[:href] if present, otherwise use topic relative_url if topic is valid
 
-              topic = valid_topic(topic)
+              topic = valid_topic(link.topic)
 
               text = link.title.presence || (topic&.title)
               href = link.href.presence || (topic&.relative_url)
               next if text.blank? || href.blank?
-              { text:, href: }
+              result = { text:, href: }
+              result[:icon] = link.icon if link.icon.present?
+              result
             end
 
           next if links.blank?

@@ -11,9 +11,15 @@ module DocCategories
 
       if topic_id.nil?
         if (index = DocCategories::Index.find_by(category_id: category.id))
-          index.destroy!
+          if index.sidebar_sections.exists?
+            # Preserve the index and its sections/links when clearing the topic,
+            # so directly-edited content is not lost.
+            index.update!(index_topic_id: nil)
+          else
+            index.destroy!
+          end
           category.reload
-          enqueue_refresh
+          publish_changes
           return true
         end
 
@@ -55,6 +61,11 @@ module DocCategories
 
     def enqueue_refresh
       ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id)
+    end
+
+    def publish_changes
+      Site.clear_cache
+      category.publish_category
     end
   end
 end
