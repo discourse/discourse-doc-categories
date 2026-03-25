@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe "Doc Category Sidebar", system: true do
+describe "Doc Category Sidebar" do
   fab!(:admin)
   fab!(:category, :category_with_definition)
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }

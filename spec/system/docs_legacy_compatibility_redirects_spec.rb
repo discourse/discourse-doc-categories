@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe "Docs Category Sidebar", system: true do
+RSpec.describe "Docs Category Sidebar" do
   fab!(:category, :category_with_definition)
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
   fab!(:source_topic) do
