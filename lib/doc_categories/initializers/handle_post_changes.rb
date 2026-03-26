@@ -42,7 +42,8 @@ module ::DocCategories
       end
 
       def doc_index_topic?(topic, category)
-        category&.doc_index_topic_id == topic&.id
+        topic_id = category&.doc_index_topic_id
+        topic_id&.positive? && topic_id == topic&.id
       end
 
       def enqueue_refresh(category_id)

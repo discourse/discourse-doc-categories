@@ -31,7 +31,7 @@ module ::DocCategories
       raise Discourse::NotFound if category.blank?
 
       index = DocCategories::Index.find_by(category_id: category.id)
-      if index&.index_topic_id.present?
+      if index&.mode_topic?
         return(render_json_error(I18n.t("doc_categories.errors.index_topic_managed"), status: 422))
       end
 

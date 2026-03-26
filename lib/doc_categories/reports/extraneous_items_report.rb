@@ -33,6 +33,10 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
+        # only topic-mode categories have a parseable index topic
+        index_topic_id = category.doc_index_topic_id
+        next if index_topic_id.nil? || index_topic_id < 0
+
         # existing topics
         topic_query =
           TopicQuery.new(
@@ -45,7 +49,6 @@ module ::DocCategories::Reports
         existing_topic_ids -= invisible_topic_ids
 
         # topics listed in the index
-        index_topic_id = category.doc_index_topic_id
         indexed_links =
           Topic
             .find_by(id: index_topic_id)

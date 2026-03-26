@@ -82,17 +82,36 @@ describe DocCategories::CategoryIndexManager do
       expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
     end
 
-    it "preserves the index when clearing topic if sidebar sections exist" do
+    it "destroys the index when clearing topic even if sidebar sections exist" do
       manager.assign!(topic.id)
       index = DocCategories::Index.find_by(category_id: category.id)
       index.sidebar_sections.create!(title: "Test Section", position: 0)
 
       expect(manager.assign!(nil)).to eq(true)
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(true)
+      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+    end
 
-      index.reload
-      expect(index.index_topic_id).to be_nil
-      expect(index.sidebar_sections.count).to eq(1)
+    it "assigns direct mode when -1 is provided" do
+      result = manager.assign!(-1)
+
+      expect(result).to eq(true)
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.mode_direct?).to eq(true)
+      expect(index.index_topic_id).to eq(DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
+    end
+
+    it "returns false when assigning direct mode to an already direct-mode index" do
+      manager.assign!(-1)
+      expect(manager.assign!(-1)).to eq(false)
+    end
+
+    it "switches from topic mode to direct mode" do
+      manager.assign!(topic.id)
+      expect(manager.assign!(-1)).to eq(true)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index.mode_direct?).to eq(true)
     end
 
     it "does not reassign when the index is unchanged" do
