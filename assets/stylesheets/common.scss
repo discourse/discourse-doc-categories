@@ -181,11 +181,12 @@ body.doc-simple-mode {
     padding: 0.25em;
   }
 
-  &__section-title {
+  input.doc-category-index-editor__section-title {
     flex: 1;
     font-weight: bold;
     font-size: var(--font-up-1);
     min-width: 0;
+    margin-bottom: 0;
   }
 
   &__section-title-label {
@@ -228,6 +229,7 @@ body.doc-simple-mode {
     display: flex;
     flex-direction: column;
     margin-left: 2em;
+    margin-right: -0.5em;
     padding-left: 0.5em;
   }
 
@@ -334,7 +336,7 @@ body.doc-simple-mode {
   &__link-card-header {
     display: flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.25em;
     min-width: 0;
   }
 
@@ -468,6 +470,48 @@ body.doc-simple-mode {
 
   &__remove-btn {
     flex-shrink: 0;
+
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--danger);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__confirm-edit-btn,
+  &__confirm-title-btn {
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--success);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__cancel-edit-btn,
+  &__cancel-title-btn {
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--danger);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
   }
 
   &__inline-topic-chooser {

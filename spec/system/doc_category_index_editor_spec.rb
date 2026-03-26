@@ -19,9 +19,11 @@ describe "Doc Category Index Editor" do
 
   def add_section_with_manual_link(section_title:, link_title:, link_url:)
     find("button", text: "Add section").click
-    all(".doc-category-index-editor__section-title").last.fill_in(with: section_title)
 
     within all(".doc-category-index-editor__section").last do
+      find(".doc-category-index-editor__section-title").fill_in(with: section_title)
+      find(".doc-category-index-editor__confirm-title-btn").click
+
       find(".doc-category-index-editor__add-menu").click
     end
     find("button", text: "Add link").click
@@ -29,6 +31,7 @@ describe "Doc Category Index Editor" do
     within all(".doc-category-index-editor__section").last do
       all(".doc-category-index-editor__link-title").last.fill_in(with: link_title)
       all(".doc-category-index-editor__link-url").last.fill_in(with: link_url)
+      find(".doc-category-index-editor__confirm-edit-btn").click
     end
   end
 
