@@ -99,9 +99,9 @@ describe "Doc Category Index Editor" do
     find("li.edit-category-doc-index a").click
     expect(page).to have_css(".doc-category-index-editor")
 
-    expect(page).to have_field(
-      class: "doc-category-index-editor__section-title",
-      with: "Persistent Section",
+    expect(page).to have_css(
+      ".doc-category-index-editor__section-title-label",
+      text: "Persistent Section",
     )
   end
 end
