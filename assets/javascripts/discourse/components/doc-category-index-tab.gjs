@@ -172,6 +172,17 @@ export default class DocCategoryIndexTab extends Component {
     if (this.isDirectMode) {
       return;
     }
+    if (this.isTopicMode && this.indexTopicId) {
+      this.dialog.yesNoConfirm({
+        message: i18n(
+          "doc_categories.category_settings.index_editor.switch_to_direct_warning"
+        ),
+        didConfirm: () => {
+          this.mode = MODE_DIRECT;
+        },
+      });
+      return;
+    }
     this.mode = MODE_DIRECT;
   }
 
