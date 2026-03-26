@@ -95,6 +95,11 @@ en:
           batch_drag_disabled: "Cannot drag mixed selection of items and sections"
           clear_index: "Clear index"
           clear_index_confirm: "This will remove all sections and links. Are you sure?"
+          validation_pending_changes: "Finish editing all items before saving."
+          validation_empty_section: "Sections must contain at least one item."
+          validation_empty_section_title: "All sections must have a title."
+          validation_empty_link_title: "All items must have a title."
+          validation_empty_link_url: "All items must have a URL."
           empty: "No sections defined. Add a section or use auto-index to get started."
       sidebar:
         filter:
