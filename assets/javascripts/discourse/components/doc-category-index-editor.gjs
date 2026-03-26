@@ -40,10 +40,13 @@ class IndexEditorLink extends Component {
   @tracked _editIcon;
   @tracked _editType;
 
+  _isNew = false;
+
   constructor() {
     super(...arguments);
     /* New empty links auto-enter edit mode */
     if (!this.args.link.title && !this.args.link.href) {
+      this._isNew = true;
       this._snapshotLink();
       this.editing = true;
     }
@@ -133,6 +136,7 @@ class IndexEditorLink extends Component {
       return;
     }
     this._applyEdit();
+    this._isNew = false;
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
@@ -140,6 +144,14 @@ class IndexEditorLink extends Component {
 
   @action
   cancelEdit() {
+    if (this._isNew) {
+      const idx = this.args.section.links.indexOf(this.args.link);
+      if (idx !== -1) {
+        this.args.section.links.splice(idx, 1);
+      }
+      this.args.onChange?.();
+      return;
+    }
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
@@ -475,11 +487,13 @@ class IndexEditorSection extends Component {
   @tracked _editSectionTitle;
 
   _autoExpandTimer = null;
+  _isNew = false;
 
   constructor() {
     super(...arguments);
     /* New sections with empty title auto-enter title edit mode */
     if (!this.args.section.title) {
+      this._isNew = true;
       this._editSectionTitle = "";
       this.editingTitle = true;
     }
@@ -520,11 +534,16 @@ class IndexEditorSection extends Component {
   confirmTitleEdit() {
     this.args.section.title = this._editSectionTitle;
     this.args.onChange?.();
+    this._isNew = false;
     this.editingTitle = false;
   }
 
   @action
   cancelTitleEdit() {
+    if (this._isNew) {
+      this.args.onCancelNew?.(this.args.section);
+      return;
+    }
     this.editingTitle = false;
   }
 
@@ -666,6 +685,9 @@ class IndexEditorSection extends Component {
     try {
       const topics = await this.args.fetchTopics(includeSubcategories);
       if (topics.length === 0) {
+        this.dialog.alert(
+          i18n("doc_categories.category_settings.index_editor.no_topics_found")
+        );
         return;
       }
       const existingHrefs = new Set(
@@ -675,6 +697,11 @@ class IndexEditorSection extends Component {
         (t) => !existingHrefs.has(`/t/${t.slug}/${t.id}`)
       );
       if (missing.length === 0) {
+        this.dialog.alert(
+          i18n(
+            "doc_categories.category_settings.index_editor.no_missing_topics"
+          )
+        );
         return;
       }
       for (const topic of missing) {
@@ -1110,6 +1137,15 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @action
+  cancelNewSection(section) {
+    const idx = this.sections.indexOf(section);
+    if (idx !== -1) {
+      this.sections.splice(idx, 1);
+    }
+    this._saveToTransientData();
+  }
+
+  @action
   removeSection(section) {
     this.dialog.yesNoConfirm({
       message: i18n(
@@ -1344,6 +1380,7 @@ export default class DocCategoryIndexEditor extends Component {
             @favoriteIcons={{this.favoriteIcons}}
             @isDraggingSection={{this.isDraggingSection}}
             @onRemove={{this.removeSection}}
+            @onCancelNew={{this.cancelNewSection}}
             @onSectionDragStart={{this.setDraggedSection}}
             @onSectionDragEnd={{this.clearDraggedSection}}
             @onSectionDrop={{this.reorderSection}}
