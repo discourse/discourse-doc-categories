@@ -185,17 +185,30 @@ body.doc-simple-mode {
     display: flex;
     align-items: flex-start;
     gap: 0.35em;
+    position: relative;
 
     &.dragging {
       opacity: 0.5;
     }
 
-    &.drag-above {
-      border-top: 3px solid var(--tertiary);
+    &.drag-above::before,
+    &.drag-below::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--tertiary);
+      border-radius: 1px;
+      z-index: 1;
     }
 
-    &.drag-below {
-      border-bottom: 3px solid var(--tertiary);
+    &.drag-above::before {
+      top: -1px;
+    }
+
+    &.drag-below::after {
+      bottom: -1px;
     }
   }
 
@@ -266,6 +279,18 @@ body.doc-simple-mode {
 
   &__section-body {
     margin-top: 0.5em;
+    border-top: 2px solid transparent;
+    transition: opacity 0.15s ease-out;
+
+    &.--drop-target {
+      border-top-color: var(--tertiary);
+    }
+
+    &.--collapsed {
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+    }
   }
 
   &__links {
@@ -274,16 +299,6 @@ body.doc-simple-mode {
     margin-left: 2em;
     margin-right: -0.5em;
     padding-left: 0.5em;
-  }
-
-  &__section-body {
-    transition: opacity 0.15s ease-out;
-
-    &.--collapsed {
-      opacity: 0;
-      height: 0;
-      overflow: hidden;
-    }
   }
 
   &__link {

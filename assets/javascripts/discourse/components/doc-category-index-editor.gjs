@@ -22,7 +22,7 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
-import { and, not, or } from "discourse/truth-helpers";
+import { and, eq, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
 const autoFocus = modifier((element) => {
@@ -208,11 +208,12 @@ class IndexEditorLink extends Component {
   dragOver(event) {
     event.preventDefault();
     event.stopPropagation();
-    if (this.dragCssClass !== "dragging") {
-      const isAbove = this.isAboveElement(event);
-      this._isAbove = isAbove;
-      this.dragCssClass = isAbove ? "drag-above" : "drag-below";
+    if (this.dragCssClass === "dragging" || this.args.isDraggingSection) {
+      return;
     }
+    const isAbove = this.isAboveElement(event);
+    this._isAbove = isAbove;
+    this.dragCssClass = isAbove ? "drag-above" : "drag-below";
   }
 
   @action
@@ -239,7 +240,15 @@ class IndexEditorLink extends Component {
   dropItem(event) {
     event.stopPropagation();
     this.dragCount = 0;
-    this.args.onDrop(this.args.link, this.args.section, this._isAbove);
+    if (this.args.isBatchDraggingItems) {
+      this.args.onBatchItemDrop(
+        this.args.link,
+        this.args.section,
+        this._isAbove
+      );
+    } else {
+      this.args.onDrop(this.args.link, this.args.section, this._isAbove);
+    }
     this.dragCssClass = null;
   }
 
@@ -309,6 +318,7 @@ class IndexEditorLink extends Component {
 
   <template>
     {{! template-lint-disable no-invalid-interactive }}
+
     <div
       {{on "dragover" this.dragOver}}
       {{on "dragenter" this.dragEnter}}
@@ -502,12 +512,14 @@ class IndexEditorSection extends Component {
   @service site;
 
   @tracked dragCssClass;
+  @tracked emptyDropTarget = false;
   @tracked collapsed = false;
   @tracked editingTitle = false;
   @tracked includeSubcategories = false;
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
   dragCount = 0;
+
   _addMenuApi = null;
 
   @tracked _editSectionTitle;
@@ -613,19 +625,29 @@ class IndexEditorSection extends Component {
     this.dragCssClass = "dragging";
   }
 
+  get #isEmptyItemDrag() {
+    if (this.args.section.links.length > 0) {
+      return false;
+    }
+    return (
+      !this.args.isDraggingSection &&
+      !(this.args.isBatchDragging && this.args.batchDragType === "sections")
+    );
+  }
+
   @action
   sectionDragOver(event) {
     event.preventDefault();
     if (this.dragCssClass === "dragging") {
       return;
     }
-    /* Only show section drop indicators when a section is being dragged */
-    if (!this.args.isDraggingSection) {
-      return;
+    const isBatchSectionDrag =
+      this.args.isBatchDragging && this.args.batchDragType === "sections";
+    if (this.args.isDraggingSection || isBatchSectionDrag) {
+      this.dragCssClass = this.isAboveElement(event)
+        ? "drag-above"
+        : "drag-below";
     }
-    this.dragCssClass = this.isAboveElement(event)
-      ? "drag-above"
-      : "drag-below";
   }
 
   @action
@@ -636,6 +658,9 @@ class IndexEditorSection extends Component {
         this.collapsed = false;
       }, 500);
     }
+    if (this.#isEmptyItemDrag) {
+      this.emptyDropTarget = true;
+    }
   }
 
   @action
@@ -645,13 +670,16 @@ class IndexEditorSection extends Component {
       clearTimeout(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
-    if (
-      this.dragCount === 0 &&
-      (this.dragCssClass === "drag-above" || this.dragCssClass === "drag-below")
-    ) {
-      discourseLater(() => {
-        this.dragCssClass = null;
-      }, 10);
+    if (this.dragCount === 0) {
+      this.emptyDropTarget = false;
+      if (
+        this.dragCssClass === "drag-above" ||
+        this.dragCssClass === "drag-below"
+      ) {
+        discourseLater(() => {
+          this.dragCssClass = null;
+        }, 10);
+      }
     }
   }
 
@@ -663,14 +691,27 @@ class IndexEditorSection extends Component {
       clearTimeout(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
-    this.args.onSectionDrop(this.args.section, this.isAboveElement(event));
+    const isAbove = this.isAboveElement(event);
+    if (this.args.isBatchDragging && this.args.batchDragType === "sections") {
+      this.args.onBatchSectionDrop(this.args.section, isAbove);
+    } else if (
+      this.args.isBatchDragging &&
+      this.args.batchDragType === "items" &&
+      this.args.section.links.length === 0
+    ) {
+      this.args.onBatchItemDrop(null, this.args.section, false);
+    } else {
+      this.args.onSectionDrop(this.args.section, isAbove);
+    }
     this.dragCssClass = null;
+    this.emptyDropTarget = false;
   }
 
   @action
   sectionDragEnd() {
     this.dragCount = 0;
     this.dragCssClass = null;
+    this.emptyDropTarget = false;
     this.args.onSectionDragEnd?.();
     if (this._autoExpandTimer) {
       clearTimeout(this._autoExpandTimer);
@@ -799,6 +840,7 @@ class IndexEditorSection extends Component {
 
   <template>
     {{! template-lint-disable no-invalid-interactive }}
+
     <div
       {{on "dragover" this.sectionDragOver}}
       {{on "dragenter" this.sectionDragEnter}}
@@ -944,6 +986,7 @@ class IndexEditorSection extends Component {
           class={{concatClass
             "doc-category-index-editor__section-body"
             (if this.collapsed "--collapsed")
+            (if this.emptyDropTarget "--drop-target")
           }}
         >
           {{#unless this.collapsed}}
@@ -956,12 +999,21 @@ class IndexEditorSection extends Component {
                   @duplicateHrefs={{@duplicateHrefs}}
                   @favoriteIcons={{@favoriteIcons}}
                   @batchMode={{@batchMode}}
+                  @isBatchDraggingItems={{and
+                    @isBatchDragging
+                    (eq @batchDragType "items")
+                  }}
+                  @isDraggingSection={{or
+                    @isDraggingSection
+                    (and @isBatchDragging (eq @batchDragType "sections"))
+                  }}
                   @isSelected={{@isItemSelected link}}
                   @onToggleSelection={{fn @toggleItemSelection link}}
                   @onEditStateChange={{@onEditStateChange}}
                   @onRemove={{this.removeLink}}
                   @onDragStart={{@onLinkDragStart}}
                   @onDrop={{@onLinkDrop}}
+                  @onBatchItemDrop={{@onBatchItemDrop}}
                   @onChange={{@onChange}}
                 />
               {{/each}}
@@ -1056,6 +1108,8 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked isDraggingSection = false;
   @tracked batchMode = false;
   @tracked editingCount = 0;
+  @tracked isBatchDragging = false;
+  @tracked batchDragType = null;
   selectedItems = trackedSet();
   selectedSections = trackedSet();
   draggedSection = null;
@@ -1067,6 +1121,9 @@ export default class DocCategoryIndexEditor extends Component {
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
       this.sections = trackedArray(this._initSectionsFromModel());
+      this.batchMode = false;
+      this.selectedItems.clear();
+      this.selectedSections.clear();
     });
   }
 
@@ -1435,7 +1492,20 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get canToggleBatchMode() {
-    return this.editingCount === 0;
+    if (this.editingCount > 0) {
+      return false;
+    }
+
+    if (this.sections.length === 0) {
+      return false;
+    }
+
+    // Disable when there's only one section with at most one link
+    if (this.sections.length === 1) {
+      return this.sections[0].links.length > 1;
+    }
+
+    return true;
   }
 
   get selectionCount() {
@@ -1594,18 +1664,78 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @action
-  bulkDragStart(event) {
+  batchDragStart(event) {
     if (!this.canDragSelection) {
       event.preventDefault();
       return;
     }
     event.dataTransfer.effectAllowed = "move";
-    this._bulkDragging = true;
+    this.batchDragType = this.selectedSections.size > 0 ? "sections" : "items";
+    this.isBatchDragging = true;
   }
 
   @action
-  bulkDragEnd() {
-    this._bulkDragging = false;
+  batchDragEnd() {
+    this.isBatchDragging = false;
+    this.batchDragType = null;
+  }
+
+  @action
+  batchReorderSections(targetSection, isAbove) {
+    const ordered = this.sections.filter((s) => this.selectedSections.has(s));
+    for (const s of ordered) {
+      const idx = this.sections.indexOf(s);
+      if (idx !== -1) {
+        this.sections.splice(idx, 1);
+      }
+    }
+    let targetIdx = this.sections.indexOf(targetSection);
+    if (!isAbove) {
+      targetIdx++;
+    }
+    this.sections.splice(targetIdx, 0, ...ordered);
+    this.isBatchDragging = false;
+    this.batchDragType = null;
+    this._saveToTransientData();
+  }
+
+  @action
+  batchReorderItems(targetLink, targetSection, isAbove) {
+    /* Collect selected items preserving their current order across all sections */
+    const ordered = [];
+    for (const section of this.sections) {
+      for (const link of section.links) {
+        if (this.selectedItems.has(link)) {
+          ordered.push(link);
+        }
+      }
+    }
+
+    /* Remove selected items from their source sections */
+    for (const link of ordered) {
+      for (const section of this.sections) {
+        const idx = section.links.indexOf(link);
+        if (idx !== -1) {
+          section.links.splice(idx, 1);
+          break;
+        }
+      }
+    }
+
+    /* Insert at target position (append to end if dropped on section body) */
+    if (targetLink) {
+      let targetIdx = targetSection.links.indexOf(targetLink);
+      if (!isAbove) {
+        targetIdx++;
+      }
+      targetSection.links.splice(targetIdx, 0, ...ordered);
+    } else {
+      targetSection.links.push(...ordered);
+    }
+
+    this.isBatchDragging = false;
+    this.batchDragType = null;
+    this._saveToTransientData();
   }
 
   get applyDisabled() {
@@ -1680,6 +1810,17 @@ export default class DocCategoryIndexEditor extends Component {
 
       {{#if this.batchMode}}
         <div class="doc-category-index-editor__batch-bar">
+          {{#if this.canDragSelection}}
+            <span
+              class="doc-category-index-editor__batch-drag-handle"
+              draggable="true"
+              {{on "dragstart" this.batchDragStart}}
+              {{on "dragend" this.batchDragEnd}}
+            >
+              {{icon "grip-lines"}}
+            </span>
+          {{/if}}
+
           <span class="doc-category-index-editor__batch-count">
             {{#if this.hasSelection}}
               {{this.selectionLabel}}
@@ -1727,6 +1868,8 @@ export default class DocCategoryIndexEditor extends Component {
             @duplicateTitles={{this.duplicateTitles}}
             @favoriteIcons={{this.favoriteIcons}}
             @isDraggingSection={{this.isDraggingSection}}
+            @isBatchDragging={{this.isBatchDragging}}
+            @batchDragType={{this.batchDragType}}
             @batchMode={{this.batchMode}}
             @isSectionSelected={{this.isSectionSelected}}
             @isItemSelected={{this.isItemSelected}}
@@ -1741,8 +1884,10 @@ export default class DocCategoryIndexEditor extends Component {
             @onSectionDragStart={{this.setDraggedSection}}
             @onSectionDragEnd={{this.clearDraggedSection}}
             @onSectionDrop={{this.reorderSection}}
+            @onBatchSectionDrop={{this.batchReorderSections}}
             @onLinkDragStart={{this.onLinkDragStart}}
             @onLinkDrop={{this.onLinkDrop}}
+            @onBatchItemDrop={{this.batchReorderItems}}
             @fetchTopics={{this.fetchTopics}}
             @onChange={{this._saveToTransientData}}
           />
