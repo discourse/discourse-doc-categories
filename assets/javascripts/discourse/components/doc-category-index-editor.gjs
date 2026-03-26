@@ -3,7 +3,11 @@ import { tracked } from "@glimmer/tracking";
 import { fn, hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import { trackedArray, trackedObject } from "@ember/reactive/collections";
+import {
+  trackedArray,
+  trackedObject,
+  trackedSet,
+} from "@ember/reactive/collections";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
@@ -18,7 +22,7 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
-import { not, or } from "discourse/truth-helpers";
+import { and, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
 const autoFocus = modifier((element) => {
@@ -126,8 +130,12 @@ class IndexEditorLink extends Component {
 
   @action
   enterEdit() {
+    if (this.args.batchMode) {
+      return;
+    }
     this._snapshotLink();
     this.editing = true;
+    this.args.onEditStateChange?.(true);
   }
 
   @action
@@ -140,11 +148,13 @@ class IndexEditorLink extends Component {
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
+    this.args.onEditStateChange?.(false);
   }
 
   @action
   cancelEdit() {
     if (this._isNew) {
+      this.args.onEditStateChange?.(false);
       const idx = this.args.section.links.indexOf(this.args.link);
       if (idx !== -1) {
         this.args.section.links.splice(idx, 1);
@@ -155,6 +165,7 @@ class IndexEditorLink extends Component {
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
+    this.args.onEditStateChange?.(false);
   }
 
   @action
@@ -173,9 +184,11 @@ class IndexEditorLink extends Component {
         return;
       }
       this._applyEdit();
+      this._isNew = false;
       this.editing = false;
       this.swapping = false;
       this.swapTopicContent = [];
+      this.args.onEditStateChange?.(false);
     });
   }
 
@@ -305,7 +318,15 @@ class IndexEditorLink extends Component {
       {{on "keydown" this.onKeydown}}
       class={{this.linkClasses}}
     >
-      {{#if this.site.desktopView}}
+      {{#if @batchMode}}
+        <label class="doc-category-index-editor__batch-checkbox">
+          <input
+            type="checkbox"
+            checked={{@isSelected}}
+            {{on "click" @onToggleSelection}}
+          />
+        </label>
+      {{else if this.site.desktopView}}
         <span
           class="doc-category-index-editor__drag-handle"
           draggable="true"
@@ -431,7 +452,10 @@ class IndexEditorLink extends Component {
         {{! View mode: card/pill with text labels }}
         {{! template-lint-disable no-invalid-interactive }}
         <div
-          class="doc-category-index-editor__link-card"
+          class={{concatClass
+            "doc-category-index-editor__link-card"
+            (if @isSelected "--selected")
+          }}
           {{on "dblclick" this.enterEdit}}
         >
           <div class="doc-category-index-editor__link-card-header">
@@ -446,18 +470,20 @@ class IndexEditorLink extends Component {
             >
               {{this.displayTitle}}
             </span>
-            <DButton
-              @icon="pencil"
-              @action={{this.enterEdit}}
-              @title="doc_categories.category_settings.index_editor.edit_link"
-              class="btn-flat btn-small doc-category-index-editor__edit-btn"
-            />
-            <DButton
-              @icon="trash-can"
-              @action={{fn @onRemove @link}}
-              @title="doc_categories.category_settings.index_editor.remove_link"
-              class="btn-flat btn-small doc-category-index-editor__remove-btn"
-            />
+            {{#unless @batchMode}}
+              <DButton
+                @icon="pencil"
+                @action={{this.enterEdit}}
+                @title="doc_categories.category_settings.index_editor.edit_link"
+                class="btn-flat btn-small doc-category-index-editor__edit-btn"
+              />
+              <DButton
+                @icon="trash-can"
+                @action={{fn @onRemove @link}}
+                @title="doc_categories.category_settings.index_editor.remove_link"
+                class="btn-flat btn-small doc-category-index-editor__remove-btn"
+              />
+            {{/unless}}
           </div>
           {{#if @link.href}}
             <span class="doc-category-index-editor__link-href-preview">
@@ -528,6 +554,7 @@ class IndexEditorSection extends Component {
   enterTitleEdit() {
     this._editSectionTitle = this.args.section.title;
     this.editingTitle = true;
+    this.args.onEditStateChange?.(true);
   }
 
   @action
@@ -536,15 +563,18 @@ class IndexEditorSection extends Component {
     this.args.onChange?.();
     this._isNew = false;
     this.editingTitle = false;
+    this.args.onEditStateChange?.(false);
   }
 
   @action
   cancelTitleEdit() {
     if (this._isNew) {
+      this.args.onEditStateChange?.(false);
       this.args.onCancelNew?.(this.args.section);
       return;
     }
     this.editingTitle = false;
+    this.args.onEditStateChange?.(false);
   }
 
   @action
@@ -780,7 +810,15 @@ class IndexEditorSection extends Component {
         this.dragCssClass
       }}
     >
-      {{#if this.site.desktopView}}
+      {{#if @batchMode}}
+        <label class="doc-category-index-editor__batch-checkbox">
+          <input
+            type="checkbox"
+            checked={{@isSectionSelected @section}}
+            {{on "click" (fn @toggleSectionSelection @section)}}
+          />
+        </label>
+      {{else if this.site.desktopView}}
         <span
           class="doc-category-index-editor__drag-handle"
           draggable="true"
@@ -790,7 +828,12 @@ class IndexEditorSection extends Component {
         </span>
       {{/if}}
 
-      <div class="doc-category-index-editor__section">
+      <div
+        class={{concatClass
+          "doc-category-index-editor__section"
+          (if (@isSectionSelected @section) "--selected")
+        }}
+      >
         <div class="doc-category-index-editor__section-header">
           <DButton
             @icon={{if this.collapsed "angle-right" "angle-down"}}
@@ -862,20 +905,39 @@ class IndexEditorSection extends Component {
             </span>
           {{/if}}
 
-          {{#unless this.editingTitle}}
+          {{#if @batchMode}}
             <DButton
-              @icon="pencil"
-              @action={{this.enterTitleEdit}}
-              @title="doc_categories.category_settings.index_editor.edit_section_title"
-              class="btn-flat btn-small doc-category-index-editor__edit-btn"
+              @icon="check-double"
+              @action={{fn @selectAllInSection @section}}
+              @title="doc_categories.category_settings.index_editor.batch_select_all"
+              class="btn-flat btn-small"
             />
             <DButton
-              @icon="trash-can"
-              @action={{fn @onRemove @section}}
-              @title="doc_categories.category_settings.index_editor.remove_section"
-              class="btn-flat btn-small doc-category-index-editor__remove-btn"
+              @icon="right-left"
+              @action={{fn @invertSelectionInSection @section}}
+              @title="doc_categories.category_settings.index_editor.batch_invert"
+              class="btn-flat btn-small"
             />
-          {{/unless}}
+            <DButton
+              @icon="eraser"
+              @action={{fn @clearAllInSection @section}}
+              @title="doc_categories.category_settings.index_editor.batch_clear_all"
+              class="btn-flat btn-small"
+            />
+          {{else}}{{#unless this.editingTitle}}
+              <DButton
+                @icon="pencil"
+                @action={{this.enterTitleEdit}}
+                @title="doc_categories.category_settings.index_editor.edit_section_title"
+                class="btn-flat btn-small doc-category-index-editor__edit-btn"
+              />
+              <DButton
+                @icon="trash-can"
+                @action={{fn @onRemove @section}}
+                @title="doc_categories.category_settings.index_editor.remove_section"
+                class="btn-flat btn-small doc-category-index-editor__remove-btn"
+              />
+            {{/unless}}{{/if}}
         </div>
 
         <div
@@ -893,6 +955,10 @@ class IndexEditorSection extends Component {
                   @categoryId={{@categoryId}}
                   @duplicateHrefs={{@duplicateHrefs}}
                   @favoriteIcons={{@favoriteIcons}}
+                  @batchMode={{@batchMode}}
+                  @isSelected={{@isItemSelected link}}
+                  @onToggleSelection={{fn @toggleItemSelection link}}
+                  @onEditStateChange={{@onEditStateChange}}
                   @onRemove={{this.removeLink}}
                   @onDragStart={{@onLinkDragStart}}
                   @onDrop={{@onLinkDrop}}
@@ -901,7 +967,7 @@ class IndexEditorSection extends Component {
               {{/each}}
             </div>
 
-            {{#if this.showingTopicChooser}}
+            {{#if (and this.showingTopicChooser (not @batchMode))}}
               <div class="doc-category-index-editor__inline-topic-chooser">
                 <div class="doc-category-index-editor__link-card --adding">
                   <TopicChooser
@@ -922,55 +988,57 @@ class IndexEditorSection extends Component {
               </div>
             {{/if}}
 
-            <div class="doc-category-index-editor__section-actions">
-              <DComboButton class="--has-menu btn-small">
-                <:default as |combo|>
-                  <combo.Button
-                    @action={{this.showTopicChooser}}
-                    @icon="plus"
-                    @label="doc_categories.category_settings.index_editor.add_topic"
-                  />
-                  <combo.Menu
-                    @identifier="section-add-menu"
-                    @onRegisterApi={{this.registerAddMenuApi}}
-                  >
-                    <DropdownMenu as |dropdown|>
-                      <dropdown.item>
-                        <DButton
-                          @icon="link"
-                          @label="doc_categories.category_settings.index_editor.add_link"
-                          @action={{this.addManualLink}}
-                          class="btn-transparent"
-                        />
-                      </dropdown.item>
-                      <dropdown.divider />
-                      <dropdown.item>
-                        <DButton
-                          @icon="list-check"
-                          @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
-                          @action={{this.addMissingTopicsToSection}}
-                          class="btn-transparent"
-                        />
-                      </dropdown.item>
-                      <dropdown.item>
-                        <label
-                          class="doc-category-index-editor__subcategory-toggle"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={{this.includeSubcategories}}
-                            {{on "change" this.toggleIncludeSubcategories}}
+            {{#unless @batchMode}}
+              <div class="doc-category-index-editor__section-actions">
+                <DComboButton class="--has-menu btn-small">
+                  <:default as |combo|>
+                    <combo.Button
+                      @action={{this.showTopicChooser}}
+                      @icon="plus"
+                      @label="doc_categories.category_settings.index_editor.add_topic"
+                    />
+                    <combo.Menu
+                      @identifier="section-add-menu"
+                      @onRegisterApi={{this.registerAddMenuApi}}
+                    >
+                      <DropdownMenu as |dropdown|>
+                        <dropdown.item>
+                          <DButton
+                            @icon="link"
+                            @label="doc_categories.category_settings.index_editor.add_link"
+                            @action={{this.addManualLink}}
+                            class="btn-transparent"
                           />
-                          {{i18n
-                            "doc_categories.category_settings.index_editor.include_subcategories"
-                          }}
-                        </label>
-                      </dropdown.item>
-                    </DropdownMenu>
-                  </combo.Menu>
-                </:default>
-              </DComboButton>
-            </div>
+                        </dropdown.item>
+                        <dropdown.divider />
+                        <dropdown.item>
+                          <DButton
+                            @icon="list-check"
+                            @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
+                            @action={{this.addMissingTopicsToSection}}
+                            class="btn-transparent"
+                          />
+                        </dropdown.item>
+                        <dropdown.item>
+                          <label
+                            class="doc-category-index-editor__subcategory-toggle"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={{this.includeSubcategories}}
+                              {{on "change" this.toggleIncludeSubcategories}}
+                            />
+                            {{i18n
+                              "doc_categories.category_settings.index_editor.include_subcategories"
+                            }}
+                          </label>
+                        </dropdown.item>
+                      </DropdownMenu>
+                    </combo.Menu>
+                  </:default>
+                </DComboButton>
+              </div>
+            {{/unless}}
           {{/unless}}
         </div>
       </div>
@@ -986,21 +1054,17 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked saveState = null;
   @tracked includeSubcategories = false;
   @tracked isDraggingSection = false;
+  @tracked batchMode = false;
+  @tracked editingCount = 0;
+  selectedItems = trackedSet();
+  selectedSections = trackedSet();
   draggedSection = null;
   _draggedLink = null;
   _draggedLinkSourceSection = null;
 
-  _syncSectionsToCategory = () => {
-    const serialized = this._serializeSections();
-    this.args.category?.set(
-      "doc_index_sections",
-      serialized.length > 0 ? JSON.stringify(serialized) : null
-    );
-  };
-
   constructor() {
     super(...arguments);
-    this.args.registerValidator?.(this._syncSectionsToCategory);
+    this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
       this.sections = trackedArray(this._initSectionsFromModel());
     });
@@ -1009,6 +1073,11 @@ export default class DocCategoryIndexEditor extends Component {
   willDestroy() {
     super.willDestroy();
     this._saveToTransientData();
+  }
+
+  get serializedSections() {
+    const serialized = this._serializeSections();
+    return serialized.length > 0 ? JSON.stringify(serialized) : null;
   }
 
   initSections() {
@@ -1357,12 +1426,283 @@ export default class DocCategoryIndexEditor extends Component {
     return this.args.transientData?._docIndexSections != null;
   }
 
+  get canToggleBatchMode() {
+    return this.editingCount === 0;
+  }
+
+  get selectionCount() {
+    return this.selectedItems.size + this.selectedSections.size;
+  }
+
+  get hasSelection() {
+    return this.selectionCount > 0;
+  }
+
+  get isMixedSelection() {
+    return this.selectedItems.size > 0 && this.selectedSections.size > 0;
+  }
+
+  get canDragSelection() {
+    return this.hasSelection && !this.isMixedSelection;
+  }
+
+  get selectionLabel() {
+    const items = this.selectedItems.size;
+    const sections = this.selectedSections.size;
+    if (items > 0 && sections > 0) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.batch_selected_mixed",
+        { items, sections }
+      );
+    } else if (sections > 0) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.batch_selected_sections",
+        { count: sections }
+      );
+    }
+    return i18n(
+      "doc_categories.category_settings.index_editor.batch_selected_items",
+      { count: items }
+    );
+  }
+
+  @action
+  toggleBatchMode() {
+    this.batchMode = !this.batchMode;
+    if (!this.batchMode) {
+      this.selectedItems.clear();
+      this.selectedSections.clear();
+    }
+  }
+
+  @action
+  onEditStateChange(isEditing) {
+    this.editingCount += isEditing ? 1 : -1;
+  }
+
+  @bind
+  toggleItemSelection(link) {
+    if (this.selectedItems.has(link)) {
+      this.selectedItems.delete(link);
+    } else {
+      this.selectedItems.add(link);
+    }
+  }
+
+  @bind
+  toggleSectionSelection(section) {
+    if (this.selectedSections.has(section)) {
+      this.selectedSections.delete(section);
+    } else {
+      this.selectedSections.add(section);
+    }
+  }
+
+  @bind
+  isItemSelected(link) {
+    return this.selectedItems.has(link);
+  }
+
+  @bind
+  isSectionSelected(section) {
+    return this.selectedSections.has(section);
+  }
+
+  @action
+  clearSelection() {
+    this.selectedItems.clear();
+    this.selectedSections.clear();
+  }
+
+  @bind
+  selectAllInSection(section) {
+    for (const link of section.links) {
+      this.selectedItems.add(link);
+    }
+  }
+
+  @bind
+  clearAllInSection(section) {
+    for (const link of section.links) {
+      this.selectedItems.delete(link);
+    }
+  }
+
+  @bind
+  invertSelectionInSection(section) {
+    for (const link of section.links) {
+      if (this.selectedItems.has(link)) {
+        this.selectedItems.delete(link);
+      } else {
+        this.selectedItems.add(link);
+      }
+    }
+  }
+
+  @action
+  clearIndex(closeMenu) {
+    closeMenu?.();
+    if (this.sections.length === 0) {
+      return;
+    }
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.clear_index_confirm"
+      ),
+      didConfirm: () => {
+        this.sections.splice(0, this.sections.length);
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
+  bulkDelete() {
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.batch_delete_confirm"
+      ),
+      didConfirm: () => {
+        for (const section of this.selectedSections) {
+          const idx = this.sections.indexOf(section);
+          if (idx !== -1) {
+            this.sections.splice(idx, 1);
+          }
+        }
+        for (const link of this.selectedItems) {
+          for (const section of this.sections) {
+            const idx = section.links.indexOf(link);
+            if (idx !== -1) {
+              section.links.splice(idx, 1);
+              break;
+            }
+          }
+        }
+        this.selectedItems.clear();
+        this.selectedSections.clear();
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
+  bulkDragStart(event) {
+    if (!this.canDragSelection) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    this._bulkDragging = true;
+  }
+
+  @action
+  bulkDragEnd() {
+    this._bulkDragging = false;
+  }
+
   get applyDisabled() {
     return this.saveState === "saving" || !this.hasPendingChanges;
   }
 
   <template>
-    <div class="doc-category-index-editor">
+    <div
+      class={{concatClass
+        "doc-category-index-editor"
+        (if this.batchMode "--batch-mode")
+      }}
+    >
+      {{#if @toolbarElement}}
+        {{#in-element @toolbarElement insertBefore=null}}
+          {{#unless this.batchMode}}
+            <div class="doc-category-index-editor__toolbar-actions">
+              <DButton
+                @icon="list-check"
+                @label="doc_categories.category_settings.index_editor.batch_edit"
+                @action={{this.toggleBatchMode}}
+                @disabled={{not this.canToggleBatchMode}}
+                class="btn-default"
+              />
+              <DMenu
+                @identifier="index-options-menu"
+                @triggerClass="btn-default doc-category-index-editor__options-trigger"
+              >
+                <:trigger>
+                  {{icon "wrench"}}
+                </:trigger>
+                <:content as |menuArgs|>
+                  <DropdownMenu as |dropdown|>
+                    <dropdown.item>
+                      <DButton
+                        @icon="arrows-rotate"
+                        @label="doc_categories.category_settings.index_editor.index_all_topics"
+                        @action={{fn this.indexAllTopics menuArgs.close}}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                    <dropdown.item>
+                      <label
+                        class="doc-category-index-editor__subcategory-toggle"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={{this.includeSubcategories}}
+                          {{on "change" this.toggleIncludeSubcategories}}
+                        />
+                        {{i18n
+                          "doc_categories.category_settings.index_editor.include_subcategories"
+                        }}
+                      </label>
+                    </dropdown.item>
+                    <dropdown.divider />
+                    <dropdown.item>
+                      <DButton
+                        @icon="trash-can"
+                        @label="doc_categories.category_settings.index_editor.clear_index"
+                        @action={{fn this.clearIndex menuArgs.close}}
+                        class="btn-transparent btn-danger"
+                      />
+                    </dropdown.item>
+                  </DropdownMenu>
+                </:content>
+              </DMenu>
+            </div>
+          {{/unless}}
+        {{/in-element}}
+      {{/if}}
+
+      {{#if this.batchMode}}
+        <div class="doc-category-index-editor__batch-bar">
+          <span class="doc-category-index-editor__batch-count">
+            {{#if this.hasSelection}}
+              {{this.selectionLabel}}
+            {{else}}
+              {{i18n
+                "doc_categories.category_settings.index_editor.batch_select_hint"
+              }}
+            {{/if}}
+          </span>
+
+          {{#if this.hasSelection}}
+            <DButton
+              @icon="eraser"
+              @label="doc_categories.category_settings.index_editor.batch_clear_all"
+              @action={{this.clearSelection}}
+              class="btn-flat btn-small"
+            />
+            <DButton
+              @icon="trash-can"
+              @action={{this.bulkDelete}}
+              class="btn-flat btn-small doc-category-index-editor__batch-delete-btn"
+            />
+          {{/if}}
+
+          <DButton
+            @icon="xmark"
+            @action={{this.toggleBatchMode}}
+            class="btn-flat btn-small doc-category-index-editor__batch-cancel-btn"
+          />
+        </div>
+      {{/if}}
 
       {{#if this.isEmpty}}
         <p class="doc-category-index-editor__empty">
@@ -1379,6 +1719,15 @@ export default class DocCategoryIndexEditor extends Component {
             @duplicateTitles={{this.duplicateTitles}}
             @favoriteIcons={{this.favoriteIcons}}
             @isDraggingSection={{this.isDraggingSection}}
+            @batchMode={{this.batchMode}}
+            @isSectionSelected={{this.isSectionSelected}}
+            @isItemSelected={{this.isItemSelected}}
+            @toggleSectionSelection={{this.toggleSectionSelection}}
+            @toggleItemSelection={{this.toggleItemSelection}}
+            @selectAllInSection={{this.selectAllInSection}}
+            @clearAllInSection={{this.clearAllInSection}}
+            @invertSelectionInSection={{this.invertSelectionInSection}}
+            @onEditStateChange={{this.onEditStateChange}}
             @onRemove={{this.removeSection}}
             @onCancelNew={{this.cancelNewSection}}
             @onSectionDragStart={{this.setDraggedSection}}
@@ -1392,52 +1741,18 @@ export default class DocCategoryIndexEditor extends Component {
         {{/each}}
       </div>
 
-      <div class="doc-category-index-editor__footer">
-        <DButton
-          @icon="plus"
-          @label="doc_categories.category_settings.index_editor.add_section"
-          @action={{this.addSection}}
-          class="btn-default btn-small"
-        />
-      </div>
+      {{#unless this.batchMode}}
+        <div class="doc-category-index-editor__footer">
+          <DButton
+            @icon="plus"
+            @label="doc_categories.category_settings.index_editor.add_section"
+            @action={{this.addSection}}
+            class="btn-default btn-small"
+          />
+        </div>
+      {{/unless}}
 
       <div class="doc-category-index-editor__apply-footer">
-        <DMenu
-          @identifier="rebuild-index-menu"
-          @triggerClass="doc-category-index-editor__rebuild-trigger"
-        >
-          <:trigger>
-            {{icon "arrows-rotate"}}
-            <span>{{i18n
-                "doc_categories.category_settings.index_editor.rebuild_index"
-              }}</span>
-          </:trigger>
-          <:content as |menuArgs|>
-            <DropdownMenu as |dropdown|>
-              <dropdown.item>
-                <DButton
-                  @icon="arrows-rotate"
-                  @label="doc_categories.category_settings.index_editor.index_all_topics"
-                  @action={{fn this.indexAllTopics menuArgs.close}}
-                  class="btn-transparent"
-                />
-              </dropdown.item>
-              <dropdown.item>
-                <label class="doc-category-index-editor__subcategory-toggle">
-                  <input
-                    type="checkbox"
-                    checked={{this.includeSubcategories}}
-                    {{on "change" this.toggleIncludeSubcategories}}
-                  />
-                  {{i18n
-                    "doc_categories.category_settings.index_editor.include_subcategories"
-                  }}
-                </label>
-              </dropdown.item>
-            </DropdownMenu>
-          </:content>
-        </DMenu>
-
         <DButton
           @icon="check"
           @label={{this.applyLabel}}

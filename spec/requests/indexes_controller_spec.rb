@@ -102,4 +102,84 @@ RSpec.describe ::DocCategories::IndexesController do
       end
     end
   end
+
+  describe "#update" do
+    fab!(:admin)
+    fab!(:category)
+
+    it "creates an index with sections and links" do
+      sign_in(admin)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.sidebar_sections.count).to eq(1)
+      expect(index.sidebar_sections.first.title).to eq("Section 1")
+      expect(index.sidebar_sections.first.sidebar_links.count).to eq(1)
+    end
+
+    it "clears the index when doc_index_sections is empty via category save" do
+      sign_in(admin)
+
+      # First create an index via the indexes endpoint
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(DocCategories::Index.find_by(category_id: category.id)).to be_present
+
+      # Now save the category with empty doc_index_sections (simulates disabled mode)
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_sections: "[]",
+          }
+
+      expect(response.status).to eq(200)
+      expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+
+      # The response should not include doc_category_index
+      category_response = response.parsed_body["category"]
+      expect(category_response).not_to have_key("doc_category_index")
+    end
+
+    it "clears the index when empty sections are sent via PUT to indexes endpoint" do
+      sign_in(admin)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      expect(DocCategories::Index.find_by(category_id: category.id)).to be_present
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: { sections: [] }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+    end
+  end
 end
