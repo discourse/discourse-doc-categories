@@ -28,10 +28,9 @@ en:
             topic_not_found: "Topic not found! The index won't be displayed"
             mismatched-category: "The index won't be displayed because the topic belongs to a different category: %{category_name}"
         index_editor:
-          mode_label: "Index mode"
-          mode_topic: "Use an index topic"
+          mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content as the sidebar index"
-          mode_direct: "Edit directly"
+          mode_direct: "Visual editor"
           mode_direct_description: "Build the sidebar index with a visual editor"
           mode_switch_warning: "Selecting an index topic will overwrite the current sidebar structure on the next refresh."
           add_section: "Add section"

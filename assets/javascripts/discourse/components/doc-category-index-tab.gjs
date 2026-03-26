@@ -163,9 +163,6 @@ export default class DocCategoryIndexTab extends Component {
       <h3>{{i18n "doc_categories.category_settings.title"}}</h3>
 
       <div class="doc-category-index-tab__mode-selector">
-        <label>{{i18n
-            "doc_categories.category_settings.index_editor.mode_label"
-          }}</label>
         <DMenu
           @identifier="doc-index-mode-selector"
           @triggerClass="btn-default doc-category-index-tab__mode-trigger"
@@ -221,9 +218,6 @@ export default class DocCategoryIndexTab extends Component {
 
       {{#if this.isTopicMode}}
         <div class="doc-category-index-tab__topic-mode">
-          <label>{{i18n
-              "doc_categories.category_settings.index_topic.label"
-            }}</label>
           <TopicChooser
             @value={{this.indexTopicId}}
             @content={{this.indexTopicContent}}
