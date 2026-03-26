@@ -92,8 +92,37 @@ body.doc-simple-mode {
     }
   }
 
-  &__mode-dropdown {
-    width: auto;
+  &__mode-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+  }
+
+  &__mode-option {
+    display: flex;
+    flex: 1 0 auto;
+    align-items: center;
+  }
+
+  &__mode-option-texts {
+    line-height: var(--line-height-medium);
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  &__mode-option-label {
+    font-weight: bold;
+    font-size: var(--font-0);
+    color: var(--primary);
+  }
+
+  &__mode-option-description {
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+    white-space: normal;
+    text-align: left;
   }
 
   &__topic-mode {
