@@ -31,6 +31,25 @@ export default class DocCategoryIndexTab extends Component {
 
   constructor() {
     super(...arguments);
+    this.args.registerValidator((data, { addError, removeError } = {}) => {
+      removeError?.("doc_index_sections");
+
+      if (!this.isDirectMode || !this._editorInstance) {
+        return;
+      }
+
+      const errors = this._editorInstance.validationErrors;
+      if (errors.length > 0 && addError) {
+        addError("doc_index_sections", {
+          title: i18n(
+            "doc_categories.category_settings.index_editor.mode_direct"
+          ),
+          message: errors.join(" "),
+        });
+      }
+
+      return errors.length > 0;
+    });
     this.args.registerAfterReset(() => {
       this.mode = this.initialMode;
       this.indexTopic = null;
