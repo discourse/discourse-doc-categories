@@ -147,12 +147,10 @@ body.doc-simple-mode {
     gap: 0.75em;
   }
 
-  &__section {
-    border: 1px solid var(--primary-low);
-    border-radius: var(--d-border-radius);
-    padding: 0.75em;
-    background: var(--secondary);
-    transition: border-color 0.15s;
+  &__section-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35em;
 
     &.dragging {
       opacity: 0.5;
@@ -165,6 +163,16 @@ body.doc-simple-mode {
     &.drag-below {
       border-bottom: 3px solid var(--tertiary);
     }
+  }
+
+  &__section {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 0.75em;
+    background: var(--secondary);
+    transition: border-color 0.15s;
   }
 
   &__section-header {
@@ -185,6 +193,29 @@ body.doc-simple-mode {
     min-width: 0;
   }
 
+  &__section-title-label {
+    flex: 1;
+    font-weight: bold;
+    font-size: var(--font-up-1);
+    min-width: 0;
+    cursor: default;
+    padding: 0.15em 0.35em;
+    border-radius: var(--d-border-radius);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--primary-very-low);
+    }
+
+    &.--placeholder {
+      color: var(--primary-medium);
+      font-style: italic;
+      font-weight: normal;
+    }
+  }
+
   &__link-count {
     background: var(--primary-low);
     color: var(--primary-high);
@@ -201,8 +232,8 @@ body.doc-simple-mode {
   &__links {
     display: flex;
     flex-direction: column;
-    gap: 0.25em;
-    margin-left: 1.75em;
+    margin-left: 2em;
+    padding-left: 0.5em;
   }
 
   &__section-body {
@@ -217,31 +248,155 @@ body.doc-simple-mode {
 
   &__link {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.5em;
-    padding: 0.25em 0;
+    padding: 0.15em 0;
     min-height: 2em;
+    position: relative;
 
     &.dragging {
       opacity: 0.5;
     }
 
-    &.drag-above {
-      border-top: 2px solid var(--tertiary);
+    &.drag-above::before,
+    &.drag-below::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--tertiary);
+      border-radius: 1px;
     }
 
-    &.drag-below {
-      border-bottom: 2px solid var(--tertiary);
+    &.drag-above::before {
+      top: -1px;
+    }
+
+    &.drag-below::after {
+      bottom: -1px;
     }
 
     &.--duplicate {
-      border-left: 3px solid var(--highlight);
-      padding-left: 0.5em;
+      .doc-category-index-editor__link-card {
+        border-left: 3px solid var(--highlight);
+      }
     }
 
     input {
       margin: 0;
     }
+  }
+
+  &__link-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    flex: 1;
+    min-width: 0;
+    background: var(--secondary);
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 0.35em 0.5em;
+    box-shadow: 0 1px 3px rgb(0, 0, 0, 0.06);
+    cursor: default;
+    transition:
+      box-shadow 0.15s,
+      border-color 0.15s;
+
+    &:hover {
+      border-color: var(--primary-low-mid);
+    }
+
+    &.--editing {
+      padding: 0.5em;
+      gap: 0.5em;
+      border-color: var(--tertiary);
+      box-shadow: 0 2px 6px rgb(0, 0, 0, 0.1);
+
+      .d-icon-grid-picker__trigger {
+        border: 1px solid var(--primary-low-mid);
+        border-radius: var(--d-border-radius);
+        align-self: stretch;
+        padding-inline: 0.75em;
+      }
+    }
+
+    &.--adding {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5em;
+      padding: 0.5em;
+      border-color: var(--tertiary);
+
+      .select-kit {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+  }
+
+  &__link-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    min-width: 0;
+  }
+
+  &__link-icon {
+    flex-shrink: 0;
+    color: var(--primary-medium);
+  }
+
+  &__link-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.--placeholder {
+      color: var(--primary-medium);
+      font-style: italic;
+    }
+  }
+
+  &__link-href-preview {
+    color: var(--primary-medium);
+    font-size: var(--font-down-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 1.75em;
+  }
+
+  &__link-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+    }
+  }
+
+  &__link-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    margin-top: 0.25em;
+    border-top: 1px solid var(--primary-very-low);
+    padding-top: 0.35em;
+  }
+
+  &__confirm-edit-btn {
+    margin-left: auto;
+  }
+
+  &__edit-btn {
+    flex-shrink: 0;
   }
 
   &__duplicate-icon {
@@ -263,12 +418,20 @@ body.doc-simple-mode {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-style: dotted;
 
-    &:hover {
-      color: var(--tertiary-hover);
+    &:not(.--readonly) {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+
+      &:hover {
+        color: var(--tertiary-hover);
+      }
+    }
+
+    &.--readonly {
+      color: var(--primary-medium);
+      cursor: default;
     }
   }
 
@@ -301,6 +464,11 @@ body.doc-simple-mode {
     &:active {
       cursor: grabbing;
     }
+
+    /* Align with section header content */
+    .doc-category-index-editor__section-row > & {
+      margin-top: 0.75em;
+    }
   }
 
   &__remove-btn {
@@ -308,14 +476,8 @@ body.doc-simple-mode {
   }
 
   &__inline-topic-chooser {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    margin: 0.5em 0 0.5em 1.75em;
-
-    .select-kit {
-      flex: 1;
-    }
+    margin: 0.35em 0 0.35em 2em;
+    padding-left: 0.5em;
   }
 
   &__section-actions {
@@ -323,7 +485,8 @@ body.doc-simple-mode {
     align-items: center;
     gap: 0.5em;
     margin-top: 0.5em;
-    margin-left: 1.75em;
+    margin-left: 2em;
+    padding-left: 0.5em;
   }
 
   &__footer {
