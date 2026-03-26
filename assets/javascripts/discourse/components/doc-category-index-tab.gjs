@@ -1,10 +1,13 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
-import { hash } from "@ember/helper";
-import { on } from "@ember/modifier";
+import { fn, hash } from "@ember/helper";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
+import DButton from "discourse/components/d-button";
+import DropdownMenu from "discourse/components/dropdown-menu";
+import DMenu from "discourse/float-kit/components/d-menu";
+import icon from "discourse/helpers/d-icon";
 import { bind } from "discourse/lib/decorators";
 import Topic from "discourse/models/topic";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
@@ -21,6 +24,18 @@ export default class DocCategoryIndexTab extends Component {
   @tracked indexTopic = null;
   @tracked loadingIndexTopic = !!this.indexTopicId;
   @tracked indexTopicContent = [];
+
+  constructor() {
+    super(...arguments);
+    this.args.registerAfterReset?.(() => {
+      this.mode = this.initialMode;
+      this.indexTopic = null;
+      this.indexTopicContent = [];
+      if (this.indexTopicId) {
+        this.loadIndexTopic();
+      }
+    });
+  }
 
   get category() {
     return this.args.category;
@@ -95,17 +110,31 @@ export default class DocCategoryIndexTab extends Component {
     }
   }
 
-  @action
-  onChangeMode(event) {
-    const newMode = event.target.value;
-    if (
-      newMode === MODE_TOPIC &&
-      this.mode === MODE_DIRECT &&
-      this.indexData?.length > 0
-    ) {
-      // Reset the select immediately (dialog is async)
-      event.target.value = MODE_DIRECT;
+  get currentModeLabel() {
+    return this.isTopicMode
+      ? i18n("doc_categories.category_settings.index_editor.mode_topic")
+      : i18n("doc_categories.category_settings.index_editor.mode_direct");
+  }
 
+  @action
+  switchToDirectMode(dMenu) {
+    dMenu.close();
+    if (this.isDirectMode) {
+      return;
+    }
+    this.mode = MODE_DIRECT;
+    if (this.category) {
+      this.category.set("doc_index_topic_id", null);
+    }
+  }
+
+  @action
+  switchToTopicMode(dMenu) {
+    dMenu.close();
+    if (this.isTopicMode) {
+      return;
+    }
+    if (this.indexData?.length > 0) {
       this.dialog.yesNoConfirm({
         message: i18n(
           "doc_categories.category_settings.index_editor.mode_switch_warning"
@@ -116,12 +145,7 @@ export default class DocCategoryIndexTab extends Component {
       });
       return;
     }
-
-    this.mode = newMode;
-
-    if (newMode === MODE_DIRECT && this.category) {
-      this.category.set("doc_index_topic_id", null);
-    }
+    this.mode = MODE_TOPIC;
   }
 
   @action
@@ -142,17 +166,57 @@ export default class DocCategoryIndexTab extends Component {
         <label>{{i18n
             "doc_categories.category_settings.index_editor.mode_label"
           }}</label>
-        <select
-          class="doc-category-index-tab__mode-dropdown"
-          {{on "change" this.onChangeMode}}
+        <DMenu
+          @identifier="doc-index-mode-selector"
+          @triggerClass="btn-default doc-category-index-tab__mode-trigger"
         >
-          <option value="direct" selected={{this.isDirectMode}}>
-            {{i18n "doc_categories.category_settings.index_editor.mode_direct"}}
-          </option>
-          <option value="topic" selected={{this.isTopicMode}}>
-            {{i18n "doc_categories.category_settings.index_editor.mode_topic"}}
-          </option>
-        </select>
+          <:trigger>
+            <span>{{this.currentModeLabel}}</span>
+            {{icon "angle-down"}}
+          </:trigger>
+          <:content as |dMenu|>
+            <DropdownMenu as |dropdown|>
+              <dropdown.item>
+                <DButton
+                  @action={{fn this.switchToDirectMode dMenu}}
+                  class="--with-description doc-category-index-tab__mode-option"
+                >
+                  <div class="doc-category-index-tab__mode-option-texts">
+                    <span
+                      class="doc-category-index-tab__mode-option-label"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_direct"
+                      }}</span>
+                    <span
+                      class="doc-category-index-tab__mode-option-description"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_direct_description"
+                      }}</span>
+                  </div>
+                </DButton>
+              </dropdown.item>
+              <dropdown.item>
+                <DButton
+                  @action={{fn this.switchToTopicMode dMenu}}
+                  class="--with-description doc-category-index-tab__mode-option"
+                >
+                  <div class="doc-category-index-tab__mode-option-texts">
+                    <span
+                      class="doc-category-index-tab__mode-option-label"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_topic"
+                      }}</span>
+                    <span
+                      class="doc-category-index-tab__mode-option-description"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_topic_description"
+                      }}</span>
+                  </div>
+                </DButton>
+              </dropdown.item>
+            </DropdownMenu>
+          </:content>
+        </DMenu>
       </div>
 
       {{#if this.isTopicMode}}
