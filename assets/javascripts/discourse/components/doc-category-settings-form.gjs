@@ -16,8 +16,12 @@ export default class DocCategorySettingsForm extends Component {
   @tracked indexTopic = null;
   @tracked loadingIndexTopic = !!this.indexTopicId;
   @tracked indexTopicContent = this.calculateIndexTopicContent();
-  @resettableTracked
-  indexTopicId = this.args.outletArgs?.category?.doc_index_topic_id ?? null;
+  @resettableTracked indexTopicId = this.#effectiveTopicId();
+
+  #effectiveTopicId() {
+    const id = this.args.outletArgs?.category?.doc_index_topic_id;
+    return id > 0 ? id : null;
+  }
 
   get category() {
     return this.args.outletArgs?.category;

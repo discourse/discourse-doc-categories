@@ -57,14 +57,16 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   get indexTopicId() {
-    return this.category?.doc_index_topic_id;
+    const id = this.category?.doc_index_topic_id;
+    return id > 0 ? id : null;
   }
 
   get initialMode() {
-    if (this.category?.doc_index_topic_id) {
+    const topicId = this.category?.doc_index_topic_id;
+    if (topicId != null && topicId > 0) {
       return MODE_TOPIC;
     }
-    if (this.indexData?.length > 0) {
+    if (topicId === -1) {
       return MODE_DIRECT;
     }
     if (this.args.transientData?._docIndexMode) {
@@ -167,7 +169,7 @@ export default class DocCategoryIndexTab extends Component {
     }
     this.mode = MODE_DIRECT;
     if (this.category) {
-      this.category.set("doc_index_topic_id", null);
+      this.category.set("doc_index_topic_id", -1);
     }
     this.args.form?.set("_docIndexMode", MODE_DIRECT);
   }

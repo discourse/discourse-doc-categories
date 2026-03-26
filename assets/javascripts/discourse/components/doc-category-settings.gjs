@@ -16,8 +16,7 @@ export default class DocCategorySettings extends Component {
 
   @tracked indexTopic;
   @tracked loadingIndexTopic = !!this.indexTopicId;
-  @resettableTracked
-  indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
+  @resettableTracked indexTopicId = this.#effectiveTopicId();
 
   constructor() {
     super(...arguments);
@@ -25,6 +24,11 @@ export default class DocCategorySettings extends Component {
     if (this.indexTopicId) {
       this.loadIndexTopic();
     }
+  }
+
+  #effectiveTopicId() {
+    const id = this.args.outletArgs.category.doc_index_topic_id;
+    return id > 0 ? id : null;
   }
 
   get category() {
