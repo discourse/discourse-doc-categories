@@ -1224,6 +1224,53 @@ export default class DocCategoryIndexEditor extends Component {
     return this.sections.length === 0;
   }
 
+  get validationErrors() {
+    const errors = [];
+
+    if (this.editingCount > 0) {
+      errors.push(
+        i18n(
+          "doc_categories.category_settings.index_editor.validation_pending_changes"
+        )
+      );
+    }
+
+    for (const section of this.sections) {
+      if (!section.title?.trim()) {
+        errors.push(
+          i18n(
+            "doc_categories.category_settings.index_editor.validation_empty_section_title"
+          )
+        );
+      }
+      if (section.links.length === 0) {
+        errors.push(
+          i18n(
+            "doc_categories.category_settings.index_editor.validation_empty_section"
+          )
+        );
+      }
+      for (const link of section.links) {
+        if (!link.title?.trim()) {
+          errors.push(
+            i18n(
+              "doc_categories.category_settings.index_editor.validation_empty_link_title"
+            )
+          );
+        }
+        if (!link.href?.trim()) {
+          errors.push(
+            i18n(
+              "doc_categories.category_settings.index_editor.validation_empty_link_url"
+            )
+          );
+        }
+      }
+    }
+
+    return errors;
+  }
+
   get duplicateHrefs() {
     const counts = new Map();
     for (const section of this.sections) {
@@ -1455,6 +1502,10 @@ export default class DocCategoryIndexEditor extends Component {
   /* Apply (saves doc-index only, without saving category) */
   @action
   async apply() {
+    if (this.validationErrors.length > 0) {
+      this.saveState = "error";
+      return;
+    }
     this.saveState = "saving";
     const payload = {
       sections: this.sections.map((section) => ({
