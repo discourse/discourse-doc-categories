@@ -14,6 +14,10 @@ describe "Doc Category Index Editor" do
 
   def visit_doc_index_tab
     page.visit("/c/#{category.slug}/edit/doc-index")
+    expect(page).to have_css(".doc-category-index-tab")
+
+    find(".doc-category-index-tab__mode-selector .fk-d-menu__trigger").click
+    find(".doc-category-index-tab__mode-option-label", text: "Visual editor").click
     expect(page).to have_css(".doc-category-index-editor")
   end
 
@@ -85,6 +89,40 @@ describe "Doc Category Index Editor" do
     expect(index).to be_present
     expect(index.sidebar_sections.count).to eq(1)
     expect(index.sidebar_sections.first.title).to eq("Applied Section")
+  end
+
+  it "clears doc-index when switching to disabled mode and saving" do
+    # First create an index
+    visit_doc_index_tab
+
+    add_section_with_manual_link(
+      section_title: "To Be Deleted",
+      link_title: "Delete Me",
+      link_url: "https://example.com/delete",
+    )
+
+    click_apply
+
+    expect(page).to have_button(
+      I18n.t("js.doc_categories.category_settings.index_editor.applied"),
+      disabled: true,
+      wait: 5,
+    )
+
+    index = DocCategories::Index.find_by(category_id: category.id)
+    expect(index).to be_present
+
+    # Now switch to disabled mode and save
+    find(".doc-category-index-tab__mode-selector .fk-d-menu__trigger").click
+    find(".doc-category-index-tab__mode-option-label", text: "Disabled").click
+
+    expect(page).to have_css(".doc-category-index-tab__none-help")
+
+    save_category
+
+    expect(page).to have_css(".fk-d-toast", wait: 5)
+
+    expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
   end
 
   it "preserves doc-index state across tab switches" do

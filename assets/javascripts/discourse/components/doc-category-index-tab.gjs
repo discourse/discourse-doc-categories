@@ -4,6 +4,7 @@ import { fn, hash } from "@ember/helper";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
+import { trustHTML } from "@ember/template";
 import DButton from "discourse/components/d-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
@@ -14,6 +15,7 @@ import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
 import DocCategoryIndexEditor from "./doc-category-index-editor";
 
+const MODE_NONE = "none";
 const MODE_TOPIC = "topic";
 const MODE_DIRECT = "direct";
 
@@ -24,9 +26,22 @@ export default class DocCategoryIndexTab extends Component {
   @tracked indexTopic = null;
   @tracked loadingIndexTopic = !!this.indexTopicId;
   @tracked indexTopicContent = [];
+  @tracked toolbarElement = null;
+  _editorInstance = null;
 
   constructor() {
     super(...arguments);
+    this.args.registerValidator?.(() => {
+      if (this.isNoneMode) {
+        this.category?.set("doc_index_sections", "[]");
+        this.category?.set("doc_index_topic_id", null);
+      } else if (this.isDirectMode && this._editorInstance) {
+        this.category?.set(
+          "doc_index_sections",
+          this._editorInstance.serializedSections
+        );
+      }
+    });
     this.args.registerAfterReset?.(() => {
       this.mode = this.initialMode;
       this.indexTopic = null;
@@ -49,7 +64,17 @@ export default class DocCategoryIndexTab extends Component {
     if (this.category?.doc_index_topic_id) {
       return MODE_TOPIC;
     }
-    return MODE_DIRECT;
+    if (this.indexData?.length > 0) {
+      return MODE_DIRECT;
+    }
+    if (this.args.transientData?._docIndexMode) {
+      return this.args.transientData._docIndexMode;
+    }
+    return MODE_NONE;
+  }
+
+  get isNoneMode() {
+    return this.mode === MODE_NONE;
   }
 
   get isTopicMode() {
@@ -111,9 +136,27 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   get currentModeLabel() {
-    return this.isTopicMode
-      ? i18n("doc_categories.category_settings.index_editor.mode_topic")
-      : i18n("doc_categories.category_settings.index_editor.mode_direct");
+    if (this.isTopicMode) {
+      return i18n("doc_categories.category_settings.index_editor.mode_topic");
+    } else if (this.isDirectMode) {
+      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+    }
+    return i18n("doc_categories.category_settings.index_editor.mode_none");
+  }
+
+  @action
+  switchToNoneMode(dMenu) {
+    dMenu.close();
+    if (this.isNoneMode) {
+      return;
+    }
+    this.mode = MODE_NONE;
+    if (this.category) {
+      this.category.set("doc_index_topic_id", null);
+      this.category.set("doc_index_sections", "[]");
+      this.category.set("doc_category_index", null);
+    }
+    this.args.form?.set("_docIndexMode", MODE_NONE);
   }
 
   @action
@@ -126,6 +169,7 @@ export default class DocCategoryIndexTab extends Component {
     if (this.category) {
       this.category.set("doc_index_topic_id", null);
     }
+    this.args.form?.set("_docIndexMode", MODE_DIRECT);
   }
 
   @action
@@ -149,6 +193,16 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   @action
+  registerEditor(editor) {
+    this._editorInstance = editor;
+  }
+
+  @action
+  registerToolbarElement(element) {
+    this.toolbarElement = element;
+  }
+
+  @action
   onChangeIndexTopic(topicId, topic) {
     this.indexTopic = topic;
     this.indexTopicContent = topic ? [topic] : [];
@@ -160,9 +214,10 @@ export default class DocCategoryIndexTab extends Component {
 
   <template>
     <div class="doc-category-index-tab" {{didInsert this.loadIndexTopic}}>
-      <h3>{{i18n "doc_categories.category_settings.title"}}</h3>
-
-      <div class="doc-category-index-tab__mode-selector">
+      <div
+        class="doc-category-index-tab__mode-selector"
+        {{didInsert this.registerToolbarElement}}
+      >
         <DMenu
           @identifier="doc-index-mode-selector"
           @triggerClass="btn-default doc-category-index-tab__mode-trigger"
@@ -211,13 +266,45 @@ export default class DocCategoryIndexTab extends Component {
                   </div>
                 </DButton>
               </dropdown.item>
+              <dropdown.item>
+                <DButton
+                  @action={{fn this.switchToNoneMode dMenu}}
+                  class="--with-description doc-category-index-tab__mode-option"
+                >
+                  <div class="doc-category-index-tab__mode-option-texts">
+                    <span
+                      class="doc-category-index-tab__mode-option-label"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_none"
+                      }}</span>
+                    <span
+                      class="doc-category-index-tab__mode-option-description"
+                    >{{i18n
+                        "doc_categories.category_settings.index_editor.mode_none_description"
+                      }}</span>
+                  </div>
+                </DButton>
+              </dropdown.item>
             </DropdownMenu>
           </:content>
         </DMenu>
       </div>
 
-      {{#if this.isTopicMode}}
+      {{#if this.isNoneMode}}
+        <p class="doc-category-index-tab__none-help">
+          {{i18n
+            "doc_categories.category_settings.index_editor.none_mode_help"
+          }}
+        </p>
+      {{else if this.isTopicMode}}
         <div class="doc-category-index-tab__topic-mode">
+          <p class="doc-category-index-tab__topic-help">
+            {{trustHTML
+              (i18n
+                "doc_categories.category_settings.index_editor.topic_mode_help"
+              )
+            }}
+          </p>
           <TopicChooser
             @value={{this.indexTopicId}}
             @content={{this.indexTopicContent}}
@@ -237,9 +324,10 @@ export default class DocCategoryIndexTab extends Component {
           @category={{this.category}}
           @categoryId={{this.category.id}}
           @indexData={{this.indexData}}
+          @toolbarElement={{this.toolbarElement}}
           @form={{@form}}
           @transientData={{@transientData}}
-          @registerValidator={{@registerValidator}}
+          @onRegisterEditor={{this.registerEditor}}
           @registerAfterReset={{@registerAfterReset}}
         />
       {{/if}}
