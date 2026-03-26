@@ -1140,7 +1140,15 @@ export default class DocCategoryIndexEditor extends Component {
 
   @bind
   _saveToTransientData() {
-    this.args.form?.set("_docIndexSections", this._serializeSections());
+    const sections = this._serializeSections();
+    this.args.form?.set("_docIndexSections", sections);
+
+    // Keep FormKit form data in sync so the save payload is correct
+    const serialized = sections.length > 0 ? JSON.stringify(sections) : null;
+    this.args.form?.set("doc_index_sections", serialized);
+    if (serialized) {
+      this.args.form?.set("doc_index_topic_id", -1);
+    }
   }
 
   get isEmpty() {

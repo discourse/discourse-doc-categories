@@ -1,4 +1,3 @@
-import { tracked } from "@glimmer/tracking";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DocCategorySettings from "../components/doc-category-settings";
 import DocSimpleModeToggle from "../components/doc-simple-mode-toggle";
@@ -13,14 +12,6 @@ export default {
     const siteSettings = container.lookup("service:site-settings");
 
     withPluginApi((api) => {
-      api.modifyClass(
-        "model:category",
-        (Superclass) =>
-          class extends Superclass {
-            @tracked doc_index_topic_id;
-          }
-      );
-
       api.registerCategorySaveProperty("doc_index_topic_id");
       api.registerCategorySaveProperty("doc_index_sections");
       if (!siteSettings.enable_simplified_category_creation) {
