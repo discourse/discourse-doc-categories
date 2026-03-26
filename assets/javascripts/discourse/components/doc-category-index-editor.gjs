@@ -5,6 +5,7 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trackedArray, trackedObject } from "@ember/reactive/collections";
 import { service } from "@ember/service";
+import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DIconGridPicker from "discourse/components/d-icon-grid-picker";
 import DropdownMenu from "discourse/components/dropdown-menu";
@@ -16,19 +17,51 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
+import { not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
-/* Draggable link row */
+const autoFocus = modifier((element) => {
+  element.focus();
+  element.select();
+});
+
+/* Draggable link row with view/edit mode */
 class IndexEditorLink extends Component {
   @service site;
 
   @tracked dragCssClass;
+  @tracked editing = false;
   @tracked swapping = false;
   @tracked swapTopicContent = [];
   dragCount = 0;
 
+  constructor() {
+    super(...arguments);
+    /* New empty links auto-enter edit mode */
+    if (!this.args.link.title && !this.args.link.href) {
+      this.editing = true;
+    }
+  }
+
   get isTopicLink() {
     return this.args.link.type === "topic";
+  }
+
+  @action
+  switchToManualLink() {
+    this.args.link.type = "manual";
+    this.args.link.href = "";
+    this.swapping = false;
+    this.swapTopicContent = [];
+    this.args.onChange?.();
+  }
+
+  @action
+  switchToTopicLink() {
+    this.args.link.type = "topic";
+    this.args.link.href = "";
+    this.swapping = true;
+    this.args.onChange?.();
   }
 
   get isDuplicate() {
@@ -46,11 +79,69 @@ class IndexEditorLink extends Component {
     return classes.join(" ");
   }
 
+  get displayTitle() {
+    return (
+      this.args.link.title ||
+      i18n(
+        "doc_categories.category_settings.index_editor.link_title_placeholder"
+      )
+    );
+  }
+
   isAboveElement(event) {
     event.preventDefault();
     const target = event.currentTarget;
     const domRect = target.getBoundingClientRect();
     return event.offsetY < domRect.height / 2;
+  }
+
+  get canConfirm() {
+    return !!this.args.link.href;
+  }
+
+  @action
+  enterEdit() {
+    this.editing = true;
+  }
+
+  @action
+  confirmEdit() {
+    if (!this.canConfirm) {
+      return;
+    }
+    this.editing = false;
+    this.swapping = false;
+    this.swapTopicContent = [];
+  }
+
+  @action
+  cancelEdit() {
+    this.editing = false;
+    this.swapping = false;
+    this.swapTopicContent = [];
+  }
+
+  @action
+  onCardFocusOut(event) {
+    const card = event.currentTarget;
+    requestAnimationFrame(() => {
+      /* Don't close if focus moved within the card or into a floating menu (icon picker, select-kit) */
+      if (
+        card.contains(document.activeElement) ||
+        document.querySelector(
+          ".fk-d-menu__content, .select-kit-body, .d-modal"
+        )
+      ) {
+        return;
+      }
+      /* Don't auto-close if URL is still empty */
+      if (!this.canConfirm) {
+        return;
+      }
+      this.editing = false;
+      this.swapping = false;
+      this.swapTopicContent = [];
+    });
   }
 
   @action
@@ -68,20 +159,23 @@ class IndexEditorLink extends Component {
   @action
   dragOver(event) {
     event.preventDefault();
+    event.stopPropagation();
     if (this.dragCssClass !== "dragging") {
-      this.dragCssClass = this.isAboveElement(event)
-        ? "drag-above"
-        : "drag-below";
+      const isAbove = this.isAboveElement(event);
+      this._isAbove = isAbove;
+      this.dragCssClass = isAbove ? "drag-above" : "drag-below";
     }
   }
 
   @action
-  dragEnter() {
+  dragEnter(event) {
+    event.stopPropagation();
     this.dragCount++;
   }
 
   @action
-  dragLeave() {
+  dragLeave(event) {
+    event.stopPropagation();
     this.dragCount--;
     if (
       this.dragCount === 0 &&
@@ -97,11 +191,7 @@ class IndexEditorLink extends Component {
   dropItem(event) {
     event.stopPropagation();
     this.dragCount = 0;
-    this.args.onDrop(
-      this.args.link,
-      this.args.section,
-      this.isAboveElement(event)
-    );
+    this.args.onDrop(this.args.link, this.args.section, this._isAbove);
     this.dragCssClass = null;
   }
 
@@ -153,8 +243,15 @@ class IndexEditorLink extends Component {
 
   @action
   onKeydown(event) {
-    if (event.key === "Escape" && this.swapping) {
-      this.cancelSwap();
+    if (event.key === "Enter" && this.canConfirm) {
+      event.preventDefault();
+      this.confirmEdit();
+    } else if (event.key === "Escape") {
+      if (this.swapping) {
+        this.cancelSwap();
+      } else {
+        this.cancelEdit();
+      }
       event.stopPropagation();
     }
   }
@@ -198,96 +295,212 @@ class IndexEditorLink extends Component {
         </span>
       {{/if}}
 
-      <DIconGridPicker
-        @value={{@link.icon}}
-        @onChange={{this.updateIcon}}
-        @favorites={{@favoriteIcons}}
-        @showSelectedName={{true}}
-      />
-
-      {{#if this.isTopicLink}}
-        <input
-          type="text"
-          value={{@link.title}}
-          placeholder={{i18n
-            "doc_categories.category_settings.index_editor.link_title_placeholder"
-          }}
-          class="doc-category-index-editor__link-title"
-          {{on "input" this.updateTitle}}
-        />
-        {{#if this.swapping}}
-          <div class="doc-category-index-editor__swap-chooser">
-            <TopicChooser
-              @value={{null}}
-              @content={{this.swapTopicContent}}
-              @onChange={{this.onSwapTopic}}
-              @options={{hash
-                additionalFilters=this.searchFilters
-                none="doc_categories.category_settings.index_editor.select_topic"
+      {{#if this.editing}}
+        {{! Edit mode: expanded card with all fields }}
+        <div
+          class="doc-category-index-editor__link-card --editing"
+          {{on "focusout" this.onCardFocusOut}}
+        >
+          <div class="doc-category-index-editor__link-edit-row">
+            <DIconGridPicker
+              @value={{@link.icon}}
+              @onChange={{this.updateIcon}}
+              @favorites={{@favoriteIcons}}
+              @showSelectedName={{true}}
+            />
+            <input
+              type="text"
+              value={{@link.title}}
+              placeholder={{i18n
+                "doc_categories.category_settings.index_editor.link_title_placeholder"
               }}
+              class="doc-category-index-editor__link-title"
+              {{autoFocus}}
+              {{on "input" this.updateTitle}}
+            />
+          </div>
+
+          <div class="doc-category-index-editor__link-edit-row">
+            {{#if this.isTopicLink}}
+              {{#if this.swapping}}
+                <div class="doc-category-index-editor__swap-chooser">
+                  <TopicChooser
+                    @value={{null}}
+                    @content={{this.swapTopicContent}}
+                    @onChange={{this.onSwapTopic}}
+                    @options={{hash
+                      additionalFilters=this.searchFilters
+                      none="doc_categories.category_settings.index_editor.select_topic"
+                    }}
+                  />
+                  <DButton
+                    @icon="xmark"
+                    @action={{this.cancelSwap}}
+                    class="btn-flat btn-small"
+                  />
+                </div>
+              {{else}}
+                <span
+                  class="doc-category-index-editor__link-topic-href --readonly"
+                >
+                  {{@link.href}}
+                </span>
+                <DButton
+                  @icon="arrows-rotate"
+                  @action={{this.startSwap}}
+                  @label="doc_categories.category_settings.index_editor.replace_topic"
+                  class="btn-flat btn-small"
+                />
+              {{/if}}
+            {{else}}
+              <input
+                type="text"
+                value={{@link.href}}
+                placeholder={{i18n
+                  "doc_categories.category_settings.index_editor.link_url_placeholder"
+                }}
+                class="doc-category-index-editor__link-url"
+                {{on "input" this.updateHref}}
+              />
+            {{/if}}
+          </div>
+
+          <div class="doc-category-index-editor__link-edit-actions">
+            {{#if this.isTopicLink}}
+              <DButton
+                @icon="link"
+                @action={{this.switchToManualLink}}
+                @label="doc_categories.category_settings.index_editor.switch_to_url"
+                class="btn-flat btn-small"
+              />
+            {{else}}
+              <DButton
+                @icon="file"
+                @action={{this.switchToTopicLink}}
+                @label="doc_categories.category_settings.index_editor.switch_to_topic"
+                class="btn-flat btn-small"
+              />
+            {{/if}}
+            <DButton
+              @icon="check"
+              @action={{this.confirmEdit}}
+              @disabled={{not this.canConfirm}}
+              @title="doc_categories.category_settings.index_editor.confirm_edit"
+              class="btn-flat btn-small doc-category-index-editor__confirm-edit-btn"
             />
             <DButton
               @icon="xmark"
-              @action={{this.cancelSwap}}
-              class="btn-flat btn-small"
+              @action={{this.cancelEdit}}
+              @title="cancel"
+              class="btn-flat btn-small doc-category-index-editor__cancel-edit-btn"
             />
           </div>
-        {{else}}
-          <span
-            class="doc-category-index-editor__link-topic-href"
-            role="button"
-            title={{i18n
-              "doc_categories.category_settings.index_editor.click_to_swap"
-            }}
-            {{on "click" this.startSwap}}
-          >
-            {{@link.href}}
-          </span>
-        {{/if}}
+        </div>
       {{else}}
-        <input
-          type="text"
-          value={{@link.title}}
-          placeholder={{i18n
-            "doc_categories.category_settings.index_editor.link_title_placeholder"
-          }}
-          class="doc-category-index-editor__link-title"
-          {{on "input" this.updateTitle}}
-        />
-        <input
-          type="text"
-          value={{@link.href}}
-          placeholder={{i18n
-            "doc_categories.category_settings.index_editor.link_url_placeholder"
-          }}
-          class="doc-category-index-editor__link-url"
-          {{on "input" this.updateHref}}
-        />
+        {{! View mode: card/pill with text labels }}
+        {{! template-lint-disable no-invalid-interactive }}
+        <div
+          class="doc-category-index-editor__link-card"
+          {{on "dblclick" this.enterEdit}}
+        >
+          <div class="doc-category-index-editor__link-card-header">
+            <span class="doc-category-index-editor__link-icon">
+              {{icon (or @link.icon "far-file")}}
+            </span>
+            <span
+              class={{concatClass
+                "doc-category-index-editor__link-label"
+                (unless @link.title "--placeholder")
+              }}
+            >
+              {{this.displayTitle}}
+            </span>
+            <DButton
+              @icon="pencil"
+              @action={{this.enterEdit}}
+              @title="doc_categories.category_settings.index_editor.edit_link"
+              class="btn-flat btn-small doc-category-index-editor__edit-btn"
+            />
+            <DButton
+              @icon="trash-can"
+              @action={{fn @onRemove @link}}
+              @title="doc_categories.category_settings.index_editor.remove_link"
+              class="btn-flat btn-small doc-category-index-editor__remove-btn"
+            />
+          </div>
+          {{#if @link.href}}
+            <span class="doc-category-index-editor__link-href-preview">
+              {{@link.href}}
+            </span>
+          {{/if}}
+        </div>
       {{/if}}
-
-      <DButton
-        @icon="trash-can"
-        @action={{fn @onRemove @link}}
-        @title="doc_categories.category_settings.index_editor.remove_link"
-        class="btn-flat btn-small doc-category-index-editor__remove-btn"
-      />
     </div>
   </template>
 }
 
 /* Draggable, collapsible section */
 class IndexEditorSection extends Component {
+  @service dialog;
   @service site;
 
   @tracked dragCssClass;
   @tracked collapsed = false;
+  @tracked editingTitle = false;
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
   dragCount = 0;
   _autoExpandTimer = null;
 
+  constructor() {
+    super(...arguments);
+    /* New sections with empty title auto-enter title edit mode */
+    if (!this.args.section.title) {
+      this.editingTitle = true;
+    }
+  }
+
   get linkCount() {
     return this.args.section.links.length;
+  }
+
+  get hasDuplicateLinks() {
+    return this.args.section.links.some((link) =>
+      this.args.duplicateHrefs?.has(link.href)
+    );
+  }
+
+  get isDuplicateTitle() {
+    return this.args.duplicateTitles?.has(
+      this.args.section.title?.toLowerCase()
+    );
+  }
+
+  get displayTitle() {
+    return (
+      this.args.section.title ||
+      i18n(
+        "doc_categories.category_settings.index_editor.section_title_placeholder"
+      )
+    );
+  }
+
+  @action
+  enterTitleEdit() {
+    this.editingTitle = true;
+  }
+
+  @action
+  confirmTitleEdit() {
+    this.editingTitle = false;
+  }
+
+  @action
+  onTitleKeydown(event) {
+    if (event.key === "Enter" || event.key === "Escape") {
+      event.preventDefault();
+      this.confirmTitleEdit();
+    }
   }
 
   isAboveElement(event) {
@@ -304,7 +517,9 @@ class IndexEditorSection extends Component {
 
   @action
   sectionDragHasStarted(event) {
-    const section = event.target.closest(".doc-category-index-editor__section");
+    const section = event.target.closest(
+      ".doc-category-index-editor__section-row"
+    );
     if (section) {
       event.dataTransfer.setDragImage(section, 0, 0);
     }
@@ -316,11 +531,16 @@ class IndexEditorSection extends Component {
   @action
   sectionDragOver(event) {
     event.preventDefault();
-    if (this.dragCssClass !== "dragging") {
-      this.dragCssClass = this.isAboveElement(event)
-        ? "drag-above"
-        : "drag-below";
+    if (this.dragCssClass === "dragging") {
+      return;
     }
+    /* Only show section drop indicators when a section is being dragged */
+    if (!this.args.isDraggingSection) {
+      return;
+    }
+    this.dragCssClass = this.isAboveElement(event)
+      ? "drag-above"
+      : "drag-below";
   }
 
   @action
@@ -366,6 +586,7 @@ class IndexEditorSection extends Component {
   sectionDragEnd() {
     this.dragCount = 0;
     this.dragCssClass = null;
+    this.args.onSectionDragEnd?.();
     if (this._autoExpandTimer) {
       clearTimeout(this._autoExpandTimer);
       this._autoExpandTimer = null;
@@ -420,11 +641,18 @@ class IndexEditorSection extends Component {
 
   @action
   removeLink(link) {
-    const idx = this.args.section.links.indexOf(link);
-    if (idx !== -1) {
-      this.args.section.links.splice(idx, 1);
-    }
-    this.args.onChange?.();
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.confirm_remove_link"
+      ),
+      didConfirm: () => {
+        const idx = this.args.section.links.indexOf(link);
+        if (idx !== -1) {
+          this.args.section.links.splice(idx, 1);
+        }
+        this.args.onChange?.();
+      },
+    });
   }
 
   get searchFilters() {
@@ -435,6 +663,7 @@ class IndexEditorSection extends Component {
   }
 
   <template>
+    {{! template-lint-disable no-invalid-interactive }}
     <div
       {{on "dragover" this.sectionDragOver}}
       {{on "dragenter" this.sectionDragEnter}}
@@ -442,130 +671,177 @@ class IndexEditorSection extends Component {
       {{on "dragend" this.sectionDragEnd}}
       {{on "drop" this.sectionDropItem}}
       class={{concatClass
-        "doc-category-index-editor__section"
+        "doc-category-index-editor__section-row"
         this.dragCssClass
       }}
     >
-      <div class="doc-category-index-editor__section-header">
-        <DButton
-          @icon={{if this.collapsed "angle-right" "angle-down"}}
-          @action={{this.toggleCollapsed}}
-          class="btn-flat btn-small doc-category-index-editor__collapse-btn"
-        />
+      {{#if this.site.desktopView}}
+        <span
+          class="doc-category-index-editor__drag-handle"
+          draggable="true"
+          {{on "dragstart" this.sectionDragHasStarted}}
+        >
+          {{icon "grip-lines"}}
+        </span>
+      {{/if}}
 
-        {{#if this.site.desktopView}}
-          <span
-            class="doc-category-index-editor__drag-handle"
-            draggable="true"
-            {{on "dragstart" this.sectionDragHasStarted}}
-          >
-            {{icon "grip-lines"}}
-          </span>
-        {{/if}}
+      <div class="doc-category-index-editor__section">
+        <div class="doc-category-index-editor__section-header">
+          <DButton
+            @icon={{if this.collapsed "angle-right" "angle-down"}}
+            @action={{this.toggleCollapsed}}
+            class="btn-flat btn-small doc-category-index-editor__collapse-btn"
+          />
 
-        <input
-          type="text"
-          value={{@section.title}}
-          placeholder={{i18n
-            "doc_categories.category_settings.index_editor.section_title_placeholder"
-          }}
-          class="doc-category-index-editor__section-title"
-          {{on "input" this.updateTitle}}
-        />
-
-        {{#if this.collapsed}}
-          <span class="doc-category-index-editor__link-count">
-            {{this.linkCount}}
-          </span>
-        {{/if}}
-
-        <DButton
-          @icon="trash-can"
-          @action={{fn @onRemove @section}}
-          @title="doc_categories.category_settings.index_editor.remove_section"
-          class="btn-flat btn-small doc-category-index-editor__remove-btn"
-        />
-      </div>
-
-      <div
-        class={{concatClass
-          "doc-category-index-editor__section-body"
-          (if this.collapsed "--collapsed")
-        }}
-      >
-        {{#unless this.collapsed}}
-          <div class="doc-category-index-editor__links">
-            {{#each @section.links as |link|}}
-              <IndexEditorLink
-                @link={{link}}
-                @section={{@section}}
-                @categoryId={{@categoryId}}
-                @duplicateHrefs={{@duplicateHrefs}}
-                @favoriteIcons={{@favoriteIcons}}
-                @onRemove={{this.removeLink}}
-                @onDragStart={{@onLinkDragStart}}
-                @onDrop={{@onLinkDrop}}
-                @onChange={{@onChange}}
-              />
-            {{/each}}
-          </div>
-
-          {{#if this.showingTopicChooser}}
-            <div class="doc-category-index-editor__inline-topic-chooser">
-              <TopicChooser
-                @value={{null}}
-                @content={{this.topicChooserContent}}
-                @onChange={{this.onAddTopic}}
-                @options={{hash
-                  additionalFilters=this.searchFilters
-                  none="doc_categories.category_settings.index_editor.select_topic"
-                }}
-              />
-              <DButton
-                @icon="xmark"
-                @action={{this.cancelTopicChooser}}
-                class="btn-flat btn-small"
-              />
-            </div>
+          {{#if this.editingTitle}}
+            <input
+              type="text"
+              value={{@section.title}}
+              placeholder={{i18n
+                "doc_categories.category_settings.index_editor.section_title_placeholder"
+              }}
+              class="doc-category-index-editor__section-title"
+              {{autoFocus}}
+              {{on "input" this.updateTitle}}
+              {{on "keydown" this.onTitleKeydown}}
+              {{on "focusout" this.confirmTitleEdit}}
+            />
+          {{else}}
+            {{! template-lint-disable no-invalid-interactive }}
+            <span
+              class={{concatClass
+                "doc-category-index-editor__section-title-label"
+                (unless @section.title "--placeholder")
+              }}
+              {{on "dblclick" this.enterTitleEdit}}
+            >
+              {{this.displayTitle}}
+            </span>
           {{/if}}
 
-          <div class="doc-category-index-editor__section-actions">
-            <DMenu
-              @identifier="add-item-menu"
-              class="doc-category-index-editor__add-menu"
+          {{#if this.isDuplicateTitle}}
+            <span
+              class="doc-category-index-editor__duplicate-icon"
+              title={{i18n
+                "doc_categories.category_settings.index_editor.duplicate_title_warning"
+              }}
             >
-              <:trigger>
-                {{icon "plus"}}
-                <span>{{i18n
-                    "doc_categories.category_settings.index_editor.add"
-                  }}</span>
-              </:trigger>
-              <:content as |menuArgs|>
-                <DropdownMenu as |dropdown|>
-                  <dropdown.item>
-                    <DButton
-                      @icon="file"
-                      @label="doc_categories.category_settings.index_editor.add_topic"
-                      @action={{fn
-                        this.showTopicChooserAndClose
-                        menuArgs.close
-                      }}
-                      class="btn-transparent"
-                    />
-                  </dropdown.item>
-                  <dropdown.item>
-                    <DButton
-                      @icon="link"
-                      @label="doc_categories.category_settings.index_editor.add_link"
-                      @action={{fn this.addManualLinkAndClose menuArgs.close}}
-                      class="btn-transparent"
-                    />
-                  </dropdown.item>
-                </DropdownMenu>
-              </:content>
-            </DMenu>
-          </div>
-        {{/unless}}
+              {{icon "triangle-exclamation"}}
+            </span>
+          {{/if}}
+
+          {{#if this.collapsed}}
+            {{#if this.hasDuplicateLinks}}
+              <span
+                class="doc-category-index-editor__duplicate-icon"
+                title={{i18n
+                  "doc_categories.category_settings.index_editor.duplicate_warning"
+                }}
+              >
+                {{icon "triangle-exclamation"}}
+              </span>
+            {{/if}}
+            <span class="doc-category-index-editor__link-count">
+              {{this.linkCount}}
+            </span>
+          {{/if}}
+
+          <DButton
+            @icon="pencil"
+            @action={{this.enterTitleEdit}}
+            @title="doc_categories.category_settings.index_editor.edit_section_title"
+            class="btn-flat btn-small doc-category-index-editor__edit-btn"
+          />
+          <DButton
+            @icon="trash-can"
+            @action={{fn @onRemove @section}}
+            @title="doc_categories.category_settings.index_editor.remove_section"
+            class="btn-flat btn-small doc-category-index-editor__remove-btn"
+          />
+        </div>
+
+        <div
+          class={{concatClass
+            "doc-category-index-editor__section-body"
+            (if this.collapsed "--collapsed")
+          }}
+        >
+          {{#unless this.collapsed}}
+            <div class="doc-category-index-editor__links">
+              {{#each @section.links as |link|}}
+                <IndexEditorLink
+                  @link={{link}}
+                  @section={{@section}}
+                  @categoryId={{@categoryId}}
+                  @duplicateHrefs={{@duplicateHrefs}}
+                  @favoriteIcons={{@favoriteIcons}}
+                  @onRemove={{this.removeLink}}
+                  @onDragStart={{@onLinkDragStart}}
+                  @onDrop={{@onLinkDrop}}
+                  @onChange={{@onChange}}
+                />
+              {{/each}}
+            </div>
+
+            {{#if this.showingTopicChooser}}
+              <div class="doc-category-index-editor__inline-topic-chooser">
+                <div class="doc-category-index-editor__link-card --adding">
+                  <TopicChooser
+                    @value={{null}}
+                    @content={{this.topicChooserContent}}
+                    @onChange={{this.onAddTopic}}
+                    @options={{hash
+                      additionalFilters=this.searchFilters
+                      none="doc_categories.category_settings.index_editor.select_topic"
+                    }}
+                  />
+                  <DButton
+                    @icon="xmark"
+                    @action={{this.cancelTopicChooser}}
+                    class="btn-flat btn-small"
+                  />
+                </div>
+              </div>
+            {{/if}}
+
+            <div class="doc-category-index-editor__section-actions">
+              <DMenu
+                @identifier="add-item-menu"
+                class="doc-category-index-editor__add-menu"
+              >
+                <:trigger>
+                  {{icon "plus"}}
+                  <span>{{i18n
+                      "doc_categories.category_settings.index_editor.add"
+                    }}</span>
+                </:trigger>
+                <:content as |menuArgs|>
+                  <DropdownMenu as |dropdown|>
+                    <dropdown.item>
+                      <DButton
+                        @icon="file"
+                        @label="doc_categories.category_settings.index_editor.add_topic"
+                        @action={{fn
+                          this.showTopicChooserAndClose
+                          menuArgs.close
+                        }}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                    <dropdown.item>
+                      <DButton
+                        @icon="link"
+                        @label="doc_categories.category_settings.index_editor.add_link"
+                        @action={{fn this.addManualLinkAndClose menuArgs.close}}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                  </DropdownMenu>
+                </:content>
+              </DMenu>
+            </div>
+          {{/unless}}
+        </div>
       </div>
     </div>
   </template>
@@ -578,6 +854,7 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked sections = trackedArray(this.initSections());
   @tracked saveState = null;
   @tracked includeSubcategories = false;
+  @tracked isDraggingSection = false;
   draggedSection = null;
   _draggedLink = null;
   _draggedLinkSourceSection = null;
@@ -688,6 +965,23 @@ export default class DocCategoryIndexEditor extends Component {
     return dupes;
   }
 
+  get duplicateTitles() {
+    const counts = new Map();
+    for (const section of this.sections) {
+      const title = section.title?.toLowerCase();
+      if (title) {
+        counts.set(title, (counts.get(title) || 0) + 1);
+      }
+    }
+    const dupes = new Set();
+    for (const [title, count] of counts) {
+      if (count > 1) {
+        dupes.add(title);
+      }
+    }
+    return dupes;
+  }
+
   get favoriteIcons() {
     const icons = new Set(["far-file", "link"]);
     for (const section of this.sections) {
@@ -713,17 +1007,31 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   removeSection(section) {
-    const idx = this.sections.indexOf(section);
-    if (idx !== -1) {
-      this.sections.splice(idx, 1);
-    }
-    this._saveToTransientData();
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.confirm_remove_section"
+      ),
+      didConfirm: () => {
+        const idx = this.sections.indexOf(section);
+        if (idx !== -1) {
+          this.sections.splice(idx, 1);
+        }
+        this._saveToTransientData();
+      },
+    });
   }
 
   /* Section drag */
   @action
   setDraggedSection(section) {
     this.draggedSection = section;
+    this.isDraggingSection = true;
+  }
+
+  @action
+  clearDraggedSection() {
+    this.draggedSection = null;
+    this.isDraggingSection = false;
   }
 
   @action
@@ -756,6 +1064,7 @@ export default class DocCategoryIndexEditor extends Component {
     }
     this.sections.splice(targetIdx, 0, this.draggedSection);
     this.draggedSection = null;
+    this.isDraggingSection = false;
     this._saveToTransientData();
   }
 
@@ -1015,9 +1324,12 @@ export default class DocCategoryIndexEditor extends Component {
             @section={{section}}
             @categoryId={{@categoryId}}
             @duplicateHrefs={{this.duplicateHrefs}}
+            @duplicateTitles={{this.duplicateTitles}}
             @favoriteIcons={{this.favoriteIcons}}
+            @isDraggingSection={{this.isDraggingSection}}
             @onRemove={{this.removeSection}}
             @onSectionDragStart={{this.setDraggedSection}}
+            @onSectionDragEnd={{this.clearDraggedSection}}
             @onSectionDrop={{this.reorderSection}}
             @onLinkDragStart={{this.onLinkDragStart}}
             @onLinkDrop={{this.onLinkDrop}}
