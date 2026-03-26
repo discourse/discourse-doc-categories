@@ -337,6 +337,15 @@ body.doc-simple-mode {
       bottom: -1px;
     }
 
+    &:last-child {
+      padding-bottom: 0.75em;
+      margin-bottom: -0.6em;
+
+      &.drag-below::after {
+        bottom: calc(0.75em - 0.15em - 1px);
+      }
+    }
+
     &.--duplicate {
       .doc-category-index-editor__link-card {
         border-left: 3px solid var(--highlight);
@@ -517,9 +526,14 @@ body.doc-simple-mode {
       cursor: grabbing;
     }
 
-    /* Align with section header content */
+    /* Align with section header icons (section padding + border + header button padding) */
     .doc-category-index-editor__section-row > & {
-      margin-top: 0.75em;
+      margin-top: calc(0.75em + 0.25em);
+    }
+
+    /* Align with link card icons (link padding + card border + card padding) */
+    .doc-category-index-editor__link > & {
+      margin-top: calc(0.15em + 0.35em);
     }
   }
 
@@ -606,7 +620,23 @@ body.doc-simple-mode {
   &__batch-checkbox {
     display: flex;
     align-items: center;
+    justify-content: center;
     cursor: pointer;
+    padding: 0.25em;
+    flex-shrink: 0;
+
+    /* Match the width of the drag handle so checkboxes align in the same column */
+    min-width: calc(1em + 0.5em);
+
+    /* Align section checkbox with section drag handle */
+    .doc-category-index-editor__section-row > & {
+      margin-top: calc(0.75em + 0.25em);
+    }
+
+    /* Align link checkbox with link card icons */
+    .doc-category-index-editor__link > & {
+      margin-top: calc(0.15em + 0.35em);
+    }
 
     input[type="checkbox"] {
       margin: 0;

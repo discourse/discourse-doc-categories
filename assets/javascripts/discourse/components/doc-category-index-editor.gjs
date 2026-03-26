@@ -691,15 +691,27 @@ class IndexEditorSection extends Component {
       clearTimeout(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
+
+    const hasIndicator =
+      this.dragCssClass === "drag-above" ||
+      this.dragCssClass === "drag-below" ||
+      this.emptyDropTarget;
+
+    if (!hasIndicator) {
+      this.dragCssClass = null;
+      this.emptyDropTarget = false;
+      return;
+    }
+
     const isAbove = this.isAboveElement(event);
     if (this.args.isBatchDragging && this.args.batchDragType === "sections") {
       this.args.onBatchSectionDrop(this.args.section, isAbove);
-    } else if (
-      this.args.isBatchDragging &&
-      this.args.batchDragType === "items" &&
-      this.args.section.links.length === 0
-    ) {
-      this.args.onBatchItemDrop(null, this.args.section, false);
+    } else if (this.emptyDropTarget) {
+      if (this.args.isBatchDragging && this.args.batchDragType === "items") {
+        this.args.onBatchItemDrop(null, this.args.section, false);
+      } else {
+        this.args.onSectionDrop(this.args.section, isAbove);
+      }
     } else {
       this.args.onSectionDrop(this.args.section, isAbove);
     }
