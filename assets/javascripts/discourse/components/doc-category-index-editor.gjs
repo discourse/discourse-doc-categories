@@ -34,34 +34,55 @@ class IndexEditorLink extends Component {
   @tracked swapping = false;
   @tracked swapTopicContent = [];
   dragCount = 0;
+  @tracked _editTitle;
+  @tracked _editHref;
+  @tracked _editIcon;
+  @tracked _editType;
 
   constructor() {
     super(...arguments);
     /* New empty links auto-enter edit mode */
     if (!this.args.link.title && !this.args.link.href) {
+      this._snapshotLink();
       this.editing = true;
     }
   }
 
+  _snapshotLink() {
+    this._editTitle = this.args.link.title;
+    this._editHref = this.args.link.href;
+    this._editIcon = this.args.link.icon;
+    this._editType = this.args.link.type;
+  }
+
+  _applyEdit() {
+    this.args.link.title = this._editTitle;
+    this.args.link.href = this._editHref;
+    this.args.link.icon = this._editIcon;
+    this.args.link.type = this._editType;
+    this.args.onChange?.();
+  }
+
   get isTopicLink() {
+    if (this.editing) {
+      return this._editType === "topic";
+    }
     return this.args.link.type === "topic";
   }
 
   @action
   switchToManualLink() {
-    this.args.link.type = "manual";
-    this.args.link.href = "";
+    this._editType = "manual";
+    this._editHref = "";
     this.swapping = false;
     this.swapTopicContent = [];
-    this.args.onChange?.();
   }
 
   @action
   switchToTopicLink() {
-    this.args.link.type = "topic";
-    this.args.link.href = "";
+    this._editType = "topic";
+    this._editHref = "";
     this.swapping = true;
-    this.args.onChange?.();
   }
 
   get isDuplicate() {
@@ -96,11 +117,12 @@ class IndexEditorLink extends Component {
   }
 
   get canConfirm() {
-    return !!this.args.link.href;
+    return !!this._editHref;
   }
 
   @action
   enterEdit() {
+    this._snapshotLink();
     this.editing = true;
   }
 
@@ -109,6 +131,7 @@ class IndexEditorLink extends Component {
     if (!this.canConfirm) {
       return;
     }
+    this._applyEdit();
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
@@ -125,7 +148,6 @@ class IndexEditorLink extends Component {
   onCardFocusOut(event) {
     const card = event.currentTarget;
     requestAnimationFrame(() => {
-      /* Don't close if focus moved within the card or into a floating menu (icon picker, select-kit) */
       if (
         card.contains(document.activeElement) ||
         document.querySelector(
@@ -134,10 +156,10 @@ class IndexEditorLink extends Component {
       ) {
         return;
       }
-      /* Don't auto-close if URL is still empty */
       if (!this.canConfirm) {
         return;
       }
+      this._applyEdit();
       this.editing = false;
       this.swapping = false;
       this.swapTopicContent = [];
@@ -203,20 +225,17 @@ class IndexEditorLink extends Component {
 
   @action
   updateTitle(event) {
-    this.args.link.title = event.target.value;
-    this.args.onChange?.();
+    this._editTitle = event.target.value;
   }
 
   @action
   updateHref(event) {
-    this.args.link.href = event.target.value;
-    this.args.onChange?.();
+    this._editHref = event.target.value;
   }
 
   @action
   updateIcon(value) {
-    this.args.link.icon = value;
-    this.args.onChange?.();
+    this._editIcon = value;
   }
 
   @action
@@ -227,12 +246,11 @@ class IndexEditorLink extends Component {
   @action
   onSwapTopic(topicId, topic) {
     if (topic) {
-      this.args.link.title = topic.title || topic.fancy_title;
-      this.args.link.href = `/t/${topic.slug}/${topic.id}`;
+      this._editTitle = topic.title || topic.fancy_title;
+      this._editHref = `/t/${topic.slug}/${topic.id}`;
     }
     this.swapping = false;
     this.swapTopicContent = [];
-    this.args.onChange?.();
   }
 
   @action
@@ -303,14 +321,14 @@ class IndexEditorLink extends Component {
         >
           <div class="doc-category-index-editor__link-edit-row">
             <DIconGridPicker
-              @value={{@link.icon}}
+              @value={{this._editIcon}}
               @onChange={{this.updateIcon}}
               @favorites={{@favoriteIcons}}
               @showSelectedName={{true}}
             />
             <input
               type="text"
-              value={{@link.title}}
+              value={{this._editTitle}}
               placeholder={{i18n
                 "doc_categories.category_settings.index_editor.link_title_placeholder"
               }}
@@ -343,7 +361,7 @@ class IndexEditorLink extends Component {
                 <span
                   class="doc-category-index-editor__link-topic-href --readonly"
                 >
-                  {{@link.href}}
+                  {{this._editHref}}
                 </span>
                 <DButton
                   @icon="arrows-rotate"
@@ -355,7 +373,7 @@ class IndexEditorLink extends Component {
             {{else}}
               <input
                 type="text"
-                value={{@link.href}}
+                value={{this._editHref}}
                 placeholder={{i18n
                   "doc_categories.category_settings.index_editor.link_url_placeholder"
                 }}
@@ -450,12 +468,15 @@ class IndexEditorSection extends Component {
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
   dragCount = 0;
+  @tracked _editSectionTitle;
+
   _autoExpandTimer = null;
 
   constructor() {
     super(...arguments);
     /* New sections with empty title auto-enter title edit mode */
     if (!this.args.section.title) {
+      this._editSectionTitle = "";
       this.editingTitle = true;
     }
   }
@@ -487,19 +508,30 @@ class IndexEditorSection extends Component {
 
   @action
   enterTitleEdit() {
+    this._editSectionTitle = this.args.section.title;
     this.editingTitle = true;
   }
 
   @action
   confirmTitleEdit() {
+    this.args.section.title = this._editSectionTitle;
+    this.args.onChange?.();
+    this.editingTitle = false;
+  }
+
+  @action
+  cancelTitleEdit() {
     this.editingTitle = false;
   }
 
   @action
   onTitleKeydown(event) {
-    if (event.key === "Enter" || event.key === "Escape") {
+    if (event.key === "Enter") {
       event.preventDefault();
       this.confirmTitleEdit();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      this.cancelTitleEdit();
     }
   }
 
@@ -595,8 +627,7 @@ class IndexEditorSection extends Component {
 
   @action
   updateTitle(event) {
-    this.args.section.title = event.target.value;
-    this.args.onChange?.();
+    this._editSectionTitle = event.target.value;
   }
 
   @action
@@ -696,7 +727,7 @@ class IndexEditorSection extends Component {
           {{#if this.editingTitle}}
             <input
               type="text"
-              value={{@section.title}}
+              value={{this._editSectionTitle}}
               placeholder={{i18n
                 "doc_categories.category_settings.index_editor.section_title_placeholder"
               }}
@@ -704,7 +735,18 @@ class IndexEditorSection extends Component {
               {{autoFocus}}
               {{on "input" this.updateTitle}}
               {{on "keydown" this.onTitleKeydown}}
-              {{on "focusout" this.confirmTitleEdit}}
+            />
+            <DButton
+              @icon="check"
+              @action={{this.confirmTitleEdit}}
+              @title="doc_categories.category_settings.index_editor.confirm_edit"
+              class="btn-flat btn-small doc-category-index-editor__confirm-title-btn"
+            />
+            <DButton
+              @icon="xmark"
+              @action={{this.cancelTitleEdit}}
+              @title="cancel"
+              class="btn-flat btn-small doc-category-index-editor__cancel-title-btn"
             />
           {{else}}
             {{! template-lint-disable no-invalid-interactive }}
@@ -746,18 +788,20 @@ class IndexEditorSection extends Component {
             </span>
           {{/if}}
 
-          <DButton
-            @icon="pencil"
-            @action={{this.enterTitleEdit}}
-            @title="doc_categories.category_settings.index_editor.edit_section_title"
-            class="btn-flat btn-small doc-category-index-editor__edit-btn"
-          />
-          <DButton
-            @icon="trash-can"
-            @action={{fn @onRemove @section}}
-            @title="doc_categories.category_settings.index_editor.remove_section"
-            class="btn-flat btn-small doc-category-index-editor__remove-btn"
-          />
+          {{#unless this.editingTitle}}
+            <DButton
+              @icon="pencil"
+              @action={{this.enterTitleEdit}}
+              @title="doc_categories.category_settings.index_editor.edit_section_title"
+              class="btn-flat btn-small doc-category-index-editor__edit-btn"
+            />
+            <DButton
+              @icon="trash-can"
+              @action={{fn @onRemove @section}}
+              @title="doc_categories.category_settings.index_editor.remove_section"
+              class="btn-flat btn-small doc-category-index-editor__remove-btn"
+            />
+          {{/unless}}
         </div>
 
         <div
