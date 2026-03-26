@@ -12,7 +12,7 @@ module DocCategories
     def save_sections!(sections_data)
       if sections_data.blank?
         index = DocCategories::Index.find_by(category_id: @category.id)
-        if index && !index.index_topic_id.present?
+        if index && !index.mode_topic?
           index.sidebar_sections.destroy_all
           index.destroy!
           @category.association(:doc_categories_index).reset
@@ -23,7 +23,9 @@ module DocCategories
       end
 
       index = DocCategories::Index.find_or_initialize_by(category_id: @category.id)
-      return if index.index_topic_id.present?
+      return if index.mode_topic?
+
+      index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
 
       sections = build_sections(sections_data)
 

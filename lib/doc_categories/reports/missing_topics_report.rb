@@ -87,8 +87,10 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
-        # topics listed in the index
+        # only topic-mode categories have a parseable index topic
         index_topic_id = category.doc_index_topic_id
+        next if index_topic_id.nil? || index_topic_id < 0
+
         indexed_topic_ids =
           Topic
             .find_by(id: index_topic_id)

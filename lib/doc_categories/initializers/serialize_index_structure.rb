@@ -12,7 +12,7 @@ module ::DocCategories
           index = object&.doc_categories_index
           next if index.blank?
 
-          if index.index_topic_id.present?
+          if index.mode_topic?
             index_topic = index.index_topic
             next if index_topic.blank?
 

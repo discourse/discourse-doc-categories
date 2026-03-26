@@ -10,8 +10,8 @@ module DocCategories
       index = DocCategories::Index.includes(:index_topic).find_by(category_id: category_id)
       return unless index
 
-      # Direct-edited indexes (no topic) are not managed by the refresher.
-      return if index.index_topic_id.nil?
+      # Only topic-based indexes are managed by the refresher.
+      return unless index.mode_topic?
 
       topic = index.index_topic
       unless valid_topic?(topic)

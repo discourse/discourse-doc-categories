@@ -153,9 +153,8 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(response.status).to eq(200)
       expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
 
-      # The response should not include doc_category_index
       category_response = response.parsed_body["category"]
-      expect(category_response).not_to have_key("doc_category_index")
+      expect(category_response["doc_category_index"]).to be_nil
     end
 
     it "clears the index when empty sections are sent via PUT to indexes endpoint" do

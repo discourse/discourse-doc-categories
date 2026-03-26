@@ -81,7 +81,7 @@ describe BasicCategorySerializer do
     end
 
     it "isn't serialized if the index topic doesn't exist" do
-      documentation_index.update_columns(index_topic_id: 0)
+      documentation_index.update_columns(index_topic_id: 999_999_999)
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
