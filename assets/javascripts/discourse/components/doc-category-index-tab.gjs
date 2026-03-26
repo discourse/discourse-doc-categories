@@ -1,7 +1,7 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { fn, hash } from "@ember/helper";
-import { action } from "@ember/object";
+import { action, get } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
@@ -36,6 +36,7 @@ export default class DocCategoryIndexTab extends Component {
         this.category?.set("doc_index_sections", "[]");
         this.category?.set("doc_index_topic_id", null);
       } else if (this.isDirectMode && this._editorInstance) {
+        this.category?.set("doc_index_topic_id", -1);
         this.category?.set(
           "doc_index_sections",
           this._editorInstance.serializedSections
@@ -52,17 +53,23 @@ export default class DocCategoryIndexTab extends Component {
     });
   }
 
+  get indexTopicId() {
+    const id = this.category ? get(this.category, "doc_index_topic_id") : null;
+    return id > 0 ? id : null;
+  }
+
+  #setTransientMode(mode) {
+    this.args.form?.set("_docIndexMode", mode);
+  }
+
   get category() {
     return this.args.category;
   }
 
-  get indexTopicId() {
-    const id = this.category?.doc_index_topic_id;
-    return id > 0 ? id : null;
-  }
-
   get initialMode() {
-    const topicId = this.category?.doc_index_topic_id;
+    const topicId = this.args.category
+      ? get(this.args.category, "doc_index_topic_id")
+      : null;
     if (topicId != null && topicId > 0) {
       return MODE_TOPIC;
     }
@@ -158,7 +165,7 @@ export default class DocCategoryIndexTab extends Component {
       this.category.set("doc_index_sections", "[]");
       this.category.set("doc_category_index", null);
     }
-    this.args.form?.set("_docIndexMode", MODE_NONE);
+    this.#setTransientMode(MODE_NONE);
   }
 
   @action
@@ -168,10 +175,7 @@ export default class DocCategoryIndexTab extends Component {
       return;
     }
     this.mode = MODE_DIRECT;
-    if (this.category) {
-      this.category.set("doc_index_topic_id", -1);
-    }
-    this.args.form?.set("_docIndexMode", MODE_DIRECT);
+    this.#setTransientMode(MODE_DIRECT);
   }
 
   @action
@@ -211,6 +215,7 @@ export default class DocCategoryIndexTab extends Component {
 
     if (this.category) {
       this.category.set("doc_index_topic_id", topicId);
+      this.args.form?.set("_docIndexTopicId", topicId);
     }
   }
 
