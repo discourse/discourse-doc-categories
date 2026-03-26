@@ -143,6 +143,24 @@ export default class DocCategoryIndexTab extends Component {
     if (this.isNoneMode) {
       return;
     }
+
+    const hasData = this.indexTopicId || this.indexData?.length > 0;
+    if (hasData) {
+      this.dialog.yesNoConfirm({
+        message: i18n(
+          "doc_categories.category_settings.index_editor.disable_confirm"
+        ),
+        didConfirm: () => {
+          this.#applyNoneMode();
+        },
+      });
+      return;
+    }
+
+    this.#applyNoneMode();
+  }
+
+  #applyNoneMode() {
     this.mode = MODE_NONE;
     this.args.form.set("doc_index_topic_id", null);
     this.args.form.set("doc_index_sections", "[]");
