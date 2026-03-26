@@ -1,6 +1,6 @@
 import { cached } from "@glimmer/tracking";
 import { computed } from "@ember/object";
-import { htmlSafe } from "@ember/template";
+import { trustHTML } from "@ember/template";
 import { getOwnerWithFallback } from "discourse/lib/get-owner";
 import getURL, { samePrefix } from "discourse/lib/get-url";
 import BaseCustomSidebarSection from "discourse/lib/sidebar/base-custom-sidebar-section";
@@ -54,7 +54,7 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
         site_search_url: getURL(`/search?q=${encodeURIComponent(filter)}`),
       };
 
-      return htmlSafe(
+      return trustHTML(
         i18n("doc_categories.sidebar.filter.no_results.description", params)
       );
     }
