@@ -1766,7 +1766,7 @@ export default class DocCategoryIndexEditor extends Component {
           @label={{this.applyLabel}}
           @action={{this.apply}}
           @disabled={{this.applyDisabled}}
-          class="btn-primary doc-category-index-editor__apply-btn"
+          class="btn-primary btn-small doc-category-index-editor__apply-btn"
         />
       </div>
     </div>
