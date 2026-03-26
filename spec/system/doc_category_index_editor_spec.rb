@@ -24,9 +24,9 @@ describe "Doc Category Index Editor" do
       find(".doc-category-index-editor__section-title").fill_in(with: section_title)
       find(".doc-category-index-editor__confirm-title-btn").click
 
-      find(".doc-category-index-editor__add-menu").click
+      find(".d-combo-button-menu").click
     end
-    find("button", text: "Add link").click
+    find("button", text: I18n.t("js.doc_categories.category_settings.index_editor.add_link")).click
 
     within all(".doc-category-index-editor__section").last do
       all(".doc-category-index-editor__link-title").last.fill_in(with: link_title)
