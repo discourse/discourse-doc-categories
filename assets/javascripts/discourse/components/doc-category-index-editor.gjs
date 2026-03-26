@@ -7,6 +7,7 @@ import { trackedArray, trackedObject } from "@ember/reactive/collections";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
+import DComboButton from "discourse/components/d-combo-button";
 import DIconGridPicker from "discourse/components/d-icon-grid-picker";
 import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
@@ -465,9 +466,12 @@ class IndexEditorSection extends Component {
   @tracked dragCssClass;
   @tracked collapsed = false;
   @tracked editingTitle = false;
+  @tracked includeSubcategories = false;
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
   dragCount = 0;
+  _addMenuApi = null;
+
   @tracked _editSectionTitle;
 
   _autoExpandTimer = null;
@@ -631,20 +635,63 @@ class IndexEditorSection extends Component {
   }
 
   @action
-  addManualLinkAndClose(closeMenu) {
+  registerAddMenuApi(api) {
+    this._addMenuApi = api;
+  }
+
+  @action
+  addManualLink() {
     this.args.section.links.push(
       trackedObject({ title: "", href: "", type: "manual", icon: "link" })
     );
     this.collapsed = false;
-    closeMenu?.();
     this.args.onChange?.();
   }
 
   @action
-  showTopicChooserAndClose(closeMenu) {
+  showTopicChooser() {
     this.showingTopicChooser = true;
     this.collapsed = false;
-    closeMenu?.();
+  }
+
+  @action
+  toggleIncludeSubcategories() {
+    this.includeSubcategories = !this.includeSubcategories;
+  }
+
+  @action
+  async addMissingTopicsToSection() {
+    this._addMenuApi?.close();
+    const includeSubcategories = this.includeSubcategories;
+    try {
+      const topics = await this.args.fetchTopics(includeSubcategories);
+      if (topics.length === 0) {
+        return;
+      }
+      const existingHrefs = new Set(
+        this.args.section.links.map((link) => link.href).filter(Boolean)
+      );
+      const missing = topics.filter(
+        (t) => !existingHrefs.has(`/t/${t.slug}/${t.id}`)
+      );
+      if (missing.length === 0) {
+        return;
+      }
+      for (const topic of missing) {
+        this.args.section.links.push(
+          trackedObject({
+            title: topic.title || topic.fancy_title,
+            href: `/t/${topic.slug}/${topic.id}`,
+            type: "topic",
+            icon: "far-file",
+          })
+        );
+      }
+      this.collapsed = false;
+      this.args.onChange?.();
+    } catch (e) {
+      popupAjaxError(e);
+    }
   }
 
   @action
@@ -849,40 +896,53 @@ class IndexEditorSection extends Component {
             {{/if}}
 
             <div class="doc-category-index-editor__section-actions">
-              <DMenu
-                @identifier="add-item-menu"
-                class="doc-category-index-editor__add-menu"
-              >
-                <:trigger>
-                  {{icon "plus"}}
-                  <span>{{i18n
-                      "doc_categories.category_settings.index_editor.add"
-                    }}</span>
-                </:trigger>
-                <:content as |menuArgs|>
-                  <DropdownMenu as |dropdown|>
-                    <dropdown.item>
-                      <DButton
-                        @icon="file"
-                        @label="doc_categories.category_settings.index_editor.add_topic"
-                        @action={{fn
-                          this.showTopicChooserAndClose
-                          menuArgs.close
-                        }}
-                        class="btn-transparent"
-                      />
-                    </dropdown.item>
-                    <dropdown.item>
-                      <DButton
-                        @icon="link"
-                        @label="doc_categories.category_settings.index_editor.add_link"
-                        @action={{fn this.addManualLinkAndClose menuArgs.close}}
-                        class="btn-transparent"
-                      />
-                    </dropdown.item>
-                  </DropdownMenu>
-                </:content>
-              </DMenu>
+              <DComboButton class="--has-menu btn-small">
+                <:default as |combo|>
+                  <combo.Button
+                    @action={{this.showTopicChooser}}
+                    @icon="plus"
+                    @label="doc_categories.category_settings.index_editor.add_topic"
+                  />
+                  <combo.Menu
+                    @identifier="section-add-menu"
+                    @onRegisterApi={{this.registerAddMenuApi}}
+                  >
+                    <DropdownMenu as |dropdown|>
+                      <dropdown.item>
+                        <DButton
+                          @icon="link"
+                          @label="doc_categories.category_settings.index_editor.add_link"
+                          @action={{this.addManualLink}}
+                          class="btn-transparent"
+                        />
+                      </dropdown.item>
+                      <dropdown.divider />
+                      <dropdown.item>
+                        <DButton
+                          @icon="list-check"
+                          @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
+                          @action={{this.addMissingTopicsToSection}}
+                          class="btn-transparent"
+                        />
+                      </dropdown.item>
+                      <dropdown.item>
+                        <label
+                          class="doc-category-index-editor__subcategory-toggle"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={{this.includeSubcategories}}
+                            {{on "change" this.toggleIncludeSubcategories}}
+                          />
+                          {{i18n
+                            "doc_categories.category_settings.index_editor.include_subcategories"
+                          }}
+                        </label>
+                      </dropdown.item>
+                    </DropdownMenu>
+                  </combo.Menu>
+                </:default>
+              </DComboButton>
             </div>
           {{/unless}}
         </div>
@@ -1146,13 +1206,17 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   /* Topic fetching */
-  async _fetchCategoryTopics() {
+  @bind
+  async fetchTopics(includeSubcategories) {
     const response = await ajax(
       `/doc-categories/indexes/${this.args.categoryId}/topics`,
-      { data: { include_subcategories: this.includeSubcategories } }
+      { data: { include_subcategories: includeSubcategories } }
     );
-
     return response.topics || [];
+  }
+
+  async _fetchCategoryTopics() {
+    return this.fetchTopics(this.includeSubcategories);
   }
 
   _topicToLink(topic) {
@@ -1164,25 +1228,13 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
-  get allExistingHrefs() {
-    const hrefs = new Set();
-    for (const section of this.sections) {
-      for (const link of section.links) {
-        if (link.href) {
-          hrefs.add(link.href);
-        }
-      }
-    }
-    return hrefs;
-  }
-
   @action
   toggleIncludeSubcategories() {
     this.includeSubcategories = !this.includeSubcategories;
   }
 
   @action
-  indexAllTopicsAndClose(closeMenu) {
+  indexAllTopics(closeMenu) {
     closeMenu?.();
     if (this.sections.length > 0) {
       this.dialog.yesNoConfirm({
@@ -1210,40 +1262,6 @@ export default class DocCategoryIndexEditor extends Component {
             "doc_categories.category_settings.index_editor.all_topics_section"
           ),
           links: trackedArray(topics.map((t) => this._topicToLink(t))),
-        })
-      );
-      this._saveToTransientData();
-    } catch (e) {
-      popupAjaxError(e);
-    }
-  }
-
-  @action
-  async addMissingTopicsAndClose(closeMenu) {
-    closeMenu?.();
-    return this.addMissingTopics();
-  }
-
-  @action
-  async addMissingTopics() {
-    try {
-      const topics = await this._fetchCategoryTopics();
-      if (topics.length === 0) {
-        return;
-      }
-      const existingHrefs = this.allExistingHrefs;
-      const missing = topics.filter(
-        (t) => !existingHrefs.has(`/t/${t.slug}/${t.id}`)
-      );
-      if (missing.length === 0) {
-        return;
-      }
-      this.sections.push(
-        trackedObject({
-          title: i18n(
-            "doc_categories.category_settings.index_editor.missing_topics_section"
-          ),
-          links: trackedArray(missing.map((t) => this._topicToLink(t))),
         })
       );
       this._saveToTransientData();
@@ -1309,52 +1327,6 @@ export default class DocCategoryIndexEditor extends Component {
 
   <template>
     <div class="doc-category-index-editor">
-      <div class="doc-category-index-editor__toolbar">
-        <DMenu
-          @identifier="auto-index-menu"
-          class="doc-category-index-editor__auto-index-menu"
-        >
-          <:trigger>
-            {{icon "arrows-rotate"}}
-            <span>{{i18n
-                "doc_categories.category_settings.index_editor.auto_index"
-              }}</span>
-          </:trigger>
-          <:content as |menuArgs|>
-            <DropdownMenu as |dropdown|>
-              <dropdown.item>
-                <label class="doc-category-index-editor__subcategory-toggle">
-                  <input
-                    type="checkbox"
-                    checked={{this.includeSubcategories}}
-                    {{on "change" this.toggleIncludeSubcategories}}
-                  />
-                  {{i18n
-                    "doc_categories.category_settings.index_editor.include_subcategories"
-                  }}
-                </label>
-              </dropdown.item>
-              <dropdown.divider />
-              <dropdown.item>
-                <DButton
-                  @icon="arrows-rotate"
-                  @label="doc_categories.category_settings.index_editor.index_all_topics"
-                  @action={{fn this.indexAllTopicsAndClose menuArgs.close}}
-                  class="btn-transparent"
-                />
-              </dropdown.item>
-              <dropdown.item>
-                <DButton
-                  @icon="plus"
-                  @label="doc_categories.category_settings.index_editor.add_missing_topics"
-                  @action={{fn this.addMissingTopicsAndClose menuArgs.close}}
-                  class="btn-transparent"
-                />
-              </dropdown.item>
-            </DropdownMenu>
-          </:content>
-        </DMenu>
-      </div>
 
       {{#if this.isEmpty}}
         <p class="doc-category-index-editor__empty">
@@ -1377,6 +1349,7 @@ export default class DocCategoryIndexEditor extends Component {
             @onSectionDrop={{this.reorderSection}}
             @onLinkDragStart={{this.onLinkDragStart}}
             @onLinkDrop={{this.onLinkDrop}}
+            @fetchTopics={{this.fetchTopics}}
             @onChange={{this._saveToTransientData}}
           />
         {{/each}}
@@ -1389,13 +1362,51 @@ export default class DocCategoryIndexEditor extends Component {
           @action={{this.addSection}}
           class="btn-default btn-small"
         />
+      </div>
+
+      <div class="doc-category-index-editor__apply-footer">
+        <DMenu
+          @identifier="rebuild-index-menu"
+          @triggerClass="doc-category-index-editor__rebuild-trigger"
+        >
+          <:trigger>
+            {{icon "arrows-rotate"}}
+            <span>{{i18n
+                "doc_categories.category_settings.index_editor.rebuild_index"
+              }}</span>
+          </:trigger>
+          <:content as |menuArgs|>
+            <DropdownMenu as |dropdown|>
+              <dropdown.item>
+                <DButton
+                  @icon="arrows-rotate"
+                  @label="doc_categories.category_settings.index_editor.index_all_topics"
+                  @action={{fn this.indexAllTopics menuArgs.close}}
+                  class="btn-transparent"
+                />
+              </dropdown.item>
+              <dropdown.item>
+                <label class="doc-category-index-editor__subcategory-toggle">
+                  <input
+                    type="checkbox"
+                    checked={{this.includeSubcategories}}
+                    {{on "change" this.toggleIncludeSubcategories}}
+                  />
+                  {{i18n
+                    "doc_categories.category_settings.index_editor.include_subcategories"
+                  }}
+                </label>
+              </dropdown.item>
+            </DropdownMenu>
+          </:content>
+        </DMenu>
 
         <DButton
           @icon="check"
           @label={{this.applyLabel}}
           @action={{this.apply}}
           @disabled={{this.applyDisabled}}
-          class="btn-default doc-category-index-editor__apply-btn"
+          class="btn-primary doc-category-index-editor__apply-btn"
         />
       </div>
     </div>
