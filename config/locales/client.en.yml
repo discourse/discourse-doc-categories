@@ -30,6 +30,11 @@ en:
         index_editor:
           mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content as the sidebar index"
+          topic_mode_help: "Select a topic to use as the sidebar index. The index will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href=\"https://meta.discourse.org/t/322376\" target=\"_blank\">Learn more</a>."
+          mode_none: "Disabled"
+          mode_none_description: "No sidebar index for this category"
+          none_mode_help: "The sidebar index is disabled. Select a mode above to create one."
+          disable_confirm: "This will permanently remove the current sidebar index. Are you sure?"
           mode_direct: "Visual editor"
           mode_direct_description: "Build the sidebar index with a visual editor"
           mode_switch_warning: "Selecting an index topic will overwrite the current sidebar structure on the next refresh."
@@ -46,7 +51,7 @@ en:
           auto_index: "Auto-index"
           rebuild_index: "Rebuild index"
           include_subcategories: "Include subcategories"
-          index_all_topics: "Index all topics"
+          index_all_topics: "Reindex all topics"
           add_missing_topics: "Add missing topics"
           add_missing_topics_to_section: "Add missing topics"
           no_topics_found: "No topics found in this category."
@@ -73,6 +78,22 @@ en:
           apply: "Apply"
           applying: "Applying..."
           applied: "Applied"
+          batch_edit: "Batch edit"
+          batch_select_hint: "Select items or sections below"
+          batch_selected_items:
+            one: "%{count} item selected"
+            other: "%{count} items selected"
+          batch_selected_sections:
+            one: "%{count} section selected"
+            other: "%{count} sections selected"
+          batch_selected_mixed: "%{items} items and %{sections} sections selected"
+          batch_select_all: "Select all"
+          batch_clear_all: "Clear"
+          batch_invert: "Invert selection"
+          batch_delete_confirm: "Are you sure you want to delete the selected items?"
+          batch_drag_disabled: "Cannot drag mixed selection of items and sections"
+          clear_index: "Clear index"
+          clear_index_confirm: "This will remove all sections and links. Are you sure?"
           empty: "No sections defined. Add a section or use auto-index to get started."
       sidebar:
         filter:
