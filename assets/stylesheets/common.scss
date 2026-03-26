@@ -153,13 +153,6 @@ body.doc-simple-mode {
 
 /* Doc category index editor */
 .doc-category-index-editor {
-  &__toolbar {
-    display: flex;
-    gap: 0.5em;
-    margin-bottom: 1em;
-  }
-
-  &__auto-index-menu,
   &__add-menu {
     .fk-d-menu__trigger {
       display: inline-flex;
@@ -482,14 +475,6 @@ body.doc-simple-mode {
     }
   }
 
-  &__subcategory-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.25em 0.5em;
-    cursor: pointer;
-  }
-
   &__drag-handle {
     cursor: grab;
     color: var(--primary-medium);
@@ -573,7 +558,34 @@ body.doc-simple-mode {
     margin-top: 1em;
   }
 
-  &__save-btn {
-    margin-left: auto;
+  &__apply-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2.5em;
+    padding-top: 1.5em;
+    border-top: 1px solid var(--primary-low);
+  }
+
+  &__rebuild-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+  }
+}
+
+/* Rendered in a floating portal, outside .doc-category-index-editor */
+label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.25em var(--d-sidebar-row-horizontal-padding);
+  cursor: pointer;
+  font-size: var(--font-down-1);
+  font-weight: normal;
+  color: var(--primary-medium);
+
+  input[type="checkbox"] {
+    margin: 0;
   }
 }
