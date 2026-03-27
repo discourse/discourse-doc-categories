@@ -198,6 +198,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get prefixValue() {
-    return "far-file";
+    return this.#data.icon || "far-file";
   }
 }

@@ -10,14 +10,23 @@ module DocCategories
       topic_id = normalize_topic_id(topic_id)
 
       if topic_id.nil?
-        if (index = DocCategories::Index.find_by(category_id: category.id))
-          index.destroy!
-          category.reload
-          enqueue_refresh
-          return true
-        end
+        index = DocCategories::Index.find_by(category_id: category.id)
+        return false if index.blank?
 
-        return false
+        index.destroy!
+        category.reload
+        publish_changes
+        return true
+      end
+
+      if topic_id == DocCategories::Index::INDEX_TOPIC_ID_DIRECT
+        index = DocCategories::Index.find_or_initialize_by(category_id: category.id)
+        return false if index.mode_direct?
+
+        index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
+        index.save!
+        publish_changes
+        return true
       end
 
       topic = ::Topic.find_by(id: topic_id)
@@ -41,6 +50,7 @@ module DocCategories
       return nil if value.blank?
 
       id = value.to_i
+      return id if id == DocCategories::Index::INDEX_TOPIC_ID_DIRECT
       id.positive? ? id : nil
     end
 
@@ -55,6 +65,11 @@ module DocCategories
 
     def enqueue_refresh
       ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id)
+    end
+
+    def publish_changes
+      Site.clear_cache
+      category.publish_category
     end
   end
 end

@@ -10,6 +10,9 @@ module DocCategories
       index = DocCategories::Index.includes(:index_topic).find_by(category_id: category_id)
       return unless index
 
+      # Only topic-based indexes are managed by the refresher.
+      return unless index.mode_topic?
+
       topic = index.index_topic
       unless valid_topic?(topic)
         category_id = index.category_id

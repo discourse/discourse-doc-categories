@@ -19,6 +19,13 @@ module ::DocCategories
         plugin.register_category_update_param_with_callback(
           :doc_index_topic_id,
         ) { |category, value| DocCategories::CategoryIndexManager.new(category).assign!(value) }
+
+        plugin.register_category_update_param_with_callback(
+          :doc_index_sections,
+        ) do |category, value|
+          sections = value.present? ? JSON.parse(value) : nil
+          DocCategories::IndexSaver.new(category).save_sections!(sections)
+        end
       end
     end
   end

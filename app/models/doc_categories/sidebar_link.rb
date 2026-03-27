@@ -48,6 +48,7 @@ end
 #
 #  id                 :bigint           not null, primary key
 #  href               :text             not null
+#  icon               :string(100)
 #  position           :integer          not null
 #  title              :string
 #  created_at         :datetime         not null

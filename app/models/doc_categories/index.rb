@@ -4,8 +4,13 @@ module DocCategories
   class Index < ActiveRecord::Base
     self.table_name = "doc_categories_indexes"
 
+    # Sentinel value for index_topic_id indicating visual editor (direct) mode.
+    # NULL = no index configured (MODE_NONE), -1 = visual editor (MODE_DIRECT),
+    # positive integer = topic-based index (MODE_TOPIC).
+    INDEX_TOPIC_ID_DIRECT = -1
+
     belongs_to :category, class_name: "::Category"
-    belongs_to :index_topic, class_name: "::Topic"
+    belongs_to :index_topic, class_name: "::Topic", optional: true
 
     has_many :sidebar_sections,
              -> { order(:position) },
@@ -15,9 +20,21 @@ module DocCategories
              dependent: :destroy
 
     validates :category_id, presence: true, uniqueness: true
-    validates :index_topic_id, presence: true, uniqueness: true
+    validates :index_topic_id, uniqueness: true, allow_nil: true, unless: :mode_direct?
 
-    validate :index_topic_matches_category
+    validate :index_topic_matches_category, if: :mode_topic?
+
+    def mode_none?
+      index_topic_id.nil?
+    end
+
+    def mode_direct?
+      index_topic_id == INDEX_TOPIC_ID_DIRECT
+    end
+
+    def mode_topic?
+      index_topic_id.present? && index_topic_id > 0
+    end
 
     def sidebar_structure
       sidebar_sections
@@ -28,12 +45,19 @@ module DocCategories
               # for text: always use link[:title] if present, otherwise use topic title if topic is valid
               # for href: always use link[:href] if present, otherwise use topic relative_url if topic is valid
 
-              topic = valid_topic(topic)
+              topic = valid_topic(link.topic)
 
               text = link.title.presence || (topic&.title)
               href = link.href.presence || (topic&.relative_url)
               next if text.blank? || href.blank?
-              { text:, href: }
+              result = { text:, href: }
+              result[:icon] = link.icon if link.icon.present?
+              if link.topic_id.present?
+                result[:topic_id] = link.topic_id
+                result[:topic_title] = topic&.title
+                result[:custom_title] = link.title.present?
+              end
+              result
             end
 
           next if links.blank?
@@ -69,10 +93,10 @@ end
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null
 #  category_id    :bigint           not null
-#  index_topic_id :bigint           not null
+#  index_topic_id :bigint
 #
 # Indexes
 #
 #  idx_doc_categories_indexes_on_category_id     (category_id) UNIQUE
-#  idx_doc_categories_indexes_on_index_topic_id  (index_topic_id) UNIQUE
+#  idx_doc_categories_indexes_on_index_topic_id  (index_topic_id) UNIQUE WHERE ((index_topic_id IS NOT NULL) AND (index_topic_id <> '-1'::integer))
 #
