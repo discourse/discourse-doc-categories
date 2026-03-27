@@ -38,7 +38,10 @@ module ::DocCategories
       end
 
       sections_params =
-        params.permit(sections: [:title, { links: %i[title href icon] }]).fetch(:sections, [])
+        params.permit(sections: [:title, { links: %i[title href icon type topic_id] }]).fetch(
+          :sections,
+          [],
+        )
 
       DocCategories::IndexSaver.new(category).save_sections!(sections_params)
 

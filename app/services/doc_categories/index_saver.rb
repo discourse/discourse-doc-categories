@@ -29,6 +29,9 @@ module DocCategories
 
       sections = build_sections(sections_data)
 
+      topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
+      topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
+
       index.save! if index.new_record?
       index.sidebar_sections.destroy_all
 
@@ -37,12 +40,15 @@ module DocCategories
           index.sidebar_sections.create!(title: section[:title], position: section_position)
 
         section[:links].each_with_index do |link, link_position|
-          topic_id = DocCategories::Url.extract_topic_id_from_url(link[:href])
+          # If the title matches the topic title, store nil (auto title)
+          title = link[:title]
+          title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
+
           section_record.sidebar_links.create!(
-            title: link[:title],
+            title: title,
             href: link[:href],
             icon: link[:icon],
-            topic_id: topic_id,
+            topic_id: link[:topic_id],
             position: link_position,
           )
         end
@@ -67,13 +73,19 @@ module DocCategories
           links =
             links.filter_map do |link_param|
               link_param = link_param.to_h.with_indifferent_access
-              link_title = link_param[:title].to_s.strip.first(255)
+              link_title = link_param[:title].to_s.strip.first(255).presence
               link_href = link_param[:href].to_s.strip.first(2000)
-              next if link_title.blank? || link_href.blank?
+              next if link_href.blank?
+
+              topic_id =
+                link_param[:topic_id].presence&.to_i ||
+                  DocCategories::Url.extract_topic_id_from_url(link_href)
+
+              next if link_title.blank? && topic_id.blank?
 
               link_icon = link_param[:icon].to_s.strip.first(100).presence
 
-              { title: link_title, href: link_href, icon: link_icon }
+              { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
             end
 
           next if links.blank?
