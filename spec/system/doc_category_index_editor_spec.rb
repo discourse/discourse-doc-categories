@@ -19,7 +19,7 @@ describe "Doc Category Index Editor" do
     expect(page).to have_css(".doc-category-index-tab")
 
     find(".doc-category-index-tab__mode-selector .fk-d-menu__trigger").click
-    find(".doc-category-index-tab__mode-option-label", text: "Visual editor").click
+    find(".doc-category-index-tab__mode-option-label", text: "Editor").click
     expect(page).to have_css(".doc-category-index-editor")
   end
 

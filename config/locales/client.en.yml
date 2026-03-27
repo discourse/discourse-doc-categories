@@ -35,7 +35,7 @@ en:
           mode_none_description: "No sidebar index for this category"
           none_mode_help: "The sidebar index is disabled. Select a mode above to create one."
           disable_confirm: "This will permanently remove the current sidebar index. Are you sure?"
-          mode_direct: "Visual editor"
+          mode_direct: "Editor"
           mode_direct_description: "Build the sidebar index with a visual editor"
           mode_switch_warning: "Selecting an index topic will overwrite the current sidebar structure on the next refresh."
           switch_to_direct_warning: "This will disconnect the index topic. Editor changes won't sync back to it."
