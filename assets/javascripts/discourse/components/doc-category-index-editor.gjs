@@ -1215,7 +1215,12 @@ export default class DocCategoryIndexEditor extends Component {
 
   willDestroy() {
     super.willDestroy();
-    this._saveToTransientData();
+    // Only persist editor state if the mode is still "direct" (topic_id === -1).
+    // When switching to "none" mode, #applyNoneMode() already set the correct
+    // form values -- overwriting them here would send stale data to the backend.
+    if (this.args.form?.get("doc_index_topic_id") === -1) {
+      this._saveToTransientData();
+    }
   }
 
   get serializedSections() {
