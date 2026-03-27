@@ -38,11 +38,13 @@ class IndexEditorLink extends Component {
   @tracked editing = false;
   @tracked swapping = false;
   @tracked swapTopicContent = [];
+  @tracked validationError = null;
   dragCount = 0;
   @tracked _editTitle;
   @tracked _editHref;
   @tracked _editIcon;
   @tracked _editType;
+  @tracked _editTopicId;
 
   _isNew = false;
 
@@ -61,13 +63,26 @@ class IndexEditorLink extends Component {
     this._editHref = this.args.link.href;
     this._editIcon = this.args.link.icon;
     this._editType = this.args.link.type;
+    this._editTopicId = this.args.link.topic_id;
+    this._topicOriginalTitle = this.args.link.topicTitle;
   }
 
   _applyEdit() {
-    this.args.link.title = this._editTitle;
+    const isTopicLink = this._editType === "topic";
+    const titleMatchesTopic =
+      isTopicLink &&
+      (!this._editTitle?.trim() ||
+        this._editTitle === this._topicOriginalTitle);
+
+    this.args.link.title = titleMatchesTopic
+      ? this._topicOriginalTitle
+      : this._editTitle;
     this.args.link.href = this._editHref;
     this.args.link.icon = this._editIcon;
     this.args.link.type = this._editType;
+    this.args.link.topic_id = this._editTopicId;
+    this.args.link.topicTitle = this._topicOriginalTitle;
+    this.args.link.autoTitle = titleMatchesTopic;
     this.args.onChange?.();
   }
 
@@ -140,9 +155,12 @@ class IndexEditorLink extends Component {
 
   @action
   confirmEdit() {
-    if (!this.canConfirm) {
+    const error = this.#validateLink();
+    if (error) {
+      this.validationError = error;
       return;
     }
+    this.validationError = null;
     this._applyEdit();
     this._isNew = false;
     this.editing = false;
@@ -151,8 +169,23 @@ class IndexEditorLink extends Component {
     this.args.onEditStateChange?.(false);
   }
 
+  #validateLink() {
+    if (!this._editHref?.trim()) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.validation_empty_link_url"
+      );
+    }
+    if (!this._editTitle?.trim() && this._editType !== "topic") {
+      return i18n(
+        "doc_categories.category_settings.index_editor.validation_empty_link_title"
+      );
+    }
+    return null;
+  }
+
   @action
   cancelEdit() {
+    this.validationError = null;
     if (this._isNew) {
       this.args.onEditStateChange?.(false);
       const idx = this.args.section.links.indexOf(this.args.link);
@@ -281,8 +314,10 @@ class IndexEditorLink extends Component {
   @action
   onSwapTopic(topicId, topic) {
     if (topic) {
-      this._editTitle = topic.title || topic.fancy_title;
+      this._topicOriginalTitle = topic.title || topic.fancy_title;
+      this._editTitle = this._topicOriginalTitle;
       this._editHref = `/t/${topic.slug}/${topic.id}`;
+      this._editTopicId = topic.id;
     }
     this.swapping = false;
     this.swapTopicContent = [];
@@ -360,7 +395,10 @@ class IndexEditorLink extends Component {
       {{#if this.editing}}
         {{! Edit mode: expanded card with all fields }}
         <div
-          class="doc-category-index-editor__link-card --editing"
+          class={{concatClass
+            "doc-category-index-editor__link-card --editing"
+            (if this.validationError "--error")
+          }}
           {{on "focusout" this.onCardFocusOut}}
         >
           <div class="doc-category-index-editor__link-edit-row">
@@ -373,14 +411,24 @@ class IndexEditorLink extends Component {
             <input
               type="text"
               value={{this._editTitle}}
-              placeholder={{i18n
-                "doc_categories.category_settings.index_editor.link_title_placeholder"
+              placeholder={{or
+                this._topicOriginalTitle
+                (i18n
+                  "doc_categories.category_settings.index_editor.link_title_placeholder"
+                )
               }}
               class="doc-category-index-editor__link-title"
               {{autoFocus}}
               {{on "input" this.updateTitle}}
             />
           </div>
+
+          {{#if this.validationError}}
+            <div class="doc-category-index-editor__validation-error">
+              {{icon "triangle-exclamation"}}
+              {{this.validationError}}
+            </div>
+          {{/if}}
 
           <div class="doc-category-index-editor__link-edit-row">
             {{#if this.isTopicLink}}
@@ -480,6 +528,11 @@ class IndexEditorLink extends Component {
             >
               {{this.displayTitle}}
             </span>
+            {{#if @link.autoTitle}}
+              <span class="doc-category-index-editor__auto-badge">{{i18n
+                  "doc_categories.category_settings.index_editor.auto_title"
+                }}</span>
+            {{/if}}
             {{#unless @batchMode}}
               <DButton
                 @icon="pencil"
@@ -515,6 +568,7 @@ class IndexEditorSection extends Component {
   @tracked emptyDropTarget = false;
   @tracked collapsed = false;
   @tracked editingTitle = false;
+  @tracked titleValidationError = null;
   @tracked includeSubcategories = false;
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
@@ -571,6 +625,13 @@ class IndexEditorSection extends Component {
 
   @action
   confirmTitleEdit() {
+    if (!this._editSectionTitle?.trim()) {
+      this.titleValidationError = i18n(
+        "doc_categories.category_settings.index_editor.validation_empty_section_title"
+      );
+      return;
+    }
+    this.titleValidationError = null;
     this.args.section.title = this._editSectionTitle;
     this.args.onChange?.();
     this._isNew = false;
@@ -580,6 +641,7 @@ class IndexEditorSection extends Component {
 
   @action
   cancelTitleEdit() {
+    this.titleValidationError = null;
     if (this._isNew) {
       this.args.onEditStateChange?.(false);
       this.args.onCancelNew?.(this.args.section);
@@ -809,11 +871,15 @@ class IndexEditorSection extends Component {
     if (!topic) {
       return;
     }
+    const topicTitle = topic.title || topic.fancy_title;
     this.args.section.links.push(
       trackedObject({
-        title: topic.title || topic.fancy_title,
+        title: topicTitle,
         href: `/t/${topic.slug}/${topic.id}`,
         type: "topic",
+        topic_id: topic.id,
+        topicTitle,
+        autoTitle: true,
         icon: "far-file",
       })
     );
@@ -886,6 +952,7 @@ class IndexEditorSection extends Component {
         class={{concatClass
           "doc-category-index-editor__section"
           (if (@isSectionSelected @section) "--selected")
+          (if this.titleValidationError "--error")
         }}
       >
         <div class="doc-category-index-editor__section-header">
@@ -993,6 +1060,13 @@ class IndexEditorSection extends Component {
               />
             {{/unless}}{{/if}}
         </div>
+
+        {{#if this.titleValidationError}}
+          <div class="doc-category-index-editor__validation-error">
+            {{icon "triangle-exclamation"}}
+            {{this.titleValidationError}}
+          </div>
+        {{/if}}
 
         <div
           class={{concatClass
@@ -1162,6 +1236,9 @@ export default class DocCategoryIndexEditor extends Component {
                 title: link.title,
                 href: link.href,
                 type: link.type || "topic",
+                topic_id: link.topic_id,
+                topicTitle: link.topicTitle,
+                autoTitle: link.autoTitle,
                 icon: link.icon || "far-file",
               })
             )
@@ -1186,7 +1263,10 @@ export default class DocCategoryIndexEditor extends Component {
             trackedObject({
               title: link.text,
               href: link.href,
-              type: "topic",
+              type: link.topic_id ? "topic" : "manual",
+              topic_id: link.topic_id ?? null,
+              topicTitle: link.topic_title,
+              autoTitle: link.topic_id && !link.custom_title,
               icon: link.icon || "far-file",
             })
           )
@@ -1202,6 +1282,9 @@ export default class DocCategoryIndexEditor extends Component {
         title: link.title,
         href: link.href,
         type: link.type,
+        topic_id: link.topic_id,
+        topicTitle: link.topicTitle,
+        autoTitle: link.autoTitle,
         icon: link.icon,
       })),
     }));
@@ -1251,7 +1334,7 @@ export default class DocCategoryIndexEditor extends Component {
         );
       }
       for (const link of section.links) {
-        if (!link.title?.trim()) {
+        if (!link.title?.trim() && link.type !== "topic") {
           errors.push(
             i18n(
               "doc_categories.category_settings.index_editor.validation_empty_link_title"
@@ -1513,6 +1596,8 @@ export default class DocCategoryIndexEditor extends Component {
         links: section.links.map((link) => ({
           title: link.title,
           href: link.href,
+          type: link.type,
+          topic_id: link.topic_id,
           icon: link.icon,
         })),
       })),

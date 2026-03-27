@@ -220,6 +220,24 @@ body.doc-simple-mode {
     padding: 0.75em;
     background: var(--secondary);
     transition: border-color 0.15s;
+
+    &.--error {
+      border-color: var(--danger);
+    }
+  }
+
+  &__validation-error {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    color: var(--danger);
+    font-size: var(--font-down-1);
+    margin-top: 0.25em;
+
+    /* Align with the input next to the collapse button */
+    .doc-category-index-editor__section > & {
+      margin-left: calc(1em + 0.5em + 0.25em);
+    }
   }
 
   &__section-header {
@@ -386,6 +404,10 @@ body.doc-simple-mode {
       }
     }
 
+    &.--error {
+      border-color: var(--danger);
+    }
+
     &.--adding {
       flex-direction: row;
       align-items: center;
@@ -423,6 +445,12 @@ body.doc-simple-mode {
       color: var(--primary-medium);
       font-style: italic;
     }
+  }
+
+  &__auto-badge {
+    color: var(--primary-medium);
+    font-size: var(--font-down-2);
+    flex-shrink: 0;
   }
 
   &__link-href-preview {

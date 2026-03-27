@@ -52,6 +52,11 @@ module DocCategories
               next if text.blank? || href.blank?
               result = { text:, href: }
               result[:icon] = link.icon if link.icon.present?
+              if link.topic_id.present?
+                result[:topic_id] = link.topic_id
+                result[:topic_title] = topic&.title
+                result[:custom_title] = link.title.present?
+              end
               result
             end
 
