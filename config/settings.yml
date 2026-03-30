@@ -6,7 +6,11 @@ doc_categories:
     default: false
   doc_categories_simple_mode:
     default: false
+    hidden: true
     client: true
+    upcoming_change:
+      status: "experimental"
+      impact: "other,all_members"
   doc_categories_homepage:
     default: ""
     client: true
