@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe "Doc Categories Simple Mode", system: true do
+describe "Doc Categories Simple Mode" do
   fab!(:admin)
   fab!(:category, :category_with_definition)
   fab!(:documentation_category, :category_with_definition)
