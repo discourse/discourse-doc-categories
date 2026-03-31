@@ -25,6 +25,11 @@
   .topic-list-item.visited a.title:not(.badge-notification) {
     color: var(--primary);
   }
+
+  .link-bottom-line .badge-category__wrapper,
+  .topic-excerpt {
+    display: none;
+  }
 }
 
 // Simple mode: topic view

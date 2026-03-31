@@ -64,6 +64,7 @@ export default {
           }
           columns.delete("posters");
           columns.delete("replies");
+          columns.delete("views");
           columns.replace("activity", { header: DocUpdatedHeaderCell });
           return columns;
         }
