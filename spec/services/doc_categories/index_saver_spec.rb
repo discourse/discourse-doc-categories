@@ -114,15 +114,22 @@ RSpec.describe DocCategories::IndexSaver do
       it "skips links with blank hrefs" do
         saver.save_sections!([{ title: "S", links: [{ title: "No URL", href: "" }] }])
 
-        index = DocCategories::Index.find_by(category_id: category.id)
-        expect(index.sidebar_sections).to be_empty
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
       end
 
       it "skips links with no title and no topic_id" do
         saver.save_sections!([{ title: "S", links: [{ title: "", href: "https://external.com" }] }])
 
-        index = DocCategories::Index.find_by(category_id: category.id)
-        expect(index.sidebar_sections).to be_empty
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+      end
+
+      it "destroys an existing index when all sections are filtered out" do
+        saver.save_sections!(build_sections(["S", [%w[L /l]]]))
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_present
+
+        saver.save_sections!([{ title: "", links: [{ title: "L", href: "/a" }] }])
+
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
       end
     end
 
