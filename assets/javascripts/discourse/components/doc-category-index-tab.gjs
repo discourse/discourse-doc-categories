@@ -140,10 +140,15 @@ export default class DocCategoryIndexTab extends Component {
     this.loadingIndexTopic = true;
     try {
       const topic = await Topic.find(this.indexTopicId, {});
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       this.indexTopic = topic;
       this.indexTopicContent = [topic];
     } finally {
-      this.loadingIndexTopic = false;
+      if (!this.isDestroying && !this.isDestroyed) {
+        this.loadingIndexTopic = false;
+      }
     }
   }
 
@@ -198,11 +203,13 @@ export default class DocCategoryIndexTab extends Component {
         ),
         didConfirm: () => {
           this.mode = MODE_DIRECT;
+          this.args.form.set("doc_index_topic_id", -1);
         },
       });
       return;
     }
     this.mode = MODE_DIRECT;
+    this.args.form.set("doc_index_topic_id", -1);
   }
 
   @action

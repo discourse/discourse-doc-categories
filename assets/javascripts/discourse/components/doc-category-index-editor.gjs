@@ -8,7 +8,7 @@ import {
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
-import { next } from "@ember/runloop";
+import { cancel, next } from "@ember/runloop";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
@@ -611,7 +611,7 @@ class IndexEditorSection extends Component {
   willDestroy() {
     super.willDestroy();
     if (this._autoExpandTimer) {
-      clearTimeout(this._autoExpandTimer);
+      cancel(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
     // Ensure editingCount is decremented if destroyed while editing title
@@ -745,6 +745,9 @@ class IndexEditorSection extends Component {
   sectionDragEnter() {
     this.dragCount++;
     if (this.collapsed) {
+      if (this._autoExpandTimer) {
+        cancel(this._autoExpandTimer);
+      }
       this._autoExpandTimer = discourseLater(() => {
         this.collapsed = false;
       }, 500);
@@ -758,7 +761,7 @@ class IndexEditorSection extends Component {
   sectionDragLeave() {
     this.dragCount--;
     if (this._autoExpandTimer && this.dragCount === 0) {
-      clearTimeout(this._autoExpandTimer);
+      cancel(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
     if (this.dragCount === 0) {
@@ -779,7 +782,7 @@ class IndexEditorSection extends Component {
     event.stopPropagation();
     this.dragCount = 0;
     if (this._autoExpandTimer) {
-      clearTimeout(this._autoExpandTimer);
+      cancel(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
 
@@ -817,7 +820,7 @@ class IndexEditorSection extends Component {
     this.emptyDropTarget = false;
     this.args.onSectionDragEnd?.();
     if (this._autoExpandTimer) {
-      clearTimeout(this._autoExpandTimer);
+      cancel(this._autoExpandTimer);
       this._autoExpandTimer = null;
     }
   }
@@ -858,6 +861,9 @@ class IndexEditorSection extends Component {
     const includeSubcategories = this.includeSubcategories;
     try {
       const result = await this.args.fetchTopics(includeSubcategories);
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       if (result.topics.length === 0) {
         this.dialog.alert(
           i18n("doc_categories.category_settings.index_editor.no_topics_found")
@@ -1251,7 +1257,7 @@ export default class DocCategoryIndexEditor extends Component {
   willDestroy() {
     super.willDestroy();
     if (this._saveStateTimer) {
-      clearTimeout(this._saveStateTimer);
+      cancel(this._saveStateTimer);
       this._saveStateTimer = null;
     }
     // Only persist editor state if the mode is still "direct" (topic_id === -1).
@@ -1614,6 +1620,9 @@ export default class DocCategoryIndexEditor extends Component {
   async _doIndexAllTopics() {
     try {
       const result = await this.fetchTopics(this.includeSubcategories);
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       if (result.topics.length === 0) {
         return;
       }
@@ -1671,6 +1680,9 @@ export default class DocCategoryIndexEditor extends Component {
         data: JSON.stringify(payload),
         contentType: "application/json",
       });
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       this.saveState = "saved";
       this.args.form?.set("_docIndexSections", null);
       this.args.form?.commitField("_docIndexSections");
@@ -1681,6 +1693,9 @@ export default class DocCategoryIndexEditor extends Component {
         }
       }, 3000);
     } catch (e) {
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       this.saveState = "error";
       popupAjaxError(e);
     }
@@ -1896,6 +1911,13 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   batchReorderSections(targetSection, isAbove) {
+    // Dropping on a selected section is a no-op
+    if (this.selectedSections.has(targetSection)) {
+      this.isBatchDragging = false;
+      this.batchDragType = null;
+      return;
+    }
+
     const ordered = this.sections.filter((s) => this.selectedSections.has(s));
     for (const s of ordered) {
       const idx = this.sections.indexOf(s);
@@ -1915,6 +1937,13 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   batchReorderItems(targetLink, targetSection, isAbove) {
+    // Dropping on a selected item is a no-op
+    if (targetLink && this.selectedItems.has(targetLink)) {
+      this.isBatchDragging = false;
+      this.batchDragType = null;
+      return;
+    }
+
     /* Collect selected items preserving their current order across all sections */
     const ordered = [];
     for (const section of this.sections) {

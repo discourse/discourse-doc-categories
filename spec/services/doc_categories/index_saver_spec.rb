@@ -12,6 +12,12 @@ RSpec.describe DocCategories::IndexSaver do
   end
 
   describe "#save_sections!" do
+    it "raises when sections_data is not an array" do
+      expect { saver.save_sections!({ title: "not an array" }) }.to raise_error(
+        Discourse::InvalidParameters,
+      )
+    end
+
     it "creates an index in direct mode with sections and links" do
       saver.save_sections!(build_sections(["Intro", [["Link 1", "/t/slug/1"]]]))
 

@@ -35,6 +35,9 @@ module DocCategories
       index = DocCategories::Index.find_or_initialize_by(category_id: category.id)
       return false if index.index_topic_id == topic.id
 
+      # Clear stale direct-mode sections before switching to topic mode
+      index.sidebar_sections.destroy_all if index.persisted? && index.mode_direct?
+
       index.index_topic = topic
       index.save!
       enqueue_refresh

@@ -273,7 +273,7 @@ body.doc-simple-mode {
     font-weight: bold;
     font-size: var(--font-up-1);
     min-width: 0;
-    cursor: default;
+    cursor: pointer;
     padding: 0.15em 0.35em;
     border-radius: var(--d-border-radius);
     overflow: hidden;
@@ -587,7 +587,12 @@ body.doc-simple-mode {
 
   &__remove-btn {
     flex-shrink: 0;
+  }
 
+  &__remove-btn,
+  &__cancel-edit-btn,
+  &__cancel-title-btn,
+  &__batch-delete-btn {
     .discourse-no-touch & {
       &:hover,
       &:focus {
@@ -607,21 +612,6 @@ body.doc-simple-mode {
       &:hover,
       &:focus {
         background: var(--success);
-        color: var(--secondary);
-
-        .d-icon {
-          color: var(--secondary);
-        }
-      }
-    }
-  }
-
-  &__cancel-edit-btn,
-  &__cancel-title-btn {
-    .discourse-no-touch & {
-      &:hover,
-      &:focus {
-        background: var(--danger);
         color: var(--secondary);
 
         .d-icon {
@@ -710,6 +700,7 @@ body.doc-simple-mode {
     cursor: grab;
     color: var(--primary-medium);
     padding: 0.25em;
+    flex-shrink: 0;
 
     &:active {
       cursor: grabbing;
@@ -733,25 +724,7 @@ body.doc-simple-mode {
     font-size: var(--font-down-1);
   }
 
-  &__batch-delete-btn {
-    .discourse-no-touch & {
-      &:hover,
-      &:focus {
-        background: var(--danger);
-        color: var(--secondary);
-
-        .d-icon {
-          color: var(--secondary);
-        }
-      }
-    }
-  }
-
-  &__section.--selected {
-    border-color: var(--tertiary);
-    background: var(--tertiary-very-low);
-  }
-
+  &__section.--selected,
   &__link-card.--selected {
     border-color: var(--tertiary);
     background: var(--tertiary-very-low);
@@ -776,5 +749,15 @@ label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__s
 
   input[type="checkbox"] {
     margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-category-index-editor {
+    &__section,
+    &__section-body,
+    &__link-card {
+      transition: none;
+    }
   }
 }
