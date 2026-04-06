@@ -33,15 +33,17 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(response.status).to eq(404)
     end
 
-    it "returns all topics in the category" do
+    it "returns all topics in the category with total_count" do
       sign_in(admin)
 
       get "/doc-categories/indexes/#{category.id}/topics.json"
 
       expect(response.status).to eq(200)
 
-      topics = response.parsed_body["topics"]
+      body = response.parsed_body
+      topics = body["topics"]
       expect(topics.map { |t| t["id"] }).to contain_exactly(topic_1.id, topic_2.id, topic_3.id)
+      expect(body["total_count"]).to eq(3)
 
       first_topic = topics.find { |t| t["id"] == topic_1.id }
       expect(first_topic["title"]).to eq(topic_1.title)
@@ -261,6 +263,20 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(index.sidebar_sections.count).to eq(1)
       expect(index.sidebar_sections.first.title).to eq("Via Category")
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("Link")
+    end
+
+    it "returns 400 when doc_index_sections contains invalid JSON" do
+      sign_in(admin)
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_sections: "not valid json {{{",
+          }
+
+      expect(response.status).to eq(400)
     end
   end
 end
