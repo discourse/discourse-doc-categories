@@ -32,9 +32,11 @@ module ::DocCategories
 
       index = DocCategories::Index.find_by(category_id: category.id)
       if index&.mode_topic?
-        DocCategories::CategoryIndexManager.new(category).assign!(
-          DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
-        )
+        raise Discourse::InvalidAccess.new(
+          "index managed by a topic",
+                nil,
+                custom_message: "doc_categories.errors.index_topic_managed",
+              )
       end
 
       sections_params =

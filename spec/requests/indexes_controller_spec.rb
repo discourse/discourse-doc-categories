@@ -107,6 +107,26 @@ RSpec.describe ::DocCategories::IndexesController do
     fab!(:admin)
     fab!(:category)
 
+    it "rejects updates when the index is in topic mode" do
+      sign_in(admin)
+      topic = Fabricate(:topic, category: category)
+      Fabricate(:doc_categories_index, category: category, index_topic: topic)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(403)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index.mode_topic?).to eq(true)
+      expect(index.sidebar_sections.count).to eq(0)
+    end
+
     it "creates an index with sections and links" do
       sign_in(admin)
 
@@ -155,6 +175,27 @@ RSpec.describe ::DocCategories::IndexesController do
 
       category_response = response.parsed_body["category"]
       expect(category_response["doc_category_index"]).to be_nil
+    end
+
+    it "allows updates when the index is in direct mode" do
+      sign_in(admin)
+      DocCategories::Index.create!(
+        category: category,
+        index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+      )
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Updated", links: [{ title: "Link", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index.sidebar_sections.first.title).to eq("Updated")
     end
 
     it "clears the index when empty sections are sent via PUT to indexes endpoint" do
