@@ -1229,7 +1229,7 @@ export default class DocCategoryIndexEditor extends Component {
     // Only persist editor state if the mode is still "direct" (topic_id === -1).
     // When switching to "none" mode, #applyNoneMode() already set the correct
     // form values -- overwriting them here would send stale data to the backend.
-    if (this.args.form?.get("doc_index_topic_id") === -1) {
+    if (Number(this.args.form?.get("doc_index_topic_id")) === -1) {
       this._saveToTransientData();
     }
   }
@@ -1543,10 +1543,6 @@ export default class DocCategoryIndexEditor extends Component {
     return response.topics || [];
   }
 
-  async _fetchCategoryTopics() {
-    return this.fetchTopics(this.includeSubcategories);
-  }
-
   _topicToLink(topic) {
     return trackedObject({
       title: topic.title || topic.fancy_title,
@@ -1578,7 +1574,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   async _doIndexAllTopics() {
     try {
-      const topics = await this._fetchCategoryTopics();
+      const topics = await this.fetchTopics(this.includeSubcategories);
       if (topics.length === 0) {
         return;
       }

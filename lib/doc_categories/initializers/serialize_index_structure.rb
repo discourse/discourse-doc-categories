@@ -24,9 +24,6 @@ module ::DocCategories
             # NOTICE THAT SUB-CATEGORIES ARE NOT CONSIDERED BECAUSE WE CAN'T CHECK THEIR
             # PERMISSIONS
             next unless object.id == index_topic.category_id
-
-            first_post = index_topic.first_post
-            next if first_post.blank?
           end
 
           index.sidebar_structure.presence&.as_json

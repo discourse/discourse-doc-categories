@@ -33,7 +33,7 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
-        # only topic-mode categories have a parseable index topic
+        # Only topic-mode indexes are supported (see MissingTopicsReport for rationale).
         index_topic_id = category.doc_index_topic_id
         next if index_topic_id.nil? || index_topic_id < 0
 

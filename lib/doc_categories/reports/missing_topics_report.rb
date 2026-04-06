@@ -87,7 +87,9 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
-        # only topic-mode categories have a parseable index topic
+        # Only topic-mode indexes are supported by these reports for now. Direct-mode
+        # indexes store their structure in sidebar_links rather than a parseable topic,
+        # which would require a different code path. TODO: support direct-mode indexes.
         index_topic_id = category.doc_index_topic_id
         next if index_topic_id.nil? || index_topic_id < 0
 
