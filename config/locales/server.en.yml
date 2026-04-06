@@ -17,6 +17,7 @@ en:
     errors:
       index_topic_managed: "This index is managed by a topic. Clear the index topic first to edit directly."
       too_many_sections: "Too many sections. Maximum is %{max}."
+      too_many_links: "Too many links in a section. Maximum is %{max}."
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
     doc_categories_simple_mode: "Enable simple mode for doc categories. Simplifies topic lists and collapses comments behind a toggle on topic pages."

@@ -221,5 +221,46 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(response.status).to eq(200)
       expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
     end
+
+    it "returns 400 when sections exceed the limit" do
+      sign_in(admin)
+
+      sections =
+        (DocCategories::IndexSaver::MAX_SECTIONS + 1).times.map do |i|
+          { title: "Section #{i}", links: [{ title: "Link", href: "/t/s/#{i}" }] }
+        end
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: { sections: sections }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(400)
+      expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+    end
+
+    it "creates an index with sections via category save using doc_index_sections" do
+      sign_in(admin)
+
+      sections = [{ title: "Via Category", links: [{ title: "Link", href: "/t/test/1" }] }].to_json
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_sections: sections,
+          }
+
+      expect(response.status).to eq(200)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.mode_direct?).to eq(true)
+      expect(index.sidebar_sections.count).to eq(1)
+      expect(index.sidebar_sections.first.title).to eq("Via Category")
+      expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("Link")
+    end
   end
 end

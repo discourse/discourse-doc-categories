@@ -2,8 +2,8 @@
 
 module DocCategories
   class IndexSaver
-    MAX_SECTIONS = 20
-    MAX_LINKS_PER_SECTION = 50
+    MAX_SECTIONS = 50
+    MAX_LINKS_PER_SECTION = 200
 
     def initialize(category)
       @category = category
@@ -27,6 +27,7 @@ module DocCategories
 
       index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
 
+      validate_limits!(sections_data)
       sections = build_sections(sections_data)
 
       topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
@@ -63,37 +64,52 @@ module DocCategories
 
     private
 
-    def build_sections(sections_data)
-      sections_data
-        .first(MAX_SECTIONS)
-        .filter_map do |section_param|
-          section_param = section_param.to_h.with_indifferent_access
-          title = section_param[:title].to_s.strip.first(255)
-          next if title.blank?
+    def validate_limits!(sections_data)
+      if sections_data.size > MAX_SECTIONS
+        raise Discourse::InvalidParameters.new(
+                I18n.t("doc_categories.errors.too_many_sections", max: MAX_SECTIONS),
+              )
+      end
 
-          links = (section_param[:links] || []).first(MAX_LINKS_PER_SECTION)
-          links =
-            links.filter_map do |link_param|
-              link_param = link_param.to_h.with_indifferent_access
-              link_title = link_param[:title].to_s.strip.first(255).presence
-              link_href = link_param[:href].to_s.strip.first(2000)
-              next if link_href.blank?
-
-              topic_id =
-                link_param[:topic_id].presence&.to_i ||
-                  DocCategories::Url.extract_topic_id_from_url(link_href)
-
-              next if link_title.blank? && topic_id.blank?
-
-              link_icon = link_param[:icon].to_s.strip.first(100).presence
-
-              { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
-            end
-
-          next if links.blank?
-
-          { title: title, links: links }
+      sections_data.each do |section|
+        links = section.try(:[], :links) || section.try(:[], "links") || []
+        if links.size > MAX_LINKS_PER_SECTION
+          raise Discourse::InvalidParameters.new(
+                  I18n.t("doc_categories.errors.too_many_links", max: MAX_LINKS_PER_SECTION),
+                )
         end
+      end
+    end
+
+    def build_sections(sections_data)
+      sections_data.filter_map do |section_param|
+        section_param = section_param.to_h.with_indifferent_access
+        title = section_param[:title].to_s.strip.first(255)
+        next if title.blank?
+
+        links = section_param[:links] || []
+        links =
+          links.filter_map do |link_param|
+            link_param = link_param.to_h.with_indifferent_access
+            link_title = link_param[:title].to_s.strip.first(255).presence
+            link_href = link_param[:href].to_s.strip.first(2000)
+            next if link_href.blank?
+
+            topic_id =
+              link_param[:topic_id].presence&.to_i ||
+                DocCategories::Url.extract_topic_id_from_url(link_href)
+
+            next if link_title.blank? && topic_id.blank?
+
+            link_icon = link_param[:icon].to_s.strip.first(100).presence
+
+            { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
+          end
+
+        next if links.blank?
+
+        { title: title, links: links }
+      end
     end
   end
 end

@@ -104,7 +104,7 @@ describe BasicCategorySerializer do
       expect(data[:doc_category_index]).to be_nil
     end
 
-    it "isn't serialized if the index topic doesn't contain a first post" do
+    it "isn't serialized if the index has no sidebar sections" do
       empty_topic = Fabricate(:topic, category: documentation_category)
 
       documentation_index.update!(index_topic: empty_topic)
