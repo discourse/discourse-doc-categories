@@ -135,9 +135,8 @@ export class IndexEditorSection extends Component {
 
   isAboveElement(event) {
     event.preventDefault();
-    const target = event.currentTarget;
-    const domRect = target.getBoundingClientRect();
-    return event.offsetY < domRect.height / 2;
+    const domRect = event.currentTarget.getBoundingClientRect();
+    return event.clientY - domRect.top < domRect.height / 2;
   }
 
   @action
@@ -423,6 +422,10 @@ export class IndexEditorSection extends Component {
         <span
           class="doc-category-index-editor__drag-handle"
           draggable="true"
+          role="button"
+          aria-label={{i18n
+            "doc_categories.category_settings.index_editor.drag_section"
+          }}
           {{on "dragstart" this.sectionDragHasStarted}}
         >
           {{icon "grip-lines"}}

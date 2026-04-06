@@ -48,11 +48,10 @@ describe DocCategories::Index do
     cat1 = Fabricate(:category_with_definition)
     cat2 = Fabricate(:category_with_definition)
 
-    index1 =
-      described_class.create!(
-        category: cat1,
-        index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
-      )
+    described_class.create!(
+      category: cat1,
+      index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+    )
     index2 =
       described_class.new(
         category: cat2,

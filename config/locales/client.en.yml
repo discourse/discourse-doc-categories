@@ -30,7 +30,7 @@ en:
         index_editor:
           mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content as the sidebar index"
-          topic_mode_help: "Select a topic to use as the sidebar index. The index will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href=\"https://meta.discourse.org/t/322376\" target=\"_blank\">Learn more</a>."
+          topic_mode_help: "Select a topic to use as the sidebar index. The index will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href=\"https://meta.discourse.org/t/322376\" target=\"_blank\" rel=\"noopener noreferrer\">Learn more</a>."
           mode_none: "Disabled"
           mode_none_description: "No sidebar index for this category"
           none_mode_help: "The sidebar index is disabled. Select a mode above to create one."
@@ -94,6 +94,9 @@ en:
           batch_clear_all: "Clear"
           batch_invert: "Invert selection"
           batch_delete_confirm: "Are you sure you want to delete the selected items?"
+          drag_link: "Drag to reorder link"
+          drag_section: "Drag to reorder section"
+          drag_selection: "Drag to reorder selection"
           batch_drag_disabled: "Cannot drag mixed selection of items and sections"
           clear_index: "Clear index"
           clear_index_confirm: "This will remove all sections and links. Are you sure?"

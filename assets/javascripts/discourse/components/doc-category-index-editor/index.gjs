@@ -1,5 +1,5 @@
 import Component from "@glimmer/component";
-import { tracked } from "@glimmer/tracking";
+import { cached, tracked } from "@glimmer/tracking";
 import { fn } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
@@ -163,6 +163,7 @@ export default class DocCategoryIndexEditor extends Component {
     return this.sections.length === 0;
   }
 
+  @cached
   get validationErrors() {
     const errors = [];
 
@@ -210,6 +211,7 @@ export default class DocCategoryIndexEditor extends Component {
     return errors;
   }
 
+  @cached
   get duplicateHrefs() {
     const counts = new Map();
     for (const section of this.sections) {
@@ -228,6 +230,7 @@ export default class DocCategoryIndexEditor extends Component {
     return dupes;
   }
 
+  @cached
   get duplicateTitles() {
     const counts = new Map();
     for (const section of this.sections) {
@@ -245,6 +248,7 @@ export default class DocCategoryIndexEditor extends Component {
     return dupes;
   }
 
+  @cached
   get favoriteIcons() {
     const icons = new Set(["far-file", "link"]);
     for (const section of this.sections) {
@@ -268,7 +272,7 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
   }
 
-  @action
+  @bind
   cancelNewSection(section) {
     const idx = this.sections.indexOf(section);
     if (idx !== -1) {
@@ -277,7 +281,7 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
   }
 
-  @action
+  @bind
   removeSection(section) {
     this.dialog.yesNoConfirm({
       message: i18n(
@@ -294,19 +298,19 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   /* Section drag */
-  @action
+  @bind
   setDraggedSection(section) {
     this.draggedSection = section;
     this.isDraggingSection = true;
   }
 
-  @action
+  @bind
   clearDraggedSection() {
     this.draggedSection = null;
     this.isDraggingSection = false;
   }
 
-  @action
+  @bind
   reorderSection(targetSection, isAbove) {
     // Handle link dropped on section body (not on a specific link)
     if (this._draggedLink) {
@@ -341,13 +345,13 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   /* Cross-section link drag */
-  @action
+  @bind
   onLinkDragStart(link, sourceSection) {
     this._draggedLink = link;
     this._draggedLinkSourceSection = sourceSection;
   }
 
-  @action
+  @bind
   onLinkDrop(targetLink, targetSection, isAbove) {
     if (!this._draggedLink || this._draggedLink === targetLink) {
       this._draggedLink = null;
@@ -466,7 +470,6 @@ export default class DocCategoryIndexEditor extends Component {
         links: section.links.map((link) => ({
           title: link.title,
           href: link.href,
-          type: link.type,
           topic_id: link.topic_id,
           icon: link.icon,
         })),
@@ -577,7 +580,7 @@ export default class DocCategoryIndexEditor extends Component {
     }
   }
 
-  @action
+  @bind
   onEditStateChange(isEditing) {
     if (isEditing) {
       this.editingCount++;
@@ -708,7 +711,7 @@ export default class DocCategoryIndexEditor extends Component {
     this.batchDragType = null;
   }
 
-  @action
+  @bind
   batchReorderSections(targetSection, isAbove) {
     // Dropping on a selected section is a no-op
     if (this.selectedSections.has(targetSection)) {
@@ -734,7 +737,7 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
   }
 
-  @action
+  @bind
   batchReorderItems(targetLink, targetSection, isAbove) {
     // Dropping on a selected item is a no-op
     if (targetLink && this.selectedItems.has(targetLink)) {
@@ -856,6 +859,10 @@ export default class DocCategoryIndexEditor extends Component {
             <span
               class="doc-category-index-editor__batch-drag-handle"
               draggable="true"
+              role="button"
+              aria-label={{i18n
+                "doc_categories.category_settings.index_editor.drag_selection"
+              }}
               {{on "dragstart" this.batchDragStart}}
               {{on "dragend" this.batchDragEnd}}
             >

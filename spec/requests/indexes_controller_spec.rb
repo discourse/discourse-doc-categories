@@ -292,5 +292,27 @@ RSpec.describe ::DocCategories::IndexesController do
 
       expect(response.status).to eq(400)
     end
+
+    it "rejects doc_index_sections via category save when the index is in topic mode" do
+      sign_in(admin)
+      topic = Fabricate(:topic, category: category)
+      Fabricate(:doc_categories_index, category: category, index_topic: topic)
+
+      sections = [{ title: "New", links: [{ title: "Link", href: "/t/test/1" }] }].to_json
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_sections: sections,
+          }
+
+      expect(response.status).to eq(403)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index.mode_topic?).to eq(true)
+      expect(index.sidebar_sections.count).to eq(0)
+    end
   end
 end
