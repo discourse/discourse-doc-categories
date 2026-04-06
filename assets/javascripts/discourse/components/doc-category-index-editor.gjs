@@ -59,6 +59,14 @@ class IndexEditorLink extends Component {
     }
   }
 
+  willDestroy() {
+    super.willDestroy();
+    // Ensure editingCount is decremented if this link is destroyed while editing
+    if (this.editing) {
+      this.args.onEditStateChange?.(false);
+    }
+  }
+
   _snapshotLink() {
     this._editTitle = this.args.link.title;
     this._editHref = this.args.link.href;
@@ -207,6 +215,10 @@ class IndexEditorLink extends Component {
     const card = event.currentTarget;
 
     next(() => {
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
+
       if (
         card.contains(document.activeElement) ||
         document.querySelector(
@@ -245,19 +257,19 @@ class IndexEditorLink extends Component {
     }
     event.dataTransfer.effectAllowed = "move";
     this.args.onDragStart(this.args.link, this.args.section);
-    this.dragCssClass = "dragging";
+    this.dragCssClass = "is-dragging";
   }
 
   @action
   dragOver(event) {
     event.preventDefault();
     event.stopPropagation();
-    if (this.dragCssClass === "dragging" || this.args.isDraggingSection) {
+    if (this.dragCssClass === "is-dragging" || this.args.isDraggingSection) {
       return;
     }
     const isAbove = this.isAboveElement(event);
     this._isAbove = isAbove;
-    this.dragCssClass = isAbove ? "drag-above" : "drag-below";
+    this.dragCssClass = isAbove ? "is-drag-above" : "is-drag-below";
   }
 
   @action
@@ -272,7 +284,8 @@ class IndexEditorLink extends Component {
     this.dragCount--;
     if (
       this.dragCount === 0 &&
-      (this.dragCssClass === "drag-above" || this.dragCssClass === "drag-below")
+      (this.dragCssClass === "is-drag-above" ||
+        this.dragCssClass === "is-drag-below")
     ) {
       discourseLater(() => {
         this.dragCssClass = null;
@@ -353,13 +366,6 @@ class IndexEditorLink extends Component {
       }
       event.stopPropagation();
     }
-  }
-
-  get searchFilters() {
-    if (!this.args.categoryId) {
-      return "in:title include:unlisted";
-    }
-    return `in:title include:unlisted category:=${this.args.categoryId}`;
   }
 
   <template>
@@ -450,7 +456,7 @@ class IndexEditorLink extends Component {
                     @content={{this.swapTopicContent}}
                     @onChange={{this.onSwapTopic}}
                     @options={{hash
-                      additionalFilters=this.searchFilters
+                      additionalFilters=@searchFilters
                       none="doc_categories.category_settings.index_editor.select_topic"
                     }}
                   />
@@ -602,6 +608,18 @@ class IndexEditorSection extends Component {
     }
   }
 
+  willDestroy() {
+    super.willDestroy();
+    if (this._autoExpandTimer) {
+      clearTimeout(this._autoExpandTimer);
+      this._autoExpandTimer = null;
+    }
+    // Ensure editingCount is decremented if destroyed while editing title
+    if (this.editingTitle) {
+      this.args.onEditStateChange?.(false);
+    }
+  }
+
   get linkCount() {
     return this.args.section.links.length;
   }
@@ -695,7 +713,7 @@ class IndexEditorSection extends Component {
     }
     event.dataTransfer.effectAllowed = "move";
     this.args.onSectionDragStart(this.args.section);
-    this.dragCssClass = "dragging";
+    this.dragCssClass = "is-dragging";
   }
 
   get #isEmptyItemDrag() {
@@ -711,15 +729,15 @@ class IndexEditorSection extends Component {
   @action
   sectionDragOver(event) {
     event.preventDefault();
-    if (this.dragCssClass === "dragging") {
+    if (this.dragCssClass === "is-dragging") {
       return;
     }
     const isBatchSectionDrag =
       this.args.isBatchDragging && this.args.batchDragType === "sections";
     if (this.args.isDraggingSection || isBatchSectionDrag) {
       this.dragCssClass = this.isAboveElement(event)
-        ? "drag-above"
-        : "drag-below";
+        ? "is-drag-above"
+        : "is-drag-below";
     }
   }
 
@@ -746,8 +764,8 @@ class IndexEditorSection extends Component {
     if (this.dragCount === 0) {
       this.emptyDropTarget = false;
       if (
-        this.dragCssClass === "drag-above" ||
-        this.dragCssClass === "drag-below"
+        this.dragCssClass === "is-drag-above" ||
+        this.dragCssClass === "is-drag-below"
       ) {
         discourseLater(() => {
           this.dragCssClass = null;
@@ -766,8 +784,8 @@ class IndexEditorSection extends Component {
     }
 
     const hasIndicator =
-      this.dragCssClass === "drag-above" ||
-      this.dragCssClass === "drag-below" ||
+      this.dragCssClass === "is-drag-above" ||
+      this.dragCssClass === "is-drag-below" ||
       this.emptyDropTarget;
 
     if (!hasIndicator) {
@@ -839,8 +857,8 @@ class IndexEditorSection extends Component {
     this._addMenuApi?.close();
     const includeSubcategories = this.includeSubcategories;
     try {
-      const topics = await this.args.fetchTopics(includeSubcategories);
-      if (topics.length === 0) {
+      const result = await this.args.fetchTopics(includeSubcategories);
+      if (result.topics.length === 0) {
         this.dialog.alert(
           i18n("doc_categories.category_settings.index_editor.no_topics_found")
         );
@@ -849,7 +867,7 @@ class IndexEditorSection extends Component {
       const existingHrefs = new Set(
         this.args.section.links.map((link) => link.href).filter(Boolean)
       );
-      const missing = topics.filter(
+      const missing = result.topics.filter(
         (t) => !existingHrefs.has(`/t/${t.slug}/${t.id}`)
       );
       if (missing.length === 0) {
@@ -872,6 +890,17 @@ class IndexEditorSection extends Component {
       }
       this.collapsed = false;
       this.args.onChange?.();
+      if (result.truncated) {
+        this.dialog.alert(
+          i18n(
+            "doc_categories.category_settings.index_editor.topics_truncated",
+            {
+              loaded: result.topics.length,
+              total: result.totalCount,
+            }
+          )
+        );
+      }
     } catch (e) {
       popupAjaxError(e);
     }
@@ -918,13 +947,6 @@ class IndexEditorSection extends Component {
         this.args.onChange?.();
       },
     });
-  }
-
-  get searchFilters() {
-    if (!this.args.categoryId) {
-      return "in:title include:unlisted";
-    }
-    return `in:title include:unlisted category:=${this.args.categoryId}`;
   }
 
   <template>
@@ -1085,6 +1107,7 @@ class IndexEditorSection extends Component {
             (if this.collapsed "--collapsed")
             (if this.emptyDropTarget "--drop-target")
           }}
+          aria-hidden={{if this.collapsed "true"}}
         >
           {{#unless this.collapsed}}
             <div class="doc-category-index-editor__links">
@@ -1092,7 +1115,7 @@ class IndexEditorSection extends Component {
                 <IndexEditorLink
                   @link={{link}}
                   @section={{@section}}
-                  @categoryId={{@categoryId}}
+                  @searchFilters={{@searchFilters}}
                   @duplicateHrefs={{@duplicateHrefs}}
                   @favoriteIcons={{@favoriteIcons}}
                   @batchMode={{@batchMode}}
@@ -1124,7 +1147,7 @@ class IndexEditorSection extends Component {
                     @content={{this.topicChooserContent}}
                     @onChange={{this.onAddTopic}}
                     @options={{hash
-                      additionalFilters=this.searchFilters
+                      additionalFilters=@searchFilters
                       none="doc_categories.category_settings.index_editor.select_topic"
                     }}
                   />
@@ -1212,6 +1235,7 @@ export default class DocCategoryIndexEditor extends Component {
   draggedSection = null;
   _draggedLink = null;
   _draggedLinkSourceSection = null;
+  _saveStateTimer = null;
 
   constructor() {
     super(...arguments);
@@ -1226,6 +1250,10 @@ export default class DocCategoryIndexEditor extends Component {
 
   willDestroy() {
     super.willDestroy();
+    if (this._saveStateTimer) {
+      clearTimeout(this._saveStateTimer);
+      this._saveStateTimer = null;
+    }
     // Only persist editor state if the mode is still "direct" (topic_id === -1).
     // When switching to "none" mode, #applyNoneMode() already set the correct
     // form values -- overwriting them here would send stale data to the backend.
@@ -1304,6 +1332,13 @@ export default class DocCategoryIndexEditor extends Component {
         icon: link.icon,
       })),
     }));
+  }
+
+  get searchFilters() {
+    if (!this.args.categoryId) {
+      return "in:title include:unlisted";
+    }
+    return `in:title include:unlisted category:=${this.args.categoryId}`;
   }
 
   @bind
@@ -1540,7 +1575,11 @@ export default class DocCategoryIndexEditor extends Component {
       `/doc-categories/indexes/${this.args.categoryId}/topics`,
       { data: { include_subcategories: includeSubcategories } }
     );
-    return response.topics || [];
+    return {
+      topics: response.topics || [],
+      totalCount: response.total_count ?? 0,
+      truncated: (response.total_count ?? 0) > (response.topics || []).length,
+    };
   }
 
   _topicToLink(topic) {
@@ -1574,8 +1613,8 @@ export default class DocCategoryIndexEditor extends Component {
 
   async _doIndexAllTopics() {
     try {
-      const topics = await this.fetchTopics(this.includeSubcategories);
-      if (topics.length === 0) {
+      const result = await this.fetchTopics(this.includeSubcategories);
+      if (result.topics.length === 0) {
         return;
       }
       this.sections.splice(
@@ -1585,10 +1624,21 @@ export default class DocCategoryIndexEditor extends Component {
           title: i18n(
             "doc_categories.category_settings.index_editor.all_topics_section"
           ),
-          links: trackedArray(topics.map((t) => this._topicToLink(t))),
+          links: trackedArray(result.topics.map((t) => this._topicToLink(t))),
         })
       );
       this._saveToTransientData();
+      if (result.truncated) {
+        this.dialog.alert(
+          i18n(
+            "doc_categories.category_settings.index_editor.topics_truncated",
+            {
+              loaded: result.topics.length,
+              total: result.totalCount,
+            }
+          )
+        );
+      }
     } catch (e) {
       popupAjaxError(e);
     }
@@ -1625,8 +1675,8 @@ export default class DocCategoryIndexEditor extends Component {
       this.args.form?.set("_docIndexSections", null);
       this.args.form?.commitField("_docIndexSections");
       this.args.category?.set("doc_index_sections", null);
-      discourseLater(() => {
-        if (this.saveState === "saved") {
+      this._saveStateTimer = discourseLater(() => {
+        if (!this.isDestroying && this.saveState === "saved") {
           this.saveState = null;
         }
       }, 3000);
@@ -2028,6 +2078,7 @@ export default class DocCategoryIndexEditor extends Component {
           <IndexEditorSection
             @section={{section}}
             @categoryId={{@categoryId}}
+            @searchFilters={{this.searchFilters}}
             @duplicateHrefs={{this.duplicateHrefs}}
             @duplicateTitles={{this.duplicateTitles}}
             @favoriteIcons={{this.favoriteIcons}}
