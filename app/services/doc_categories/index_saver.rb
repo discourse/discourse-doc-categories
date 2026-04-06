@@ -10,15 +10,12 @@ module DocCategories
     end
 
     def save_sections!(sections_data)
+      unless sections_data.blank? || sections_data.is_a?(Array)
+        raise Discourse::InvalidParameters.new(:sections)
+      end
+
       if sections_data.blank?
-        index = DocCategories::Index.find_by(category_id: @category.id)
-        if index && !index.mode_topic?
-          index.sidebar_sections.destroy_all
-          index.destroy!
-          @category.association(:doc_categories_index).reset
-          Site.clear_cache
-          @category.publish_category
-        end
+        destroy_index!
         return
       end
 
@@ -30,15 +27,8 @@ module DocCategories
       validate_limits!(sections_data)
       sections = build_sections(sections_data)
 
-      # If all sections were filtered out (blank titles, empty links), treat as blank input
       if sections.blank?
-        if index.persisted?
-          index.sidebar_sections.destroy_all
-          index.destroy!
-          @category.association(:doc_categories_index).reset
-          Site.clear_cache
-          @category.publish_category
-        end
+        destroy_index!(index: index) if index.persisted?
         return
       end
 
@@ -75,6 +65,17 @@ module DocCategories
     end
 
     private
+
+    def destroy_index!(index: nil)
+      index ||= DocCategories::Index.find_by(category_id: @category.id)
+      return unless index && !index.mode_topic?
+
+      index.sidebar_sections.destroy_all
+      index.destroy!
+      @category.association(:doc_categories_index).reset
+      Site.clear_cache
+      @category.publish_category
+    end
 
     def validate_limits!(sections_data)
       if sections_data.size > MAX_SECTIONS

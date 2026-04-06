@@ -114,6 +114,19 @@ describe DocCategories::CategoryIndexManager do
       expect(index.mode_direct?).to eq(true)
     end
 
+    it "clears direct-mode sidebar sections when switching to topic mode" do
+      manager.assign!(-1)
+      index = DocCategories::Index.find_by(category_id: category.id)
+      index.sidebar_sections.create!(title: "Editor Section", position: 0)
+      expect(index.sidebar_sections.count).to eq(1)
+
+      manager.assign!(topic.id)
+
+      index.reload
+      expect(index.mode_topic?).to eq(true)
+      expect(index.sidebar_sections.count).to eq(0)
+    end
+
     it "does not reassign when the index is unchanged" do
       Fabricate(:doc_categories_index, category: category, index_topic: topic)
 

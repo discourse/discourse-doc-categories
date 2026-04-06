@@ -278,5 +278,19 @@ RSpec.describe ::DocCategories::IndexesController do
 
       expect(response.status).to eq(400)
     end
+
+    it "returns 400 when doc_index_sections is valid JSON but not an array" do
+      sign_in(admin)
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_sections: '{"title":"not an array"}',
+          }
+
+      expect(response.status).to eq(400)
+    end
   end
 end
