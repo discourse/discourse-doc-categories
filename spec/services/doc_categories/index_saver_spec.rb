@@ -56,11 +56,13 @@ RSpec.describe DocCategories::IndexSaver do
       expect(DocCategories::Index.find_by(category_id: category.id)).to be_present
     end
 
-    it "does not overwrite a topic-mode index" do
+    it "raises when trying to overwrite a topic-mode index" do
       topic = Fabricate(:topic, category: category)
       Fabricate(:doc_categories_index, category: category, index_topic: topic)
 
-      saver.save_sections!(build_sections(["New", [%w[L /l]]]))
+      expect { saver.save_sections!(build_sections(["New", [%w[L /l]]])) }.to raise_error(
+        Discourse::InvalidAccess,
+      )
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index.mode_topic?).to eq(true)

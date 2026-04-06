@@ -20,10 +20,11 @@ module DocCategories
       end
 
       index = DocCategories::Index.find_or_initialize_by(category_id: @category.id)
-      return if index.mode_topic?
+      raise Discourse::InvalidAccess if index.mode_topic?
 
       index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
 
+      sections_data = sections_data.map { |s| s.to_h.with_indifferent_access }
       validate_limits!(sections_data)
       sections = build_sections(sections_data)
 
@@ -85,7 +86,7 @@ module DocCategories
       end
 
       sections_data.each do |section|
-        links = section.try(:[], :links) || section.try(:[], "links") || []
+        links = section[:links] || []
         if links.size > MAX_LINKS_PER_SECTION
           raise Discourse::InvalidParameters.new(
                   I18n.t("doc_categories.errors.too_many_links", max: MAX_LINKS_PER_SECTION),
@@ -96,7 +97,6 @@ module DocCategories
 
     def build_sections(sections_data)
       sections_data.filter_map do |section_param|
-        section_param = section_param.to_h.with_indifferent_access
         title = section_param[:title].to_s.strip.first(255)
         next if title.blank?
 

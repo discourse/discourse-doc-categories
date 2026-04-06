@@ -15,6 +15,11 @@ import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 
+// Selectors for floating/overlay elements that steal focus from the card.
+// When one of these is open, focusout should not auto-confirm the edit.
+const FLOATING_ELEMENT_SELECTOR =
+  ".fk-d-menu__content, .select-kit-body, .d-modal";
+
 export class IndexEditorLink extends Component {
   @service site;
 
@@ -31,6 +36,8 @@ export class IndexEditorLink extends Component {
   @tracked _editTopicId;
 
   _isNew = false;
+  _isAbove = false;
+  @tracked _topicOriginalTitle = null;
 
   constructor() {
     super(...arguments);
@@ -126,9 +133,8 @@ export class IndexEditorLink extends Component {
 
   isAboveElement(event) {
     event.preventDefault();
-    const target = event.currentTarget;
-    const domRect = target.getBoundingClientRect();
-    return event.offsetY < domRect.height / 2;
+    const domRect = event.currentTarget.getBoundingClientRect();
+    return event.clientY - domRect.top < domRect.height / 2;
   }
 
   get canConfirm() {
@@ -204,9 +210,7 @@ export class IndexEditorLink extends Component {
 
       if (
         card.contains(document.activeElement) ||
-        document.querySelector(
-          ".fk-d-menu__content, .select-kit-body, .d-modal"
-        )
+        document.querySelector(FLOATING_ELEMENT_SELECTOR)
       ) {
         return;
       }
@@ -375,6 +379,10 @@ export class IndexEditorLink extends Component {
         <span
           class="doc-category-index-editor__drag-handle"
           draggable="true"
+          role="button"
+          aria-label={{i18n
+            "doc_categories.category_settings.index_editor.drag_link"
+          }}
           {{on "dragstart" this.dragHasStarted}}
         >
           {{icon "grip-lines"}}

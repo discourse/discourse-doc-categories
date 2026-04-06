@@ -105,7 +105,7 @@ export default class DocCategoryIndexTab extends Component {
     if (!this.category?.id) {
       return "in:title include:unlisted";
     }
-    return `in:title include:unlisted category:${this.category.id}`;
+    return `in:title include:unlisted category:=${this.category.id}`;
   }
 
   get topicErrorMessage() {
@@ -224,12 +224,20 @@ export default class DocCategoryIndexTab extends Component {
           "doc_categories.category_settings.index_editor.mode_switch_warning"
         ),
         didConfirm: () => {
-          this.mode = MODE_TOPIC;
+          this.#applyTopicMode();
         },
       });
       return;
     }
+    this.#applyTopicMode();
+  }
+
+  #applyTopicMode() {
     this.mode = MODE_TOPIC;
+
+    // Clear direct-mode form data so saving doesn't send stale values
+    this.args.form.set("doc_index_topic_id", null);
+    this.args.form.set("doc_index_sections", null);
   }
 
   @action
