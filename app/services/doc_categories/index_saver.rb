@@ -32,29 +32,31 @@ module DocCategories
       topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
 
-      index.save! if index.new_record?
-      index.sidebar_sections.destroy_all
+      ActiveRecord::Base.transaction do
+        index.save! if index.new_record?
+        index.sidebar_sections.destroy_all
 
-      sections.each_with_index do |section, section_position|
-        section_record =
-          index.sidebar_sections.create!(title: section[:title], position: section_position)
+        sections.each_with_index do |section, section_position|
+          section_record =
+            index.sidebar_sections.create!(title: section[:title], position: section_position)
 
-        section[:links].each_with_index do |link, link_position|
-          # If the title matches the topic title, store nil (auto title)
-          title = link[:title]
-          title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
+          section[:links].each_with_index do |link, link_position|
+            # If the title matches the topic title, store nil (auto title)
+            title = link[:title]
+            title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
 
-          section_record.sidebar_links.create!(
-            title: title,
-            href: link[:href],
-            icon: link[:icon],
-            topic_id: link[:topic_id],
-            position: link_position,
-          )
+            section_record.sidebar_links.create!(
+              title: title,
+              href: link[:href],
+              icon: link[:icon],
+              topic_id: link[:topic_id],
+              position: link_position,
+            )
+          end
         end
-      end
 
-      index.touch
+        index.touch
+      end
       Site.clear_cache
       @category.publish_category
     end

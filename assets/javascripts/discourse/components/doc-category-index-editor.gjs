@@ -8,6 +8,7 @@ import {
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
+import { next } from "@ember/runloop";
 import { service } from "@ember/service";
 import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
@@ -204,7 +205,8 @@ class IndexEditorLink extends Component {
   @action
   onCardFocusOut(event) {
     const card = event.currentTarget;
-    requestAnimationFrame(() => {
+
+    next(() => {
       if (
         card.contains(document.activeElement) ||
         document.querySelector(
@@ -213,9 +215,18 @@ class IndexEditorLink extends Component {
       ) {
         return;
       }
+
       if (!this.canConfirm) {
         return;
       }
+
+      const error = this.#validateLink();
+      if (error) {
+        this.validationError = error;
+        return;
+      }
+
+      this.validationError = null;
       this._applyEdit();
       this._isNew = false;
       this.editing = false;
@@ -1708,7 +1719,11 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   onEditStateChange(isEditing) {
-    this.editingCount += isEditing ? 1 : -1;
+    if (isEditing) {
+      this.editingCount++;
+    } else {
+      this.editingCount = Math.max(0, this.editingCount - 1);
+    }
   }
 
   @bind
