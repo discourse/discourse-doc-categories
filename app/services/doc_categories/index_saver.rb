@@ -30,6 +30,18 @@ module DocCategories
       validate_limits!(sections_data)
       sections = build_sections(sections_data)
 
+      # If all sections were filtered out (blank titles, empty links), treat as blank input
+      if sections.blank?
+        if index.persisted?
+          index.sidebar_sections.destroy_all
+          index.destroy!
+          @category.association(:doc_categories_index).reset
+          Site.clear_cache
+          @category.publish_category
+        end
+        return
+      end
+
       topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
 

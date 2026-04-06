@@ -5,6 +5,8 @@ module ::DocCategories
     requires_plugin PLUGIN_NAME
     before_action :ensure_admin
 
+    MAX_TOPICS = 5000
+
     def topics
       category = ::Category.find_by(id: params[:category_id])
       raise Discourse::NotFound if category.blank?
@@ -16,14 +18,16 @@ module ::DocCategories
 
       topic_ids = topic_query.list_category_topic_ids(category)
 
+      visible_scope = Topic.where(id: topic_ids, visible: true).order(:title)
+      total_count = visible_scope.count
+
       topics =
-        Topic
-          .where(id: topic_ids, visible: true)
-          .order(:title)
+        visible_scope
+          .limit(MAX_TOPICS)
           .pluck(:id, :title, :slug)
           .map { |id, title, slug| { id:, title:, slug: } }
 
-      render json: { topics: }
+      render json: { topics:, total_count: }
     end
 
     def update
@@ -33,14 +37,14 @@ module ::DocCategories
       index = DocCategories::Index.find_by(category_id: category.id)
       if index&.mode_topic?
         raise Discourse::InvalidAccess.new(
-          "index managed by a topic",
+                "index managed by a topic",
                 nil,
                 custom_message: "doc_categories.errors.index_topic_managed",
               )
       end
 
       sections_params =
-        params.permit(sections: [:title, { links: %i[title href icon type topic_id] }]).fetch(
+        params.permit(sections: [:title, { links: %i[title href icon topic_id] }]).fetch(
           :sections,
           [],
         )

@@ -192,12 +192,12 @@ body.doc-simple-mode {
     gap: 0.35em;
     position: relative;
 
-    &.dragging {
+    &.is-dragging {
       opacity: 0.5;
     }
 
-    &.drag-above::before,
-    &.drag-below::after {
+    &.is-drag-above::before,
+    &.is-drag-below::after {
       content: "";
       position: absolute;
       left: 0;
@@ -208,11 +208,11 @@ body.doc-simple-mode {
       z-index: 1;
     }
 
-    &.drag-above::before {
+    &.is-drag-above::before {
       top: -1px;
     }
 
-    &.drag-below::after {
+    &.is-drag-below::after {
       bottom: -1px;
     }
   }
@@ -284,6 +284,12 @@ body.doc-simple-mode {
       background: var(--primary-very-low);
     }
 
+    &:focus-visible {
+      background: var(--primary-very-low);
+      outline: 2px solid var(--tertiary);
+      outline-offset: -2px;
+    }
+
     &.--placeholder {
       color: var(--primary-medium);
       font-style: italic;
@@ -294,7 +300,7 @@ body.doc-simple-mode {
   &__link-count {
     background: var(--primary-low);
     color: var(--primary-high);
-    border-radius: 10px;
+    border-radius: 10px; /* pill shape */
     padding: 0.1em 0.5em;
     font-size: var(--font-down-1);
     flex-shrink: 0;
@@ -313,6 +319,7 @@ body.doc-simple-mode {
       opacity: 0;
       height: 0;
       overflow: hidden;
+      visibility: hidden;
     }
   }
 
@@ -332,12 +339,12 @@ body.doc-simple-mode {
     min-height: 2em;
     position: relative;
 
-    &.dragging {
+    &.is-dragging {
       opacity: 0.5;
     }
 
-    &.drag-above::before,
-    &.drag-below::after {
+    &.is-drag-above::before,
+    &.is-drag-below::after {
       content: "";
       position: absolute;
       left: 0;
@@ -347,11 +354,11 @@ body.doc-simple-mode {
       border-radius: 1px;
     }
 
-    &.drag-above::before {
+    &.is-drag-above::before {
       top: -1px;
     }
 
-    &.drag-below::after {
+    &.is-drag-below::after {
       bottom: -1px;
     }
 
@@ -359,7 +366,7 @@ body.doc-simple-mode {
       padding-bottom: 0.75em;
       margin-bottom: -0.6em;
 
-      &.drag-below::after {
+      &.is-drag-below::after {
         bottom: calc(0.75em - 0.15em - 1px);
       }
     }
@@ -524,6 +531,13 @@ body.doc-simple-mode {
       &:hover {
         color: var(--tertiary-hover);
       }
+
+      &:focus-visible {
+        color: var(--tertiary-hover);
+        outline: 2px solid var(--tertiary);
+        outline-offset: 1px;
+        border-radius: var(--d-border-radius);
+      }
     }
 
     &.--readonly {
@@ -552,6 +566,12 @@ body.doc-simple-mode {
 
     &:active {
       cursor: grabbing;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--tertiary);
+      outline-offset: -2px;
+      border-radius: var(--d-border-radius);
     }
 
     /* Align with section header icons (section padding + border + header button padding) */
@@ -695,6 +715,12 @@ body.doc-simple-mode {
       cursor: grabbing;
     }
 
+    &:focus-visible {
+      outline: 2px solid var(--tertiary);
+      outline-offset: -2px;
+      border-radius: var(--d-border-radius);
+    }
+
     &.--disabled {
       cursor: not-allowed;
       opacity: 0.4;
@@ -721,18 +747,23 @@ body.doc-simple-mode {
     }
   }
 
-  .doc-category-index-editor__section.--selected {
+  &__section.--selected {
     border-color: var(--tertiary);
     background: var(--tertiary-very-low);
   }
 
-  .doc-category-index-editor__link-card.--selected {
+  &__link-card.--selected {
     border-color: var(--tertiary);
     background: var(--tertiary-very-low);
   }
 }
 
-/* Rendered in a floating portal, outside .doc-category-index-editor */
+/*
+  Rendered in a floating portal, outside .doc-category-index-editor.
+  The class is doubled to raise specificity above the DMenu dropdown's
+  own label styles (`.fk-d-menu__content label`).
+*/
+
 label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
   display: flex;
   align-items: center;

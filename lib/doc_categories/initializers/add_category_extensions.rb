@@ -23,7 +23,11 @@ module ::DocCategories
         plugin.register_category_update_param_with_callback(
           :doc_index_sections,
         ) do |category, value|
-          sections = value.present? ? JSON.parse(value) : nil
+          begin
+            sections = value.present? ? JSON.parse(value) : nil
+          rescue JSON::ParserError
+            raise Discourse::InvalidParameters.new(:doc_index_sections)
+          end
           DocCategories::IndexSaver.new(category).save_sections!(sections)
         end
       end

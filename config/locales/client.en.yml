@@ -58,6 +58,7 @@ en:
           add_missing_topics_to_section: "Add missing topics"
           no_topics_found: "No topics found in this category."
           no_missing_topics: "All topics are already in this section."
+          topics_truncated: "Only the first %{loaded} of %{total} topics were loaded. Some topics may not appear in the list."
           click_to_swap: "Click to change topic"
           change_icon: "Change icon"
           edit_link: "Edit link"
