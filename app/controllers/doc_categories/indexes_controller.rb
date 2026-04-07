@@ -35,7 +35,10 @@ module ::DocCategories
       raise Discourse::NotFound if category.blank?
 
       index = DocCategories::Index.find_by(category_id: category.id)
-      if index&.mode_topic?
+
+      if params[:force_direct] && index&.mode_topic?
+        index.update!(index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
+      elsif index&.mode_topic?
         raise Discourse::InvalidAccess.new(
                 "index managed by a topic",
                 nil,
@@ -43,11 +46,11 @@ module ::DocCategories
               )
       end
 
-      had_auto_index_section = index&.auto_index_section.present?
+      old_auto_index_section_id = index&.auto_index_section&.id
 
       sections_params =
         params.permit(
-          sections: [:title, :auto_index, { links: %i[title href icon topic_id] }],
+          sections: [:id, :title, :auto_index, { links: %i[title href icon topic_id] }],
         ).fetch(:sections, [])
 
       if params.key?(:auto_index_include_subcategories)
@@ -58,15 +61,14 @@ module ::DocCategories
         )
       end
 
-      DocCategories::IndexSaver.new(category).save_sections!(sections_params)
+      saver = DocCategories::IndexSaver.new(category)
+      saver.save_sections!(sections_params)
+      saver.sync_auto_index_if_needed!(
+        sections_params,
+        old_auto_index_section_id: old_auto_index_section_id,
+      )
 
-      # If an auto-index section was just created, run sync inline to backfill existing topics
       current_index = DocCategories::Index.find_by(category_id: category.id)
-      if !had_auto_index_section && current_index&.auto_index_section.present?
-        DocCategories::AutoIndexer::Sync.call(params: { index_id: current_index.id })
-        current_index.reload
-      end
-
       structure = current_index&.sidebar_structure&.as_json
       render json: success_json.merge(index_structure: structure)
     end

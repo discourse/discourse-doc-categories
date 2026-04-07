@@ -7,6 +7,7 @@ describe "Doc Category Index Editor" do
   fab!(:post_1) { Fabricate(:post, topic: topic_1) }
 
   let(:editor) { PageObjects::Components::DocIndexEditor.new }
+  let(:dialog) { PageObjects::Components::Dialog.new }
 
   before do
     SiteSetting.doc_categories_enabled = true
@@ -25,7 +26,7 @@ describe "Doc Category Index Editor" do
       )
 
       editor.save_category
-      expect(editor).to have_success_toast
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
@@ -51,6 +52,21 @@ describe "Doc Category Index Editor" do
       expect(index).to be_present
       expect(index.sidebar_sections.count).to eq(1)
       expect(index.sidebar_sections.first.title).to eq("Applied Section")
+    end
+
+    it "saves auto-index section via Save Category" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      expect(editor).to have_editor
+
+      editor.add_auto_index_section
+      expect(editor).to have_auto_index_section
+
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.sidebar_sections.first.auto_index).to eq(true)
     end
 
     it "preserves doc-index state across tab switches" do
@@ -89,7 +105,7 @@ describe "Doc Category Index Editor" do
       expect(editor).to have_selected_topic(topic_1)
 
       editor.save_category
-      expect(editor).to have_success_toast
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
@@ -114,10 +130,14 @@ describe "Doc Category Index Editor" do
       expect(index).to be_present
 
       editor.switch_to_mode("mode_none")
+      expect(dialog).to have_content(
+        I18n.t("js.doc_categories.category_settings.index_editor.disable_confirm"),
+      )
+      dialog.click_yes
       expect(editor).to have_none_help
 
       editor.save_category
-      expect(editor).to have_success_toast
+      expect(editor).to have_no_pending_changes
 
       expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
     end

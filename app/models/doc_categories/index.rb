@@ -63,9 +63,9 @@ module DocCategories
               result
             end
 
-          next if links.blank?
+          next if links.blank? && !section.auto_index?
 
-          section_result = { text: section.title, links: links }
+          section_result = { id: section.id, text: section.title, links: links }
           section_result[:auto_index] = true if section.auto_index?
           section_result
         end

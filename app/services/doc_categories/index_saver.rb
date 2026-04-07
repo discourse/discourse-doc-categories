@@ -74,6 +74,23 @@ module DocCategories
       @category.publish_category
     end
 
+    def sync_auto_index_if_needed!(sections_data, old_auto_index_section_id: nil)
+      index = DocCategories::Index.find_by(category_id: @category.id)
+      return if index&.auto_index_section.blank?
+
+      sections_data = sections_data&.map { |s| s.to_h.with_indifferent_access } || []
+      incoming_auto =
+        sections_data.find { |s| ActiveRecord::Type::Boolean.new.cast(s[:auto_index]) }
+      incoming_id = incoming_auto&.dig(:id).presence&.to_i
+
+      if incoming_id.nil? || incoming_id != old_auto_index_section_id
+        DocCategories::AutoIndexer::Sync.call(params: { index_id: index.id })
+        index.reload
+      end
+
+      index
+    end
+
     private
 
     def destroy_index!(index: nil)

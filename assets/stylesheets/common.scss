@@ -86,7 +86,7 @@ body.doc-simple-mode {
 
 /* Doc category index tab */
 .doc-category-index-tab {
-  &__mode-selector {
+  &__header {
     display: flex;
     align-items: center;
     gap: 0.5em;
@@ -808,6 +808,67 @@ label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__s
   input[type="checkbox"] {
     margin: 0;
   }
+}
+
+/* Doc index editor modal */
+.doc-index-editor-modal {
+  .d-modal__body {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .doc-index-editor-modal__toolbar-target {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75em;
+  }
+
+  .doc-index-editor-modal__footer-target {
+    display: contents;
+  }
+
+  .doc-category-index-editor__batch-bar {
+    top: 0;
+  }
+
+  .doc-category-index-editor__footer {
+    margin-top: 0;
+  }
+
+  .doc-category-index-editor__apply-footer {
+    margin-top: 0;
+    margin-left: auto;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+/*
+  DMenu / DComboButton dropdowns from the editor portal to #d-menu-portals,
+  which sits below the modal in z-order. Raise them above the modal overlay
+  the same way the icon grid picker does (z("modal", "dialog")).
+*/
+
+.fk-d-menu.index-options-menu-content,
+.fk-d-menu.add-section-menu-content,
+.fk-d-menu.section-add-menu-content,
+.fk-d-menu.d-icon-grid-picker-content {
+  z-index: z("modal", "dialog");
+}
+
+/* Legacy settings mode selector */
+.doc-categories-settings__mode-selector {
+  margin-bottom: 1em;
+}
+
+.doc-categories-settings__editor-trigger {
+  margin-top: 0.5em;
+}
+
+.doc-categories-settings__editor-errors {
+  color: var(--danger);
+  font-size: var(--font-down-1);
+  margin-top: 0.5em;
 }
 
 @media (prefers-reduced-motion: reduce) {
