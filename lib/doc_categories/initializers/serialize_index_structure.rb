@@ -28,6 +28,12 @@ module ::DocCategories
 
           index.sidebar_structure.presence&.as_json
         end
+
+        plugin.add_to_serializer(:basic_category, :doc_category_auto_index_include_subcategories) do
+          index = object&.doc_categories_index
+          next false if index.blank?
+          index.auto_index_include_subcategories
+        end
       end
     end
   end

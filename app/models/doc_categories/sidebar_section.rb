@@ -19,6 +19,14 @@ module DocCategories
     validates :index_id, presence: true
     validates :position, presence: true, uniqueness: { scope: :index_id }
     validates :title, length: { maximum: 255 }, allow_blank: true
+    validate :only_one_auto_index_section_per_index, if: :auto_index?
+
+    private
+
+    def only_one_auto_index_section_per_index
+      existing = self.class.where(index_id: index_id, auto_index: true).where.not(id: id).exists?
+      errors.add(:auto_index, "only one auto-index section allowed per index") if existing
+    end
   end
 end
 

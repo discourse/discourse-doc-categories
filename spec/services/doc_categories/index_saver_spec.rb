@@ -236,5 +236,71 @@ RSpec.describe DocCategories::IndexSaver do
           .first
       expect(link.icon).to eq("book")
     end
+
+    context "with auto-index sections" do
+      it "allows an empty auto-index section" do
+        saver.save_sections!([{ title: "Auto", auto_index: true, links: [] }])
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index).to be_present
+        section = index.sidebar_sections.first
+        expect(section.title).to eq("Auto")
+        expect(section.auto_index).to eq(true)
+        expect(section.sidebar_links.count).to eq(0)
+      end
+
+      it "still skips non-auto-index sections with empty links" do
+        saver.save_sections!(
+          [{ title: "Empty", links: [] }, { title: "Auto", auto_index: true, links: [] }],
+        )
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.sidebar_sections.count).to eq(1)
+        expect(index.sidebar_sections.first.title).to eq("Auto")
+      end
+
+      it "preserves auto_indexed flag on links through save cycle" do
+        topic = Fabricate(:topic, category: category)
+
+        saver.save_sections!(
+          [
+            {
+              title: "Auto",
+              auto_index: true,
+              links: [{ title: "T", href: topic.relative_url, topic_id: topic.id }],
+            },
+          ],
+        )
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        link = index.sidebar_sections.first.sidebar_links.first
+        link.update!(auto_indexed: true)
+
+        saver.save_sections!(
+          [
+            {
+              title: "Auto",
+              auto_index: true,
+              links: [{ title: "T", href: topic.relative_url, topic_id: topic.id }],
+            },
+          ],
+        )
+
+        index.reload
+        link = index.sidebar_sections.first.sidebar_links.first
+        expect(link.auto_indexed).to eq(true)
+      end
+
+      it "does not mark links as auto_indexed if they were not previously" do
+        saver.save_sections!(
+          [{ title: "S", links: [{ title: "L", href: "/t/slug/1", topic_id: 1 }] }],
+        )
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        link = index.sidebar_sections.first.sidebar_links.first
+        expect(link.auto_indexed).to eq(false)
+      end
+
+    end
   end
 end

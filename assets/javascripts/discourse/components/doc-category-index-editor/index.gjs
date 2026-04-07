@@ -11,6 +11,7 @@ import {
 import { cancel } from "@ember/runloop";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
+import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
 import concatClass from "discourse/helpers/concat-class";
@@ -79,6 +80,7 @@ export default class DocCategoryIndexEditor extends Component {
       return saved.map((section) =>
         trackedObject({
           title: section.title,
+          autoIndex: section.autoIndex || false,
           links: trackedArray(
             section.links.map((link) =>
               trackedObject({
@@ -89,6 +91,7 @@ export default class DocCategoryIndexEditor extends Component {
                 topicTitle: link.topicTitle,
                 autoTitle: link.autoTitle,
                 icon: link.icon || "far-file",
+                autoIndexed: link.autoIndexed || false,
               })
             )
           ),
@@ -100,13 +103,17 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   _initSectionsFromModel() {
-    const index = this.args.indexData;
+    return this._buildSectionsFrom(this.args.indexData);
+  }
+
+  _buildSectionsFrom(index) {
     if (!index || index.length === 0) {
       return [];
     }
     return index.map((section) =>
       trackedObject({
         title: section.text,
+        autoIndex: section.auto_index || false,
         links: trackedArray(
           section.links.map((link) =>
             trackedObject({
@@ -117,6 +124,7 @@ export default class DocCategoryIndexEditor extends Component {
               topicTitle: link.topic_title,
               autoTitle: link.topic_id && !link.custom_title,
               icon: link.icon || "far-file",
+              autoIndexed: link.auto_indexed || false,
             })
           )
         ),
@@ -124,9 +132,15 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
+  _refreshFromServerData(indexStructure) {
+    const newSections = this._buildSectionsFrom(indexStructure);
+    this.sections.splice(0, this.sections.length, ...newSections);
+  }
+
   _serializeSections() {
     return this.sections.map((section) => ({
       title: section.title,
+      autoIndex: section.autoIndex || false,
       links: section.links.map((link) => ({
         title: link.title,
         href: link.href,
@@ -135,6 +149,7 @@ export default class DocCategoryIndexEditor extends Component {
         topicTitle: link.topicTitle,
         autoTitle: link.autoTitle,
         icon: link.icon,
+        autoIndexed: link.autoIndexed || false,
       })),
     }));
   }
@@ -183,7 +198,7 @@ export default class DocCategoryIndexEditor extends Component {
           )
         );
       }
-      if (section.links.length === 0) {
+      if (section.links.length === 0 && !section.autoIndex) {
         errors.push(
           i18n(
             "doc_categories.category_settings.index_editor.validation_empty_section"
@@ -261,11 +276,32 @@ export default class DocCategoryIndexEditor extends Component {
     return [...icons];
   }
 
+  get hasAutoIndexSection() {
+    return this.sections.some((s) => s.autoIndex);
+  }
+
   @action
   addSection() {
     this.sections.push(
       trackedObject({
         title: "",
+        links: trackedArray([]),
+      })
+    );
+    this._saveToTransientData();
+  }
+
+  @action
+  addAutoIndexSection() {
+    if (this.hasAutoIndexSection) {
+      return;
+    }
+    this.sections.push(
+      trackedObject({
+        title: i18n(
+          "doc_categories.category_settings.index_editor.auto_index_section_title"
+        ),
+        autoIndex: true,
         links: trackedArray([]),
       })
     );
@@ -283,10 +319,16 @@ export default class DocCategoryIndexEditor extends Component {
 
   @bind
   removeSection(section) {
+    const message = section.autoIndex
+      ? i18n(
+          "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section"
+        )
+      : i18n(
+          "doc_categories.category_settings.index_editor.confirm_remove_section"
+        );
+
     this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.index_editor.confirm_remove_section"
-      ),
+      message,
       didConfirm: () => {
         const idx = this.sections.indexOf(section);
         if (idx !== -1) {
@@ -467,6 +509,7 @@ export default class DocCategoryIndexEditor extends Component {
     const payload = {
       sections: this.sections.map((section) => ({
         title: section.title,
+        auto_index: section.autoIndex || false,
         links: section.links.map((link) => ({
           title: link.title,
           href: link.href,
@@ -477,11 +520,14 @@ export default class DocCategoryIndexEditor extends Component {
     };
 
     try {
-      await ajax(`/doc-categories/indexes/${this.args.categoryId}`, {
-        type: "PUT",
-        data: JSON.stringify(payload),
-        contentType: "application/json",
-      });
+      const response = await ajax(
+        `/doc-categories/indexes/${this.args.categoryId}`,
+        {
+          type: "PUT",
+          data: JSON.stringify(payload),
+          contentType: "application/json",
+        }
+      );
       if (this.isDestroying || this.isDestroyed) {
         return;
       }
@@ -489,6 +535,10 @@ export default class DocCategoryIndexEditor extends Component {
       this.args.form?.set("_docIndexSections", null);
       this.args.form?.commitField("_docIndexSections");
       this.args.category?.set("doc_index_sections", null);
+
+      if (response.index_structure) {
+        this._refreshFromServerData(response.index_structure);
+      }
       this._saveStateTimer = discourseLater(() => {
         if (!this.isDestroying && this.saveState === "saved") {
           this.saveState = null;
@@ -946,12 +996,29 @@ export default class DocCategoryIndexEditor extends Component {
 
       {{#unless this.batchMode}}
         <div class="doc-category-index-editor__footer">
-          <DButton
-            @icon="plus"
-            @label="doc_categories.category_settings.index_editor.add_section"
-            @action={{this.addSection}}
-            class="btn-default btn-small"
-          />
+          <DComboButton class="--has-menu btn-small">
+            <:default as |combo|>
+              <combo.Button
+                @action={{this.addSection}}
+                @icon="plus"
+                @label="doc_categories.category_settings.index_editor.add_section"
+              />
+              {{#unless this.hasAutoIndexSection}}
+                <combo.Menu @identifier="add-section-menu">
+                  <DropdownMenu as |dropdown|>
+                    <dropdown.item>
+                      <DButton
+                        @icon="bolt"
+                        @label="doc_categories.category_settings.index_editor.add_auto_index_section"
+                        @action={{this.addAutoIndexSection}}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                  </DropdownMenu>
+                </combo.Menu>
+              {{/unless}}
+            </:default>
+          </DComboButton>
         </div>
       {{/unless}}
 

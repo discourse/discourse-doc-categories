@@ -106,6 +106,41 @@ module PageObjects
         has_css?(".doc-category-index-editor__section-title-label", text: title)
       end
 
+      def add_auto_index_section
+        find(".doc-category-index-editor__footer .d-combo-button-menu").click
+        find(
+          "button",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.add_auto_index_section"),
+        ).click
+        self
+      end
+
+      def has_auto_index_section?
+        has_css?(".doc-category-index-editor__auto-index-badge")
+      end
+
+      def has_no_auto_index_section?
+        has_no_css?(".doc-category-index-editor__auto-index-badge")
+      end
+
+      def has_auto_index_placeholder?
+        has_css?(".doc-category-index-editor__link-card.--ghost")
+      end
+
+      def has_no_auto_index_button?
+        has_no_button?(
+          I18n.t("js.doc_categories.category_settings.index_editor.add_auto_index_section"),
+        )
+      end
+
+      def has_auto_indexed_link_badge?
+        has_css?(".doc-category-index-editor__auto-indexed-badge")
+      end
+
+      def section_count
+        all(".doc-category-index-editor__section").count
+      end
+
       def switch_to_general_tab
         find("li.edit-category-general a").click
         self

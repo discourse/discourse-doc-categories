@@ -2,8 +2,8 @@
 
 module DocCategories
   class IndexSaver
-    MAX_SECTIONS = 50
-    MAX_LINKS_PER_SECTION = 200
+    MAX_SECTIONS = DocCategories::Index::MAX_SECTIONS
+    MAX_LINKS_PER_SECTION = DocCategories::Index::MAX_LINKS_PER_SECTION
 
     def initialize(category)
       @category = category
@@ -36,13 +36,20 @@ module DocCategories
       topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
 
+      # Preserve auto-indexed topic IDs so they survive the destroy/recreate cycle
+      auto_indexed_topic_ids = collect_auto_indexed_topic_ids(index)
+
       ActiveRecord::Base.transaction do
         index.save! if index.new_record?
         index.sidebar_sections.destroy_all
 
         sections.each_with_index do |section, section_position|
           section_record =
-            index.sidebar_sections.create!(title: section[:title], position: section_position)
+            index.sidebar_sections.create!(
+              title: section[:title],
+              position: section_position,
+              auto_index: section[:auto_index] || false,
+            )
 
           section[:links].each_with_index do |link, link_position|
             # If the title matches the topic title, store nil (auto title)
@@ -55,6 +62,8 @@ module DocCategories
               icon: link[:icon],
               topic_id: link[:topic_id],
               position: link_position,
+              auto_indexed:
+                link[:topic_id].present? && auto_indexed_topic_ids.include?(link[:topic_id]),
             )
           end
         end
@@ -76,6 +85,18 @@ module DocCategories
       @category.association(:doc_categories_index).reset
       Site.clear_cache
       @category.publish_category
+    end
+
+    def collect_auto_indexed_topic_ids(index)
+      return Set.new unless index.persisted?
+
+      DocCategories::SidebarLink
+        .auto_indexed
+        .joins(:sidebar_section)
+        .where(sidebar_section: { index_id: index.id })
+        .where.not(topic_id: nil)
+        .pluck(:topic_id)
+        .to_set
     end
 
     def validate_limits!(sections_data)
@@ -119,9 +140,10 @@ module DocCategories
             { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
           end
 
-        next if links.blank?
+        auto_index = ActiveRecord::Type::Boolean.new.cast(section_param[:auto_index])
+        next if links.blank? && !auto_index
 
-        { title: title, links: links }
+        { title: title, links: links, auto_index: auto_index || false }
       end
     end
   end
