@@ -11,6 +11,8 @@ module DocCategories
 
     belongs_to :topic, optional: true
 
+    scope :auto_indexed, -> { where(auto_indexed: true) }
+
     before_validation :populate_href_from_topic, if: -> { topic.present? && href.blank? }
 
     validates :sidebar_section_id, presence: true

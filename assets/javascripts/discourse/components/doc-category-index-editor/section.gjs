@@ -439,6 +439,20 @@ export class IndexEditorSection extends Component {
           (if this.titleValidationError "--error")
         }}
       >
+        {{#if @section.autoIndex}}
+          <span
+            class="doc-category-index-editor__auto-index-badge"
+            title={{i18n
+              "doc_categories.category_settings.index_editor.auto_index_badge_title"
+            }}
+          >
+            {{icon "bolt"}}
+            {{i18n
+              "doc_categories.category_settings.index_editor.auto_index_badge_label"
+            }}
+          </span>
+        {{/if}}
+
         <div class="doc-category-index-editor__section-header">
           <DButton
             @icon={{if this.collapsed "angle-right" "angle-down"}}
@@ -588,6 +602,28 @@ export class IndexEditorSection extends Component {
                   @onChange={{@onChange}}
                 />
               {{/each}}
+
+              {{#if @section.autoIndex}}
+                <div class="doc-category-index-editor__link --ghost">
+                  {{#if this.site.desktopView}}
+                    <span
+                      class="doc-category-index-editor__drag-handle-spacer"
+                    ></span>
+                  {{/if}}
+                  <div class="doc-category-index-editor__link-card --ghost">
+                    <div class="doc-category-index-editor__link-card-header">
+                      <span class="doc-category-index-editor__link-icon">
+                        {{icon "far-file"}}
+                      </span>
+                      <span class="doc-category-index-editor__link-label">
+                        {{i18n
+                          "doc_categories.category_settings.index_editor.auto_index_placeholder"
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              {{/if}}
             </div>
 
             {{#if (and this.showingTopicChooser (not @batchMode))}}

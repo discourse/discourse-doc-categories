@@ -8,6 +8,8 @@ module DocCategories
     # NULL = no index configured (MODE_NONE), -1 = visual editor (MODE_DIRECT),
     # positive integer = topic-based index (MODE_TOPIC).
     INDEX_TOPIC_ID_DIRECT = -1
+    MAX_SECTIONS = 50
+    MAX_LINKS_PER_SECTION = 200
 
     belongs_to :category, class_name: "::Category"
     belongs_to :index_topic, class_name: "::Topic", optional: true
@@ -57,14 +59,32 @@ module DocCategories
                 result[:topic_title] = topic&.title
                 result[:custom_title] = link.title.present?
               end
+              result[:auto_indexed] = true if link.auto_indexed?
               result
             end
 
           next if links.blank?
 
-          { text: section.title, links: links }
+          section_result = { text: section.title, links: links }
+          section_result[:auto_index] = true if section.auto_index?
+          section_result
         end
         .compact
+    end
+
+    def auto_index_section
+      sidebar_sections.find_by(auto_index: true)
+    end
+
+    def auto_index_enabled?
+      mode_direct? && auto_index_section.present?
+    end
+
+    # Returns an array of category IDs to source topics from for auto-indexing.
+    def matching_category_ids
+      ids = [category_id]
+      ids.concat(::Category.subcategory_ids(category_id)) if auto_index_include_subcategories
+      ids
     end
 
     def valid_topic(topic)

@@ -225,6 +225,11 @@ body.doc-simple-mode {
     padding: 0.75em;
     background: var(--secondary);
     transition: border-color 0.15s;
+    position: relative;
+
+    &:has(> .doc-category-index-editor__auto-index-badge) {
+      padding-top: 1.25em;
+    }
 
     &.--error {
       border-color: var(--danger);
@@ -463,6 +468,59 @@ body.doc-simple-mode {
     color: var(--primary-medium);
     font-size: var(--font-down-2);
     flex-shrink: 0;
+  }
+
+  &__auto-indexed-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05em 0.4em;
+    border-radius: var(--d-border-radius);
+    background: var(--tertiary-low);
+    color: var(--tertiary-hover);
+    font-size: var(--font-down-2);
+    font-weight: 700;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  &__link.--ghost {
+    pointer-events: none;
+  }
+
+  &__drag-handle-spacer {
+    flex-shrink: 0;
+    width: calc(1em + 0.5em);
+  }
+
+  &__link-card.--ghost {
+    border-style: dashed;
+    border-color: var(--primary-low-mid);
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.6;
+
+    .doc-category-index-editor__link-icon,
+    .doc-category-index-editor__link-label {
+      color: var(--primary-medium);
+    }
+  }
+
+  &__auto-index-badge {
+    position: absolute;
+    top: -0.65em;
+    right: 0.75em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.1em 0.5em;
+    border: 1px solid var(--tertiary-low);
+    border-radius: var(--d-border-radius);
+    background: var(--tertiary-very-low, var(--secondary));
+    color: var(--tertiary-hover);
+    font-size: var(--font-down-2);
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 1;
   }
 
   &__link-href-preview {
