@@ -28,7 +28,12 @@ module ::DocCategories
           rescue JSON::ParserError
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end
-          DocCategories::IndexSaver.new(category).save_sections!(sections)
+
+          old_auto_id = category.doc_categories_index&.auto_index_section&.id
+
+          saver = DocCategories::IndexSaver.new(category)
+          saver.save_sections!(sections)
+          saver.sync_auto_index_if_needed!(sections, old_auto_index_section_id: old_auto_id)
         end
       end
     end

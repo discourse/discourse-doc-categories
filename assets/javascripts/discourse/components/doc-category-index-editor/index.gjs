@@ -10,6 +10,7 @@ import {
 } from "@ember/reactive/collections";
 import { cancel } from "@ember/runloop";
 import { service } from "@ember/service";
+import ConditionalInElement from "discourse/components/conditional-in-element";
 import DButton from "discourse/components/d-button";
 import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
@@ -22,6 +23,7 @@ import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import { not } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
+import validateDocIndexSections from "../../lib/doc-index-validation";
 import { IndexEditorSection } from "./section";
 
 /* Main index editor */
@@ -39,6 +41,8 @@ export default class DocCategoryIndexEditor extends Component {
   selectedItems = trackedSet();
   selectedSections = trackedSet();
   draggedSection = null;
+  @tracked _hasLocalChanges = false;
+
   _draggedLink = null;
   _draggedLinkSourceSection = null;
   _saveStateTimer = null;
@@ -63,7 +67,7 @@ export default class DocCategoryIndexEditor extends Component {
     // Only persist editor state if the mode is still "direct" (topic_id === -1).
     // When switching to "none" mode, #applyNoneMode() already set the correct
     // form values -- overwriting them here would send stale data to the backend.
-    if (Number(this.args.form?.get("doc_index_topic_id")) === -1) {
+    if (Number(this.args.transientData?.doc_index_topic_id) === -1) {
       this._saveToTransientData();
     }
   }
@@ -79,6 +83,7 @@ export default class DocCategoryIndexEditor extends Component {
     if (saved?.length > 0) {
       return saved.map((section) =>
         trackedObject({
+          id: section.id ?? null,
           title: section.title,
           autoIndex: section.autoIndex || false,
           links: trackedArray(
@@ -112,6 +117,7 @@ export default class DocCategoryIndexEditor extends Component {
     }
     return index.map((section) =>
       trackedObject({
+        id: section.id ?? null,
         title: section.text,
         autoIndex: section.auto_index || false,
         links: trackedArray(
@@ -139,6 +145,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   _serializeSections() {
     return this.sections.map((section) => ({
+      id: section.id,
       title: section.title,
       autoIndex: section.autoIndex || false,
       links: section.links.map((link) => ({
@@ -164,10 +171,23 @@ export default class DocCategoryIndexEditor extends Component {
   @bind
   _saveToTransientData() {
     const sections = this._serializeSections();
+    this._hasLocalChanges = true;
     this.args.form?.set("_docIndexSections", sections);
 
-    // Keep FormKit form data in sync so the save payload is correct
-    const serialized = sections.length > 0 ? JSON.stringify(sections) : null;
+    // Convert to snake_case for the backend payload
+    const backendSections = sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      auto_index: section.autoIndex || false,
+      links: section.links.map((link) => ({
+        title: link.title,
+        href: link.href,
+        topic_id: link.topic_id,
+        icon: link.icon,
+      })),
+    }));
+    const serialized =
+      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
     this.args.form?.set("doc_index_sections", serialized);
     if (serialized) {
       this.args.form?.set("doc_index_topic_id", -1);
@@ -190,39 +210,7 @@ export default class DocCategoryIndexEditor extends Component {
       );
     }
 
-    for (const section of this.sections) {
-      if (!section.title?.trim()) {
-        errors.push(
-          i18n(
-            "doc_categories.category_settings.index_editor.validation_empty_section_title"
-          )
-        );
-      }
-      if (section.links.length === 0 && !section.autoIndex) {
-        errors.push(
-          i18n(
-            "doc_categories.category_settings.index_editor.validation_empty_section"
-          )
-        );
-      }
-      for (const link of section.links) {
-        if (!link.title?.trim() && link.type !== "topic") {
-          errors.push(
-            i18n(
-              "doc_categories.category_settings.index_editor.validation_empty_link_title"
-            )
-          );
-        }
-        if (!link.href?.trim()) {
-          errors.push(
-            i18n(
-              "doc_categories.category_settings.index_editor.validation_empty_link_url"
-            )
-          );
-        }
-      }
-    }
-
+    errors.push(...validateDocIndexSections(this.sections));
     return errors;
   }
 
@@ -503,11 +491,14 @@ export default class DocCategoryIndexEditor extends Component {
   async apply() {
     if (this.validationErrors.length > 0) {
       this.saveState = "error";
+      this.args.onApplyError?.(this.validationErrors.join(" "));
       return;
     }
     this.saveState = "saving";
     const payload = {
+      force_direct: true,
       sections: this.sections.map((section) => ({
+        id: section.id,
         title: section.title,
         auto_index: section.autoIndex || false,
         links: section.links.map((link) => ({
@@ -532,6 +523,7 @@ export default class DocCategoryIndexEditor extends Component {
         return;
       }
       this.saveState = "saved";
+      this._hasLocalChanges = false;
       this.args.form?.set("_docIndexSections", null);
       this.args.form?.commitField("_docIndexSections");
       this.args.category?.set("doc_index_sections", null);
@@ -565,7 +557,10 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get hasPendingChanges() {
-    return this.args.transientData?._docIndexSections != null;
+    return (
+      this._hasLocalChanges ||
+      this.args.transientData?._docIndexSections != null
+    );
   }
 
   get canToggleBatchMode() {
@@ -844,64 +839,62 @@ export default class DocCategoryIndexEditor extends Component {
         (if this.batchMode "--batch-mode")
       }}
     >
-      {{#if @toolbarElement}}
-        {{#in-element @toolbarElement insertBefore=null}}
-          {{#unless this.batchMode}}
-            <div class="doc-category-index-editor__toolbar-actions">
-              <DButton
-                @icon="list-check"
-                @label="doc_categories.category_settings.index_editor.batch_edit"
-                @action={{this.toggleBatchMode}}
-                @disabled={{not this.canToggleBatchMode}}
-                class="btn-default"
-              />
-              <DMenu
-                @identifier="index-options-menu"
-                @triggerClass="btn-default doc-category-index-editor__options-trigger"
-              >
-                <:trigger>
-                  {{icon "wrench"}}
-                </:trigger>
-                <:content as |menuArgs|>
-                  <DropdownMenu as |dropdown|>
-                    <dropdown.item>
-                      <DButton
-                        @icon="arrows-rotate"
-                        @label="doc_categories.category_settings.index_editor.index_all_topics"
-                        @action={{fn this.indexAllTopics menuArgs.close}}
-                        class="btn-transparent"
+      <ConditionalInElement @element={{@toolbarElement}} @append={{true}}>
+        {{#unless this.batchMode}}
+          <div class="doc-category-index-editor__toolbar-actions">
+            <DButton
+              @icon="list-check"
+              @label="doc_categories.category_settings.index_editor.batch_edit"
+              @action={{this.toggleBatchMode}}
+              @disabled={{not this.canToggleBatchMode}}
+              class="btn-default"
+            />
+            <DMenu
+              @identifier="index-options-menu"
+              @triggerClass="btn-default doc-category-index-editor__options-trigger"
+            >
+              <:trigger>
+                {{icon "wrench"}}
+              </:trigger>
+              <:content as |menuArgs|>
+                <DropdownMenu as |dropdown|>
+                  <dropdown.item>
+                    <DButton
+                      @icon="arrows-rotate"
+                      @label="doc_categories.category_settings.index_editor.index_all_topics"
+                      @action={{fn this.indexAllTopics menuArgs.close}}
+                      class="btn-transparent"
+                    />
+                  </dropdown.item>
+                  <dropdown.item>
+                    <label
+                      class="doc-category-index-editor__subcategory-toggle"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={{this.includeSubcategories}}
+                        {{on "change" this.toggleIncludeSubcategories}}
                       />
-                    </dropdown.item>
-                    <dropdown.item>
-                      <label
-                        class="doc-category-index-editor__subcategory-toggle"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={{this.includeSubcategories}}
-                          {{on "change" this.toggleIncludeSubcategories}}
-                        />
-                        {{i18n
-                          "doc_categories.category_settings.index_editor.include_subcategories"
-                        }}
-                      </label>
-                    </dropdown.item>
-                    <dropdown.divider />
-                    <dropdown.item>
-                      <DButton
-                        @icon="trash-can"
-                        @label="doc_categories.category_settings.index_editor.clear_index"
-                        @action={{fn this.clearIndex menuArgs.close}}
-                        class="btn-transparent btn-danger"
-                      />
-                    </dropdown.item>
-                  </DropdownMenu>
-                </:content>
-              </DMenu>
-            </div>
-          {{/unless}}
-        {{/in-element}}
-      {{/if}}
+                      {{i18n
+                        "doc_categories.category_settings.index_editor.include_subcategories"
+                      }}
+                    </label>
+                  </dropdown.item>
+                  <dropdown.divider />
+                  <dropdown.item>
+                    <DButton
+                      @icon="trash-can"
+                      @label="doc_categories.category_settings.index_editor.clear_index"
+                      @action={{fn this.clearIndex menuArgs.close}}
+                      class="btn-transparent btn-danger"
+                    />
+                  </dropdown.item>
+                </DropdownMenu>
+              </:content>
+            </DMenu>
+          </div>
+        {{/unless}}
+      </ConditionalInElement>
 
       {{#if this.batchMode}}
         <div class="doc-category-index-editor__batch-bar">
@@ -994,43 +987,49 @@ export default class DocCategoryIndexEditor extends Component {
         {{/each}}
       </div>
 
-      {{#unless this.batchMode}}
-        <div class="doc-category-index-editor__footer">
-          <DComboButton class="--has-menu btn-small">
-            <:default as |combo|>
-              <combo.Button
-                @action={{this.addSection}}
-                @icon="plus"
-                @label="doc_categories.category_settings.index_editor.add_section"
-              />
-              {{#unless this.hasAutoIndexSection}}
-                <combo.Menu @identifier="add-section-menu">
-                  <DropdownMenu as |dropdown|>
-                    <dropdown.item>
-                      <DButton
-                        @icon="bolt"
-                        @label="doc_categories.category_settings.index_editor.add_auto_index_section"
-                        @action={{this.addAutoIndexSection}}
-                        class="btn-transparent"
-                      />
-                    </dropdown.item>
-                  </DropdownMenu>
-                </combo.Menu>
-              {{/unless}}
-            </:default>
-          </DComboButton>
-        </div>
-      {{/unless}}
+      <ConditionalInElement
+        @element={{@footerElement}}
+        @inline={{not @footerElement}}
+        @append={{true}}
+      >
+        {{#unless this.batchMode}}
+          <div class="doc-category-index-editor__footer">
+            <DComboButton class="--has-menu btn-small">
+              <:default as |combo|>
+                <combo.Button
+                  @action={{this.addSection}}
+                  @icon="plus"
+                  @label="doc_categories.category_settings.index_editor.add_section"
+                />
+                {{#unless this.hasAutoIndexSection}}
+                  <combo.Menu @identifier="add-section-menu">
+                    <DropdownMenu as |dropdown|>
+                      <dropdown.item>
+                        <DButton
+                          @icon="bolt"
+                          @label="doc_categories.category_settings.index_editor.add_auto_index_section"
+                          @action={{this.addAutoIndexSection}}
+                          class="btn-transparent"
+                        />
+                      </dropdown.item>
+                    </DropdownMenu>
+                  </combo.Menu>
+                {{/unless}}
+              </:default>
+            </DComboButton>
+          </div>
+        {{/unless}}
 
-      <div class="doc-category-index-editor__apply-footer">
-        <DButton
-          @icon="check"
-          @label={{this.applyLabel}}
-          @action={{this.apply}}
-          @disabled={{this.applyDisabled}}
-          class="btn-primary btn-small doc-category-index-editor__apply-btn"
-        />
-      </div>
+        <div class="doc-category-index-editor__apply-footer">
+          <DButton
+            @icon="check"
+            @label={{this.applyLabel}}
+            @action={{this.apply}}
+            @disabled={{this.applyDisabled}}
+            class="btn-primary btn-small doc-category-index-editor__apply-btn"
+          />
+        </div>
+      </ConditionalInElement>
     </div>
   </template>
 }

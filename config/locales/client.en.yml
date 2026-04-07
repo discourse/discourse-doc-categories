@@ -113,6 +113,9 @@ en:
           auto_indexed: "auto-indexed"
           auto_index_placeholder: "Topics from this category will appear here automatically."
           confirm_remove_auto_index_section: "Removing this section will disable automatic topic indexing on this index. Are you sure?"
+          open_editor: "Open editor..."
+          editor_modal_title: "Doc Index Editor"
+          save_validation_error: "The documentation index has errors that need to be fixed before saving. Open the editor to review them."
       sidebar:
         filter:
           no_results:
