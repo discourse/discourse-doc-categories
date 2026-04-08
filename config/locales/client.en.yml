@@ -53,6 +53,8 @@ en:
           auto_index: "Auto-index"
           include_subcategories: "Include subcategories"
           include_subcategories_confirm: "Changing this setting will resync the auto-indexed topics when you apply. Continue?"
+          resync_auto_index: "Resync topics on next save"
+          cancel_resync: "Cancel resync"
           index_all_topics: "Reindex all topics"
           add_missing_topics: "Add missing topics"
           add_missing_topics_to_section: "Add missing topics"

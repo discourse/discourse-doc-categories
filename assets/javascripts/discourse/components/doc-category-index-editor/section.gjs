@@ -477,14 +477,20 @@ export class IndexEditorSection extends Component {
             }}
           >
             <:trigger>
-              {{icon "bolt"}}
+              {{icon (if @pendingResync "arrows-rotate" "bolt")}}
               {{if
-                @autoIndexIncludeSubcategories
+                @pendingResync
                 (i18n
-                  "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
+                  "doc_categories.category_settings.index_editor.resync_auto_index"
                 )
-                (i18n
-                  "doc_categories.category_settings.index_editor.auto_index_badge_label"
+                (if
+                  @autoIndexIncludeSubcategories
+                  (i18n
+                    "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
+                  )
+                  (i18n
+                    "doc_categories.category_settings.index_editor.auto_index_badge_label"
+                  )
                 )
               }}
               {{icon "angle-down"}}
@@ -508,6 +514,21 @@ export class IndexEditorSection extends Component {
                     }}
                   </label>
                 </dropdown.item>
+                {{#unless @hideResyncToggle}}
+                  <dropdown.divider />
+                  <dropdown.item>
+                    <DButton
+                      @icon={{if @pendingResync "xmark" "arrows-rotate"}}
+                      @label={{if
+                        @pendingResync
+                        "doc_categories.category_settings.index_editor.cancel_resync"
+                        "doc_categories.category_settings.index_editor.resync_auto_index"
+                      }}
+                      @action={{fn @onToggleResyncAutoIndex args.close}}
+                      class="btn-transparent"
+                    />
+                  </dropdown.item>
+                {{/unless}}
               </DropdownMenu>
             </:content>
           </DMenu>

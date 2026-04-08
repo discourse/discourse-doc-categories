@@ -63,10 +63,13 @@ module ::DocCategories
 
       saver = DocCategories::IndexSaver.new(category)
       saver.save_sections!(sections_params)
+      force_sync =
+        subcategory_setting_changed || ActiveRecord::Type::Boolean.new.cast(params[:force_sync])
+
       saver.sync_auto_index_if_needed!(
         sections_params,
         old_auto_index_section_id: old_auto_index_section_id,
-        force: subcategory_setting_changed,
+        force: force_sync,
       )
 
       current_index = DocCategories::Index.find_by(category_id: category.id)
