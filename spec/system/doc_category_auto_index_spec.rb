@@ -70,6 +70,63 @@ describe "Doc Category Auto-Index" do
     end
   end
 
+  context "with the auto-index badge dropdown" do
+    it "toggles include subcategories via the badge dropdown" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      editor.add_auto_index_section
+
+      expect(editor).to have_auto_index_badge_with_text(
+        I18n.t("js.doc_categories.category_settings.index_editor.auto_index_badge_label"),
+      )
+
+      editor.toggle_include_subcategories
+      # Confirm in the dialog
+      find(".dialog-footer .btn-primary").click
+
+      expect(editor).to have_auto_index_badge_with_text(
+        I18n.t(
+          "js.doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories",
+        ),
+      )
+    end
+
+    it "shows resync pending state in the badge" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      editor.add_auto_index_section
+
+      editor.click_resync_button
+
+      expect(editor).to have_auto_index_badge_with_text(
+        I18n.t("js.doc_categories.category_settings.index_editor.resync_auto_index"),
+      )
+    end
+
+    it "includes subcategory topics after enabling and applying" do
+      subcategory = Fabricate(:category, parent_category: category)
+      Fabricate(:topic, category: subcategory, title: "Subcategory topic for auto-index")
+
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      editor.add_auto_index_section
+      editor.click_apply
+      expect(editor).to have_applied
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      sub_topic_ids = Topic.where(category_id: subcategory.id).pluck(:id)
+      auto_topic_ids = index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)
+      expect(auto_topic_ids & sub_topic_ids).to be_empty
+
+      editor.toggle_include_subcategories
+      find(".dialog-footer .btn-primary").click
+
+      editor.click_apply
+      expect(editor).to have_applied
+
+      index.reload
+      auto_topic_ids = index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)
+      expect(auto_topic_ids & sub_topic_ids).not_to be_empty
+    end
+  end
+
   context "with auto-index event hooks" do
     before do
       index =

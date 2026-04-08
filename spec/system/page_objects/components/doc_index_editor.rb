@@ -189,6 +189,30 @@ module PageObjects
         has_css?(".doc-category-index-editor__item-badge")
       end
 
+      def click_auto_index_badge
+        find(".doc-category-index-editor__auto-index-badge").click
+        self
+      end
+
+      def toggle_include_subcategories
+        click_auto_index_badge
+        find(".doc-category-index-editor__auto-index-subcategories input[type='checkbox']").click
+        self
+      end
+
+      def click_resync_button
+        click_auto_index_badge
+        find(
+          "button",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.resync_auto_index"),
+        ).click
+        self
+      end
+
+      def has_auto_index_badge_with_text?(text)
+        has_css?(".doc-category-index-editor__auto-index-badge", text: text)
+      end
+
       def section_count
         all(".doc-category-index-editor__section").count
       end
