@@ -160,6 +160,11 @@ body.doc-simple-mode {
   }
 }
 
+.doc-category-index-tab__header {
+  display: flex;
+  justify-content: space-between;
+}
+
 /* Doc category index editor */
 .doc-category-index-editor {
   &__toolbar-actions {
@@ -643,8 +648,7 @@ body.doc-simple-mode {
 
   &__remove-btn,
   &__cancel-edit-btn,
-  &__cancel-title-btn,
-  &__batch-delete-btn {
+  &__cancel-title-btn {
     .discourse-no-touch & {
       &:hover,
       &:focus {
@@ -703,7 +707,35 @@ body.doc-simple-mode {
     border-top: 1px solid var(--primary-low);
   }
 
-  &__batch-cancel-btn {
+  &__batch-delete-btn {
+    margin-right: 1.5em;
+  }
+
+  &__batch-delete-btn,
+  &__clear-index-btn {
+    color: var(--danger);
+
+    .d-icon {
+      color: var(--danger);
+    }
+
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--danger);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
     margin-left: auto;
   }
 

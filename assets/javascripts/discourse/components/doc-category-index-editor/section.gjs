@@ -568,7 +568,7 @@ export class IndexEditorSection extends Component {
             <DButton
               @icon="eraser"
               @action={{fn @clearAllInSection @section}}
-              @title="doc_categories.category_settings.index_editor.batch_clear_all"
+              @title="doc_categories.category_settings.index_editor.batch_clear_selection"
               class="btn-flat btn-small"
             />
           {{else}}{{#unless this.editingTitle}}

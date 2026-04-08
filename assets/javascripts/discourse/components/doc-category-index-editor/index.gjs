@@ -633,6 +633,19 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   toggleBatchMode() {
+    if (this.batchMode && this.hasSelection) {
+      this.dialog.yesNoConfirm({
+        message: i18n(
+          "doc_categories.category_settings.index_editor.batch_exit_confirm"
+        ),
+        didConfirm: () => {
+          this.batchMode = false;
+          this.selectedItems.clear();
+          this.selectedSections.clear();
+        },
+      });
+      return;
+    }
     this.batchMode = !this.batchMode;
     if (!this.batchMode) {
       this.selectedItems.clear();
@@ -686,6 +699,44 @@ export default class DocCategoryIndexEditor extends Component {
   clearSelection() {
     this.selectedItems.clear();
     this.selectedSections.clear();
+  }
+
+  @action
+  selectAll() {
+    if (this.selectedSections.size > 0) {
+      for (const section of this.sections) {
+        this.selectedSections.add(section);
+      }
+    } else {
+      for (const section of this.sections) {
+        for (const link of section.links) {
+          this.selectedItems.add(link);
+        }
+      }
+    }
+  }
+
+  @action
+  invertSelection() {
+    if (this.selectedSections.size > 0) {
+      for (const section of this.sections) {
+        if (this.selectedSections.has(section)) {
+          this.selectedSections.delete(section);
+        } else {
+          this.selectedSections.add(section);
+        }
+      }
+    } else {
+      for (const section of this.sections) {
+        for (const link of section.links) {
+          if (this.selectedItems.has(link)) {
+            this.selectedItems.delete(link);
+          } else {
+            this.selectedItems.add(link);
+          }
+        }
+      }
+    }
   }
 
   @bind
@@ -910,7 +961,7 @@ export default class DocCategoryIndexEditor extends Component {
                       @icon="trash-can"
                       @label="doc_categories.category_settings.index_editor.clear_index"
                       @action={{fn this.clearIndex menuArgs.close}}
-                      class="btn-transparent btn-danger"
+                      class="btn-transparent doc-category-index-editor__clear-index-btn"
                     />
                   </dropdown.item>
                 </DropdownMenu>
@@ -947,25 +998,40 @@ export default class DocCategoryIndexEditor extends Component {
             {{/if}}
           </span>
 
-          {{#if this.hasSelection}}
+          <div class="doc-category-index-editor__batch-actions">
+            {{#if this.hasSelection}}
+              <DButton
+                @icon="trash-can"
+                @action={{this.bulkDelete}}
+                @title="doc_categories.category_settings.index_editor.batch_delete"
+                class="btn-flat btn-small doc-category-index-editor__batch-delete-btn"
+              />
+            {{/if}}
             <DButton
-              @icon="eraser"
-              @label="doc_categories.category_settings.index_editor.batch_clear_all"
-              @action={{this.clearSelection}}
+              @icon="check-double"
+              @action={{this.selectAll}}
+              @title="doc_categories.category_settings.index_editor.batch_select_all"
               class="btn-flat btn-small"
             />
             <DButton
-              @icon="trash-can"
-              @action={{this.bulkDelete}}
-              class="btn-flat btn-small doc-category-index-editor__batch-delete-btn"
+              @icon="right-left"
+              @action={{this.invertSelection}}
+              @title="doc_categories.category_settings.index_editor.batch_invert"
+              class="btn-flat btn-small"
             />
-          {{/if}}
-
-          <DButton
-            @icon="xmark"
-            @action={{this.toggleBatchMode}}
-            class="btn-flat btn-small doc-category-index-editor__batch-cancel-btn"
-          />
+            <DButton
+              @icon="eraser"
+              @action={{this.clearSelection}}
+              @title="doc_categories.category_settings.index_editor.batch_clear_selection"
+              class="btn-flat btn-small"
+            />
+            <DButton
+              @icon="xmark"
+              @action={{this.toggleBatchMode}}
+              @title="doc_categories.category_settings.index_editor.batch_close"
+              class="btn-flat btn-small"
+            />
+          </div>
         </div>
       {{/if}}
 
