@@ -106,17 +106,31 @@ RSpec.describe DocCategories::IndexSaver do
     end
 
     context "with filtering" do
-      it "skips sections with blank titles" do
+      it "allows the first section to have a blank title" do
         saver.save_sections!(
           [
             { title: "", links: [{ title: "L", href: "/a" }] },
-            { title: "Valid", links: [{ title: "L", href: "/b" }] },
+            { title: "Second", links: [{ title: "L", href: "/b" }] },
+          ],
+        )
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.sidebar_sections.count).to eq(2)
+        expect(index.sidebar_sections.first.title).to eq("")
+        expect(index.sidebar_sections.second.title).to eq("Second")
+      end
+
+      it "skips non-first sections with blank titles" do
+        saver.save_sections!(
+          [
+            { title: "First", links: [{ title: "L", href: "/a" }] },
+            { title: "", links: [{ title: "L", href: "/b" }] },
           ],
         )
 
         index = DocCategories::Index.find_by(category_id: category.id)
         expect(index.sidebar_sections.count).to eq(1)
-        expect(index.sidebar_sections.first.title).to eq("Valid")
+        expect(index.sidebar_sections.first.title).to eq("First")
       end
 
       it "skips links with blank hrefs" do
@@ -135,7 +149,8 @@ RSpec.describe DocCategories::IndexSaver do
         saver.save_sections!(build_sections(["S", [%w[L /l]]]))
         expect(DocCategories::Index.find_by(category_id: category.id)).to be_present
 
-        saver.save_sections!([{ title: "", links: [{ title: "L", href: "/a" }] }])
+        # Only links with blank hrefs and no topic_id are filtered, so use that to trigger filtering
+        saver.save_sections!([{ title: "S", links: [{ title: "", href: "" }] }])
 
         expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
       end
@@ -300,7 +315,6 @@ RSpec.describe DocCategories::IndexSaver do
         link = index.sidebar_sections.first.sidebar_links.first
         expect(link.auto_indexed).to eq(false)
       end
-
     end
   end
 end

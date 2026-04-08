@@ -47,6 +47,7 @@ describe "Doc Category Index Editor" do
 
       editor.click_apply
       expect(editor).to have_applied
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
@@ -84,6 +85,66 @@ describe "Doc Category Index Editor" do
       editor.switch_to_doc_index_tab
       expect(editor).to have_editor
       expect(editor).to have_section_title("Persistent Section")
+    end
+  end
+
+  context "with first section empty title" do
+    it "does not auto-enter edit mode for the first section" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      expect(editor).to have_editor
+
+      editor.add_section_without_title
+
+      expect(editor).to have_no_section_title_editing
+      expect(editor).to have_first_section_placeholder
+    end
+
+    it "does not delete the first section when canceling title edit" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      expect(editor).to have_editor
+
+      editor.add_section_without_title
+      expect(editor.section_count).to eq(1)
+
+      within all(".doc-category-index-editor__section").first do
+        find(".doc-category-index-editor__edit-btn").click
+      end
+      expect(editor).to have_section_title_editing
+
+      editor.click_cancel_title_edit
+
+      expect(editor).to have_no_section_title_editing
+      expect(editor.section_count).to eq(1)
+      expect(editor).to have_first_section_placeholder
+    end
+
+    it "saves a first section with empty title via Apply" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      expect(editor).to have_editor
+
+      editor.add_section_without_title
+      editor.add_manual_link(title: "My Link", url: "https://example.com")
+
+      editor.click_apply
+      expect(editor).to have_applied
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.sidebar_sections.count).to eq(1)
+      expect(index.sidebar_sections.first.title).to eq("")
+      expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("My Link")
+    end
+
+    it "disables Apply when there are validation errors" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      expect(editor).to have_editor
+
+      # A section without links triggers "must contain at least one item"
+      editor.add_section(title: "Empty Section")
+      expect(editor).to have_apply_disabled
+
+      editor.add_manual_link(title: "Link", url: "https://example.com")
+      expect(editor).to have_no_apply_disabled
     end
   end
 

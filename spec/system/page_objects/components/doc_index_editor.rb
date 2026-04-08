@@ -41,9 +41,41 @@ module PageObjects
         ).click
 
         within all(".doc-category-index-editor__section").last do
+          # First section doesn't auto-enter edit mode; click the pencil to start editing
+          if has_no_css?(".doc-category-index-editor__section-title", wait: 0.5)
+            find(".doc-category-index-editor__edit-btn").click
+          end
           find(".doc-category-index-editor__section-title").fill_in(with: title)
           find(".doc-category-index-editor__confirm-title-btn").click
         end
+        self
+      end
+
+      def add_section_without_title
+        find(
+          "button",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.add_section"),
+        ).click
+        self
+      end
+
+      def has_section_title_editing?
+        has_css?("input.doc-category-index-editor__section-title")
+      end
+
+      def has_no_section_title_editing?
+        has_no_css?("input.doc-category-index-editor__section-title")
+      end
+
+      def has_first_section_placeholder?
+        has_css?(
+          ".doc-category-index-editor__section-title-label.--placeholder",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.first_section_no_title"),
+        )
+      end
+
+      def click_cancel_title_edit
+        find(".doc-category-index-editor__cancel-title-btn").click
         self
       end
 
@@ -67,6 +99,22 @@ module PageObjects
       def click_apply
         find(".doc-category-index-editor__apply-btn").click
         self
+      end
+
+      def has_apply_disabled?
+        has_css?(".doc-category-index-editor__apply-btn[disabled]")
+      end
+
+      def has_no_apply_disabled?
+        has_no_css?(".doc-category-index-editor__apply-btn[disabled]")
+      end
+
+      def has_section_validation_error?
+        has_css?(".doc-category-index-editor__validation-error")
+      end
+
+      def has_no_section_validation_error?
+        has_no_css?(".doc-category-index-editor__validation-error")
       end
 
       def has_applied?
