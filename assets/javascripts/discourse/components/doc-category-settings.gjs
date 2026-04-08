@@ -54,7 +54,7 @@ export default class DocCategorySettings extends Component {
 
   @cached
   get editorValidationErrors() {
-    const sections = this.args.outletArgs.transientData?._docIndexSections;
+    const sections = this.args.outletArgs.transientData?._docIndexEditorState;
     if (!sections?.length) {
       return [];
     }

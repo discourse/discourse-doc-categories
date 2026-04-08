@@ -79,7 +79,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   initSections() {
     // Restore from FormKit transient data if available (tab switch recovery)
-    const saved = this.args.transientData?._docIndexSections;
+    const saved = this.args.transientData?._docIndexEditorState;
     if (saved?.length > 0) {
       return saved.map((section) =>
         trackedObject({
@@ -168,11 +168,24 @@ export default class DocCategoryIndexEditor extends Component {
     return `in:title include:unlisted category:=${this.args.categoryId}`;
   }
 
+  /**
+   * Persists the current editor state to FormKit so it survives tab switches
+   * and is available for "Save Category". Two form fields are maintained:
+   *
+   * - `_docIndexEditorState`: Rich camelCase array used to restore the full
+   *   editor UI on tab-switch recovery (includes UI-only fields like
+   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
+   * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
+   *   via `registerCategorySaveProperty` when "Save Category" is clicked.
+   *
+   * Both fields must be committed after a successful Apply to clear the
+   * "Save Category" banner.
+   */
   @bind
   _saveToTransientData() {
     const sections = this._serializeSections();
     this._hasLocalChanges = true;
-    this.args.form?.set("_docIndexSections", sections);
+    this.args.form?.set("_docIndexEditorState", sections);
 
     // Convert to snake_case for the backend payload
     const backendSections = sections.map((section) => ({
@@ -524,8 +537,8 @@ export default class DocCategoryIndexEditor extends Component {
       }
       this.saveState = "saved";
       this._hasLocalChanges = false;
-      this.args.form?.set("_docIndexSections", null);
-      this.args.form?.commitField("_docIndexSections");
+      this.args.form?.set("_docIndexEditorState", null);
+      this.args.form?.commitField("_docIndexEditorState");
       this.args.form?.commitField("doc_index_sections");
       this.args.form?.commitField("doc_index_topic_id");
       this.args.category?.set("doc_index_sections", null);
@@ -561,7 +574,7 @@ export default class DocCategoryIndexEditor extends Component {
   get hasPendingChanges() {
     return (
       this._hasLocalChanges ||
-      this.args.transientData?._docIndexSections != null
+      this.args.transientData?._docIndexEditorState != null
     );
   }
 
