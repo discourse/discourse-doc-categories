@@ -63,6 +63,12 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
       it { is_expected.to fail_a_policy(:topic_qualifies) }
     end
 
+    context "when the topic is a banner" do
+      before { topic.update!(archetype: Archetype.banner) }
+
+      it { is_expected.to fail_a_policy(:topic_qualifies) }
+    end
+
     context "when everything is valid" do
       it { is_expected.to run_successfully }
 
