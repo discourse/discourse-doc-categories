@@ -526,6 +526,8 @@ export default class DocCategoryIndexEditor extends Component {
       this._hasLocalChanges = false;
       this.args.form?.set("_docIndexSections", null);
       this.args.form?.commitField("_docIndexSections");
+      this.args.form?.commitField("doc_index_sections");
+      this.args.form?.commitField("doc_index_topic_id");
       this.args.category?.set("doc_index_sections", null);
 
       if (response.index_structure) {
@@ -650,6 +652,11 @@ export default class DocCategoryIndexEditor extends Component {
     } else {
       this.selectedSections.add(section);
     }
+  }
+
+  @bind
+  isFirstSection(section) {
+    return this.sections.indexOf(section) === 0;
   }
 
   @bind
@@ -829,7 +836,11 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get applyDisabled() {
-    return this.saveState === "saving" || !this.hasPendingChanges;
+    return (
+      this.saveState === "saving" ||
+      !this.hasPendingChanges ||
+      this.validationErrors.length > 0
+    );
   }
 
   <template>
@@ -955,6 +966,7 @@ export default class DocCategoryIndexEditor extends Component {
         {{#each this.sections as |section|}}
           <IndexEditorSection
             @section={{section}}
+            @isFirstSection={{this.isFirstSection}}
             @categoryId={{@categoryId}}
             @searchFilters={{this.searchFilters}}
             @duplicateHrefs={{this.duplicateHrefs}}

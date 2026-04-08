@@ -134,9 +134,10 @@ module DocCategories
     end
 
     def build_sections(sections_data)
-      sections_data.filter_map do |section_param|
+      sections_data.filter_map.with_index do |section_param, idx|
         title = section_param[:title].to_s.strip.first(255)
-        next if title.blank?
+        # First section is allowed to have a blank title (not collapsible in sidebar)
+        next if title.blank? && idx > 0
 
         links = section_param[:links] || []
         links =

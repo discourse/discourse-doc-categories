@@ -42,8 +42,12 @@ export class IndexEditorSection extends Component {
 
   constructor() {
     super(...arguments);
-    // New sections with empty title auto-enter title edit mode
-    if (!this.args.section.title) {
+    // New sections with empty title auto-enter title edit mode,
+    // but the first section is allowed to have an empty title
+    if (
+      !this.args.section.title &&
+      !this.args.isFirstSection?.(this.args.section)
+    ) {
       this._isNew = true;
       this._editSectionTitle = "";
       this.editingTitle = true;
@@ -72,6 +76,23 @@ export class IndexEditorSection extends Component {
     );
   }
 
+  get isFirstSection() {
+    return this.args.isFirstSection?.(this.args.section);
+  }
+
+  get missingTitleError() {
+    if (
+      this.editingTitle ||
+      this.args.section.title?.trim() ||
+      this.isFirstSection
+    ) {
+      return null;
+    }
+    return i18n(
+      "doc_categories.category_settings.index_editor.validation_empty_section_title"
+    );
+  }
+
   get isDuplicateTitle() {
     return this.args.duplicateTitles?.has(
       this.args.section.title?.toLowerCase()
@@ -79,11 +100,18 @@ export class IndexEditorSection extends Component {
   }
 
   get displayTitle() {
-    return (
-      this.args.section.title ||
-      i18n(
-        "doc_categories.category_settings.index_editor.section_title_placeholder"
-      )
+    if (this.args.section.title) {
+      return this.args.section.title;
+    }
+
+    if (this.isFirstSection) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.first_section_no_title"
+      );
+    }
+
+    return i18n(
+      "doc_categories.category_settings.index_editor.section_title_placeholder"
     );
   }
 
@@ -96,14 +124,14 @@ export class IndexEditorSection extends Component {
 
   @action
   confirmTitleEdit() {
-    if (!this._editSectionTitle?.trim()) {
+    if (!this._editSectionTitle?.trim() && !this.isFirstSection) {
       this.titleValidationError = i18n(
         "doc_categories.category_settings.index_editor.validation_empty_section_title"
       );
       return;
     }
     this.titleValidationError = null;
-    this.args.section.title = this._editSectionTitle;
+    this.args.section.title = this._editSectionTitle?.trim() || "";
     this.args.onChange?.();
     this._isNew = false;
     this.editingTitle = false;
@@ -436,7 +464,7 @@ export class IndexEditorSection extends Component {
         class={{concatClass
           "doc-category-index-editor__section"
           (if (@isSectionSelected @section) "--selected")
-          (if this.titleValidationError "--error")
+          (if (or this.titleValidationError this.missingTitleError) "--error")
         }}
       >
         {{#if @section.autoIndex}}
@@ -559,10 +587,10 @@ export class IndexEditorSection extends Component {
             {{/unless}}{{/if}}
         </div>
 
-        {{#if this.titleValidationError}}
+        {{#if (or this.titleValidationError this.missingTitleError)}}
           <div class="doc-category-index-editor__validation-error">
             {{icon "triangle-exclamation"}}
-            {{this.titleValidationError}}
+            {{or this.titleValidationError this.missingTitleError}}
           </div>
         {{/if}}
 

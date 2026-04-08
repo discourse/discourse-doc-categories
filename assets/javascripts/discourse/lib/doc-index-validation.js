@@ -3,8 +3,10 @@ import { i18n } from "discourse-i18n";
 export default function validateDocIndexSections(sections) {
   const errors = [];
 
-  for (const section of sections) {
-    if (!section.title?.trim()) {
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    // First section is allowed to have an empty title (not collapsible in sidebar)
+    if (i > 0 && !section.title?.trim()) {
       errors.push(
         i18n(
           "doc_categories.category_settings.index_editor.validation_empty_section_title"
