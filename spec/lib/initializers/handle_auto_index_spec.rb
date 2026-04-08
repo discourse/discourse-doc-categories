@@ -3,6 +3,7 @@
 describe DocCategories::Initializers::HandleAutoIndex do
   fab!(:admin)
   fab!(:category, :category_with_definition)
+  fab!(:other_category, :category_with_definition)
   fab!(:index) do
     Fabricate(
       :doc_categories_index,
@@ -24,6 +25,93 @@ describe DocCategories::Initializers::HandleAutoIndex do
   before do
     SiteSetting.doc_categories_enabled = true
     Jobs::DocCategoriesAutoIndex.jobs.clear
+  end
+
+  describe "topic lifecycle events" do
+    it "enqueues an add job when a topic is created" do
+      expect_enqueued_with(job: :doc_categories_auto_index, args: { action: "add" }) do
+        PostCreator.create!(
+          admin,
+          title: "A new topic for auto-indexing",
+          raw: "This is the body of the new topic",
+          category: category.id,
+        )
+      end
+    end
+
+    it "enqueues an add job when a topic is recovered" do
+      topic.trash!
+      Jobs::DocCategoriesAutoIndex.jobs.clear
+
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "add",
+          topic_id: topic.id,
+        },
+      ) { topic.recover! }
+    end
+
+    it "enqueues a remove job when a topic is trashed" do
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "remove",
+          topic_id: topic.id,
+        },
+      ) { topic.trash! }
+    end
+
+    it "enqueues a remove job when a topic is destroyed" do
+      post = Fabricate(:post, topic: topic)
+
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "remove",
+          topic_id: topic.id,
+        },
+      ) { PostDestroyer.new(admin, post).destroy }
+    end
+
+    it "does not enqueue an add job for topics in categories without auto-index" do
+      expect_not_enqueued_with(job: :doc_categories_auto_index) do
+        PostCreator.create!(
+          admin,
+          title: "A topic in a non-doc category",
+          raw: "This should not trigger auto-indexing",
+          category: other_category.id,
+        )
+      end
+    end
+
+    context "with subcategories" do
+      fab!(:subcategory) { Fabricate(:category, parent_category: category) }
+
+      it "enqueues an add job when auto_index_include_subcategories is enabled" do
+        index.update!(auto_index_include_subcategories: true)
+
+        expect_enqueued_with(job: :doc_categories_auto_index, args: { action: "add" }) do
+          PostCreator.create!(
+            admin,
+            title: "A topic in a subcategory",
+            raw: "This should trigger auto-indexing via parent",
+            category: subcategory.id,
+          )
+        end
+      end
+
+      it "does not enqueue an add job when auto_index_include_subcategories is disabled" do
+        expect_not_enqueued_with(job: :doc_categories_auto_index) do
+          PostCreator.create!(
+            admin,
+            title: "A topic in a subcategory",
+            raw: "This should not trigger auto-indexing",
+            category: subcategory.id,
+          )
+        end
+      end
+    end
   end
 
   describe "visibility changes" do
