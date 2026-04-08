@@ -49,6 +49,7 @@ end
 # Table name: doc_categories_sidebar_links
 #
 #  id                 :bigint           not null, primary key
+#  auto_indexed       :boolean          default(FALSE), not null
 #  href               :text             not null
 #  icon               :string(100)
 #  position           :integer          not null

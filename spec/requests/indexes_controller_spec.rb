@@ -274,9 +274,7 @@ RSpec.describe ::DocCategories::IndexesController do
 
       # First save: creates auto-index section, sync runs and populates links
       put "/doc-categories/indexes/#{category.id}.json",
-          params: {
-            sections: [{ title: "Topics", auto_index: true, links: [] }],
-          }.to_json,
+          params: { sections: [{ title: "Topics", auto_index: true, links: [] }] }.to_json,
           headers: {
             "CONTENT_TYPE" => "application/json",
           }
@@ -288,9 +286,7 @@ RSpec.describe ::DocCategories::IndexesController do
 
       # Second save: user removed and re-added a new auto-index section (no id sent)
       put "/doc-categories/indexes/#{category.id}.json",
-          params: {
-            sections: [{ title: "New Topics", auto_index: true, links: [] }],
-          }.to_json,
+          params: { sections: [{ title: "New Topics", auto_index: true, links: [] }] }.to_json,
           headers: {
             "CONTENT_TYPE" => "application/json",
           }
@@ -308,9 +304,7 @@ RSpec.describe ::DocCategories::IndexesController do
 
       # First save: creates auto-index section, sync runs
       put "/doc-categories/indexes/#{category.id}.json",
-          params: {
-            sections: [{ title: "Topics", auto_index: true, links: [] }],
-          }.to_json,
+          params: { sections: [{ title: "Topics", auto_index: true, links: [] }] }.to_json,
           headers: {
             "CONTENT_TYPE" => "application/json",
           }
