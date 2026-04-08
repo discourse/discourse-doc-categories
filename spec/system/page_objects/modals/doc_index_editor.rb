@@ -12,6 +12,9 @@ module PageObjects
         ).click
 
         within body.all(".doc-category-index-editor__section").last do
+          if has_no_css?(".doc-category-index-editor__section-title", wait: 0.5)
+            find(".doc-category-index-editor__edit-btn").click
+          end
           find(".doc-category-index-editor__section-title").fill_in(with: title)
           find(".doc-category-index-editor__confirm-title-btn").click
         end
@@ -46,6 +49,10 @@ module PageObjects
       def click_apply
         footer.find(".doc-category-index-editor__apply-btn").click
         self
+      end
+
+      def has_apply_disabled?
+        footer.has_css?(".doc-category-index-editor__apply-btn[disabled]")
       end
 
       def has_flash_error?
