@@ -331,6 +331,84 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(index.auto_index_section.sidebar_links.auto_indexed.count).to eq(0)
     end
 
+    it "re-syncs when force_sync is true even if section id is preserved" do
+      sign_in(admin)
+      topic = Fabricate(:topic, category: category, title: "Topic for force sync")
+      Fabricate(:post, topic: topic)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: { sections: [{ title: "Topics", auto_index: true, links: [] }] }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      index = DocCategories::Index.find_by(category_id: category.id)
+      section = index.auto_index_section
+      expect(section.sidebar_links.auto_indexed.count).to be > 0
+
+      # Remove auto-indexed links manually, then re-save with same section id
+      section.sidebar_links.auto_indexed.destroy_all
+      expect(section.sidebar_links.auto_indexed.count).to eq(0)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            force_sync: true,
+            sections: [{ id: section.id, title: "Topics", auto_index: true, links: [] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      index.reload
+      expect(index.auto_index_section.sidebar_links.auto_indexed.count).to be > 0
+    end
+
+    it "re-syncs when auto_index_include_subcategories changes" do
+      sign_in(admin)
+      subcategory = Fabricate(:category, parent_category: category)
+      topic = Fabricate(:topic, category: subcategory, title: "Subcategory topic")
+      Fabricate(:post, topic: topic)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: { sections: [{ title: "Topics", auto_index: true, links: [] }] }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      index = DocCategories::Index.find_by(category_id: category.id)
+      section = index.auto_index_section
+      # Subcategory topic not included by default
+      expect(section.sidebar_links.auto_indexed.pluck(:topic_id)).not_to include(topic.id)
+
+      # Enable subcategories — should trigger sync and add the subcategory topic
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            auto_index_include_subcategories: true,
+            sections: [
+              {
+                id: section.id,
+                title: "Topics",
+                auto_index: true,
+                links:
+                  section.sidebar_links.map { |l| { title: l.title, href: l.href, icon: l.icon } },
+              },
+            ],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(200)
+      index.reload
+      expect(index.auto_index_include_subcategories).to eq(true)
+      expect(index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(
+        topic.id,
+      )
+    end
+
     it "clears the index when empty sections are sent via PUT to indexes endpoint" do
       sign_in(admin)
 

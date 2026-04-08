@@ -317,4 +317,70 @@ RSpec.describe DocCategories::IndexSaver do
       end
     end
   end
+
+  describe "#sync_auto_index_if_needed!" do
+    fab!(:topic) { Fabricate(:topic, category: category) }
+    fab!(:post) { Fabricate(:post, topic: topic) }
+
+    let!(:index) do
+      DocCategories::Index.create!(
+        category: category,
+        index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+      )
+    end
+    let!(:auto_section) do
+      DocCategories::SidebarSection.create!(
+        index: index,
+        title: "Topics",
+        position: 0,
+        auto_index: true,
+      )
+    end
+
+    let(:sections_data) { [{ id: auto_section.id, title: "Topics", auto_index: true, links: [] }] }
+
+    it "syncs when force is true even if section id is preserved" do
+      saver.sync_auto_index_if_needed!(
+        sections_data,
+        old_auto_index_section_id: auto_section.id,
+        force: true,
+      )
+
+      index.reload
+      expect(index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(
+        topic.id,
+      )
+    end
+
+    it "does not sync when section id is preserved and force is false" do
+      saver.sync_auto_index_if_needed!(
+        sections_data,
+        old_auto_index_section_id: auto_section.id,
+        force: false,
+      )
+
+      index.reload
+      expect(index.auto_index_section.sidebar_links.auto_indexed.count).to eq(0)
+    end
+
+    it "syncs when section id is nil (new section)" do
+      saver.sync_auto_index_if_needed!(
+        [{ title: "Topics", auto_index: true, links: [] }],
+        old_auto_index_section_id: auto_section.id,
+      )
+
+      index.reload
+      expect(index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(
+        topic.id,
+      )
+    end
+
+    it "returns nil when there is no auto-index section" do
+      auto_section.update!(auto_index: false)
+
+      result =
+        saver.sync_auto_index_if_needed!(sections_data, old_auto_index_section_id: auto_section.id)
+      expect(result).to be_nil
+    end
+  end
 end
