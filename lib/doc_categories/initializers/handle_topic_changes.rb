@@ -18,7 +18,12 @@ module ::DocCategories
         category = index.category
         return if !category
 
-        DocCategories::CategoryIndexManager.new(category).assign!(nil)
+        DocCategories::CategoryIndexManager.call(
+          params: {
+            category_id: category.id,
+            topic_id: nil,
+          },
+        )
       end
     end
   end

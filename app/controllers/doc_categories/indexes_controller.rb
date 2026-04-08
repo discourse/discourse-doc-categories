@@ -31,50 +31,23 @@ module ::DocCategories
     end
 
     def update
-      category = ::Category.find_by(id: params[:category_id])
-      raise Discourse::NotFound if category.blank?
-
-      index = DocCategories::Index.find_by(category_id: category.id)
-
-      if params[:force_direct] && index&.mode_topic?
-        index.update!(index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
-      elsif index&.mode_topic?
-        raise Discourse::InvalidAccess.new(
-                "index managed by a topic",
-                nil,
-                custom_message: "doc_categories.errors.index_topic_managed",
-              )
+      DocCategories::IndexSaver.call(service_params) do
+        on_success do |index_structure:|
+          render json: success_json.merge(index_structure: index_structure)
+        end
+        on_model_not_found(:category) { raise Discourse::NotFound }
+        on_failed_policy(:not_topic_managed) do
+          raise Discourse::InvalidAccess.new(
+                  "index managed by a topic",
+                  nil,
+                  custom_message: "doc_categories.errors.index_topic_managed",
+                )
+        end
+        on_failed_step(:parse_and_validate_sections) do |step|
+          render json: failed_json.merge(errors: [step.error]), status: :bad_request
+        end
+        on_failure { render json: failed_json, status: :unprocessable_entity }
       end
-
-      old_auto_index_section_id = index&.auto_index_section&.id
-
-      sections_params =
-        params.permit(
-          sections: [:id, :title, :auto_index, { links: %i[title href icon topic_id] }],
-        ).fetch(:sections, [])
-
-      subcategory_setting_changed = false
-      if params.key?(:auto_index_include_subcategories)
-        idx = index || DocCategories::Index.find_or_initialize_by(category_id: category.id)
-        new_value = ActiveRecord::Type::Boolean.new.cast(params[:auto_index_include_subcategories])
-        subcategory_setting_changed = idx.auto_index_include_subcategories != new_value
-        idx.update!(auto_index_include_subcategories: new_value) if subcategory_setting_changed
-      end
-
-      saver = DocCategories::IndexSaver.new(category)
-      saver.save_sections!(sections_params)
-      force_sync =
-        subcategory_setting_changed || ActiveRecord::Type::Boolean.new.cast(params[:force_sync])
-
-      saver.sync_auto_index_if_needed!(
-        sections_params,
-        old_auto_index_section_id: old_auto_index_section_id,
-        force: force_sync,
-      )
-
-      current_index = DocCategories::Index.find_by(category_id: category.id)
-      structure = current_index&.sidebar_structure&.as_json
-      render json: success_json.merge(index_structure: structure)
     end
   end
 end
