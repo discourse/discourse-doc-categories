@@ -28,7 +28,7 @@ module DocCategories
       end
 
       def topic_qualifies(topic:)
-        !topic.trashed? && topic.visible? && !topic.private_message?
+        !topic.trashed? && topic.visible? && topic.archetype == Archetype.default
       end
 
       def find_matching_indexes(topic:)
