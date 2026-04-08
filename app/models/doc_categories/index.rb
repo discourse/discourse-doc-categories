@@ -109,11 +109,12 @@ end
 #
 # Table name: doc_categories_indexes
 #
-#  id             :bigint           not null, primary key
-#  created_at     :datetime         not null
-#  updated_at     :datetime         not null
-#  category_id    :bigint           not null
-#  index_topic_id :bigint
+#  id                               :bigint           not null, primary key
+#  auto_index_include_subcategories :boolean          default(FALSE), not null
+#  created_at                       :datetime         not null
+#  updated_at                       :datetime         not null
+#  category_id                      :bigint           not null
+#  index_topic_id                   :bigint
 #
 # Indexes
 #
