@@ -36,6 +36,7 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked
   autoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
+  @tracked pendingResync = false;
   @tracked isDraggingSection = false;
   @tracked batchMode = false;
   @tracked editingCount = 0;
@@ -44,6 +45,9 @@ export default class DocCategoryIndexEditor extends Component {
   selectedItems = trackedSet();
   selectedSections = trackedSet();
   draggedSection = null;
+  #originalAutoIndexIncludeSubcategories =
+    this.args.category?.doc_category_auto_index_include_subcategories ?? false;
+
   @tracked _hasLocalChanges = false;
 
   _draggedLink = null;
@@ -462,16 +466,41 @@ export default class DocCategoryIndexEditor extends Component {
     this.includeSubcategories = !this.includeSubcategories;
   }
 
+  get subcategorySettingChanged() {
+    return (
+      this.autoIndexIncludeSubcategories !==
+      this.#originalAutoIndexIncludeSubcategories
+    );
+  }
+
+  @action
+  toggleResyncAutoIndex(closeMenu) {
+    closeMenu?.();
+    this.pendingResync = !this.pendingResync;
+    this._saveToTransientData();
+  }
+
   @action
   toggleAutoIndexIncludeSubcategories(closeMenu) {
     closeMenu?.();
+
+    // Toggling back to the original value doesn't trigger a resync,
+    // so no confirmation is needed.
+    const newValue = !this.autoIndexIncludeSubcategories;
+    if (newValue === this.#originalAutoIndexIncludeSubcategories) {
+      this.autoIndexIncludeSubcategories = newValue;
+      this.pendingResync = false;
+      this._saveToTransientData();
+      return;
+    }
+
     this.dialog.yesNoConfirm({
       message: i18n(
         "doc_categories.category_settings.index_editor.include_subcategories_confirm"
       ),
       didConfirm: () => {
-        this.autoIndexIncludeSubcategories =
-          !this.autoIndexIncludeSubcategories;
+        this.autoIndexIncludeSubcategories = newValue;
+        this.pendingResync = false;
         this._saveToTransientData();
       },
     });
@@ -540,6 +569,7 @@ export default class DocCategoryIndexEditor extends Component {
     const payload = {
       force_direct: true,
       auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
+      force_sync: this.pendingResync,
       sections: this.sections.map((section) => ({
         id: section.id,
         title: section.title,
@@ -566,6 +596,7 @@ export default class DocCategoryIndexEditor extends Component {
         return;
       }
       this.saveState = "saved";
+      this.pendingResync = false;
       this._hasLocalChanges = false;
       this.args.form?.set("_docIndexEditorState", null);
       this.args.form?.commitField("_docIndexEditorState");
@@ -1105,6 +1136,9 @@ export default class DocCategoryIndexEditor extends Component {
             @fetchTopics={{this.fetchTopics}}
             @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
             @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
+            @pendingResync={{this.pendingResync}}
+            @hideResyncToggle={{this.subcategorySettingChanged}}
+            @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
             @onChange={{this._saveToTransientData}}
           />
         {{/each}}
