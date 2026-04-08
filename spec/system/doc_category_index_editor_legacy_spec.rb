@@ -53,15 +53,13 @@ describe "Doc Category Index Editor (Legacy)" do
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("Legacy Link")
     end
 
-    it "shows flash error in modal when applying with validation errors" do
+    it "disables Apply in modal when there are validation errors" do
       editor.visit_category_settings(category)
       editor.switch_legacy_mode("mode_direct")
       editor.click_open_editor
 
       modal.add_empty_section
-      modal.click_apply
-
-      expect(modal).to have_flash_error
+      expect(modal).to have_apply_disabled
     end
 
     it "shows validation errors below the open editor button after closing modal" do
