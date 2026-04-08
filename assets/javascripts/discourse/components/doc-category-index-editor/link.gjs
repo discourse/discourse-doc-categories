@@ -537,11 +537,11 @@ export class IndexEditorLink extends Component {
               {{this.displayTitle}}
             </span>
             {{#if @link.autoIndexed}}
-              <span class="doc-category-index-editor__auto-indexed-badge">{{i18n
+              <span class="doc-category-index-editor__item-badge">{{i18n
                   "doc_categories.category_settings.index_editor.auto_indexed"
                 }}</span>
             {{else if @link.autoTitle}}
-              <span class="doc-category-index-editor__auto-badge">{{i18n
+              <span class="doc-category-index-editor__item-badge">{{i18n
                   "doc_categories.category_settings.index_editor.auto_title"
                 }}</span>
             {{/if}}
