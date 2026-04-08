@@ -5,3 +5,21 @@
 # https://translate.discourse.org/
 
 es:
+  reports:
+    doc_categories_missing_topics:
+      title: "Documentos - Temas no indexados"
+      description: "Enumera los temas de las categorías de documentación que no están indexados en la barra lateral"
+      labels:
+        index_category: "Categoría del índice"
+        topic: "Tema"
+    doc_categories_extraneous_items:
+      title: "Documentos - Elementos externos"
+      description: "Enumera los elementos indexados en las categorías de documentación que no coinciden con un tema en la categoría"
+      labels:
+        index_category: "Categoría del índice"
+        item: "Elemento"
+        reason: "Motivo"
+  site_settings:
+    doc_categories_enabled: "Habilitar el plugin de categorías de documentos de Discourse"
+    doc_categories_docs_legacy_enabled: "Habilitar redirecciones para las URL antiguas del plugin de documentos. Esta configuración no tiene efecto si el plugin de documentos está instalado y habilitado"
+    doc_categories_homepage: "Cuando 'doc_categories_docs_legacy_enabled', la antigua página de inicio de la documentación redirigirá a esta dirección."
