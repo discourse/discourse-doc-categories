@@ -33,6 +33,9 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked sections = trackedArray(this.initSections());
   @tracked saveState = null;
   @tracked includeSubcategories = false;
+  @tracked
+  autoIndexIncludeSubcategories =
+    this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   @tracked isDraggingSection = false;
   @tracked batchMode = false;
   @tracked editingCount = 0;
@@ -78,6 +81,13 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   initSections() {
+    // Restore the subcategory toggle from transient data (tab switch recovery)
+    const savedIncludeSub =
+      this.args.transientData?._docIndexAutoIndexIncludeSubcategories;
+    if (savedIncludeSub != null) {
+      this.autoIndexIncludeSubcategories = savedIncludeSub;
+    }
+
     // Restore from FormKit transient data if available (tab switch recovery)
     const saved = this.args.transientData?._docIndexEditorState;
     if (saved?.length > 0) {
@@ -186,6 +196,10 @@ export default class DocCategoryIndexEditor extends Component {
     const sections = this._serializeSections();
     this._hasLocalChanges = true;
     this.args.form?.set("_docIndexEditorState", sections);
+    this.args.form?.set(
+      "_docIndexAutoIndexIncludeSubcategories",
+      this.autoIndexIncludeSubcategories
+    );
 
     // Convert to snake_case for the backend payload
     const backendSections = sections.map((section) => ({
@@ -449,6 +463,21 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @action
+  toggleAutoIndexIncludeSubcategories(closeMenu) {
+    closeMenu?.();
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.include_subcategories_confirm"
+      ),
+      didConfirm: () => {
+        this.autoIndexIncludeSubcategories =
+          !this.autoIndexIncludeSubcategories;
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
   indexAllTopics(closeMenu) {
     closeMenu?.();
     if (this.sections.length > 0) {
@@ -510,6 +539,7 @@ export default class DocCategoryIndexEditor extends Component {
     this.saveState = "saving";
     const payload = {
       force_direct: true,
+      auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
       sections: this.sections.map((section) => ({
         id: section.id,
         title: section.title,
@@ -1073,6 +1103,8 @@ export default class DocCategoryIndexEditor extends Component {
             @onLinkDrop={{this.onLinkDrop}}
             @onBatchItemDrop={{this.batchReorderItems}}
             @fetchTopics={{this.fetchTopics}}
+            @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
+            @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
             @onChange={{this._saveToTransientData}}
           />
         {{/each}}

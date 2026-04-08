@@ -53,12 +53,12 @@ module ::DocCategories
           sections: [:id, :title, :auto_index, { links: %i[title href icon topic_id] }],
         ).fetch(:sections, [])
 
+      subcategory_setting_changed = false
       if params.key?(:auto_index_include_subcategories)
         idx = index || DocCategories::Index.find_or_initialize_by(category_id: category.id)
-        idx.update!(
-          auto_index_include_subcategories:
-            ActiveRecord::Type::Boolean.new.cast(params[:auto_index_include_subcategories]),
-        )
+        new_value = ActiveRecord::Type::Boolean.new.cast(params[:auto_index_include_subcategories])
+        subcategory_setting_changed = idx.auto_index_include_subcategories != new_value
+        idx.update!(auto_index_include_subcategories: new_value) if subcategory_setting_changed
       end
 
       saver = DocCategories::IndexSaver.new(category)
@@ -66,6 +66,7 @@ module ::DocCategories
       saver.sync_auto_index_if_needed!(
         sections_params,
         old_auto_index_section_id: old_auto_index_section_id,
+        force: subcategory_setting_changed,
       )
 
       current_index = DocCategories::Index.find_by(category_id: category.id)

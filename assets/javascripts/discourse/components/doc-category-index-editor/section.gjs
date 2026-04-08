@@ -9,6 +9,7 @@ import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
 import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
+import DMenu from "discourse/float-kit/components/d-menu";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { popupAjaxError } from "discourse/lib/ajax-error";
@@ -468,17 +469,48 @@ export class IndexEditorSection extends Component {
         }}
       >
         {{#if @section.autoIndex}}
-          <span
-            class="doc-category-index-editor__auto-index-badge"
+          <DMenu
+            @identifier="auto-index-badge-menu"
+            @triggerClass="doc-category-index-editor__auto-index-badge"
             title={{i18n
               "doc_categories.category_settings.index_editor.auto_index_badge_title"
             }}
           >
-            {{icon "bolt"}}
-            {{i18n
-              "doc_categories.category_settings.index_editor.auto_index_badge_label"
-            }}
-          </span>
+            <:trigger>
+              {{icon "bolt"}}
+              {{if
+                @autoIndexIncludeSubcategories
+                (i18n
+                  "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
+                )
+                (i18n
+                  "doc_categories.category_settings.index_editor.auto_index_badge_label"
+                )
+              }}
+              {{icon "angle-down"}}
+            </:trigger>
+            <:content as |args|>
+              <DropdownMenu as |dropdown|>
+                <dropdown.item>
+                  <label
+                    class="doc-category-index-editor__auto-index-subcategories"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={{@autoIndexIncludeSubcategories}}
+                      {{on
+                        "change"
+                        (fn @onToggleAutoIndexIncludeSubcategories args.close)
+                      }}
+                    />
+                    {{i18n
+                      "doc_categories.category_settings.index_editor.include_subcategories"
+                    }}
+                  </label>
+                </dropdown.item>
+              </DropdownMenu>
+            </:content>
+          </DMenu>
         {{/if}}
 
         <div class="doc-category-index-editor__section-header">
