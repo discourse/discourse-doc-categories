@@ -504,7 +504,7 @@ body.doc-simple-mode {
     }
   }
 
-  &__auto-index-badge {
+  &__auto-index-badge.btn {
     position: absolute;
     top: -0.65em;
     right: 0.75em;
@@ -514,12 +514,37 @@ body.doc-simple-mode {
     padding: 0.1em 0.5em;
     border: 1px solid var(--tertiary-low);
     border-radius: var(--d-border-radius);
-    background: var(--tertiary-very-low, var(--secondary));
+    background: var(--tertiary-low);
     color: var(--tertiary-hover);
     font-size: var(--font-down-2);
     font-weight: 700;
     white-space: nowrap;
     z-index: 1;
+
+    .d-icon {
+      color: inherit;
+    }
+
+    &:hover,
+    &:focus {
+      background: var(--tertiary-very-low, var(--secondary));
+      color: var(--tertiary-hover);
+      box-shadow: 0 0 0 1px var(--tertiary-low);
+
+      .d-icon {
+        color: inherit;
+      }
+    }
+  }
+
+  &__auto-index-subcategories {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.25em var(--d-sidebar-row-horizontal-padding);
+    font-size: var(--font-down-1);
+    font-weight: normal;
+    cursor: pointer;
   }
 
   &__link-href-preview {
@@ -878,6 +903,7 @@ label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__s
 .fk-d-menu.index-options-menu-content,
 .fk-d-menu.add-section-menu-content,
 .fk-d-menu.section-add-menu-content,
+.fk-d-menu.auto-index-badge-menu-content,
 .fk-d-menu.d-icon-grid-picker-content {
   z-index: z("modal", "dialog");
 }
