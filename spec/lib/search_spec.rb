@@ -43,8 +43,11 @@ RSpec.describe Search do
 
       it "includes only posts from the doc categories (including subcategories) in the results" do
         Jobs.with_immediate_jobs do
-          DocCategories::CategoryIndexManager.new(documentation_category).assign!(
-            documentation_category_topic.id,
+          DocCategories::CategoryIndexManager.call(
+            params: {
+              category_id: documentation_category.id,
+              topic_id: documentation_category_topic.id,
+            },
           )
         end
 

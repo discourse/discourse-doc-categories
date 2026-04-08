@@ -2,106 +2,206 @@
 
 module DocCategories
   class IndexSaver
+    include Service::Base
+
     MAX_SECTIONS = DocCategories::Index::MAX_SECTIONS
     MAX_LINKS_PER_SECTION = DocCategories::Index::MAX_LINKS_PER_SECTION
 
-    def initialize(category)
-      @category = category
+    params do
+      attribute :category_id, :integer
+      attribute :sections, :array
+      attribute :force_direct, :boolean, default: false
+      attribute :force_sync, :boolean, default: false
+      attribute :auto_index_include_subcategories
+
+      validates :category_id, presence: true
     end
 
-    def save_sections!(sections_data)
-      unless sections_data.blank? || sections_data.is_a?(Array)
-        raise Discourse::InvalidParameters.new(:sections)
-      end
+    model :category
+    model :index, optional: true
+
+    only_if(:force_direct_requested) { step :convert_to_direct_mode }
+
+    policy :not_topic_managed
+    step :capture_old_auto_index_section_id
+    step :parse_and_validate_sections
+    step :update_subcategory_setting
+
+    transaction { step :save_sections }
+
+    step :publish_changes
+    step :determine_sync_needed
+
+    only_if(:should_sync_auto_index) { step :sync_auto_index }
+
+    step :build_response
+
+    private
+
+    def fetch_category(params:)
+      ::Category.find_by(id: params.category_id)
+    end
+
+    def fetch_index(category:)
+      DocCategories::Index.find_by(category_id: category.id)
+    end
+
+    def force_direct_requested(params:)
+      params.force_direct
+    end
+
+    def convert_to_direct_mode(index:)
+      return if index.nil? || !index.mode_topic?
+      index.update!(index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
+    end
+
+    def not_topic_managed(index:)
+      index.nil? || !index.mode_topic?
+    end
+
+    def capture_old_auto_index_section_id(index:)
+      context[:old_auto_index_section_id] = index&.auto_index_section&.id
+    end
+
+    def parse_and_validate_sections(params:)
+      sections_data = params.sections
 
       if sections_data.blank?
-        destroy_index!
+        context[:built_sections] = nil
+        context[:sections_data] = []
         return
       end
 
-      index = DocCategories::Index.find_or_initialize_by(category_id: @category.id)
-      raise Discourse::InvalidAccess if index.mode_topic?
-
-      index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
+      unless sections_data.is_a?(Array)
+        return(
+          fail!(
+            I18n.t("doc_categories.errors.invalid_sections", default: "sections must be an array"),
+          )
+        )
+      end
 
       sections_data = sections_data.map { |s| s.to_h.with_indifferent_access }
-      validate_limits!(sections_data)
-      sections = build_sections(sections_data)
 
-      if sections.blank?
-        destroy_index!(index: index) if index.persisted?
+      if sections_data.size > MAX_SECTIONS
+        return fail!(I18n.t("doc_categories.errors.too_many_sections", max: MAX_SECTIONS))
+      end
+
+      sections_data.each do |section|
+        links = section[:links] || []
+        if links.size > MAX_LINKS_PER_SECTION
+          return fail!(I18n.t("doc_categories.errors.too_many_links", max: MAX_LINKS_PER_SECTION))
+        end
+      end
+
+      context[:built_sections] = build_sections(sections_data).presence
+      context[:sections_data] = sections_data
+    end
+
+    def update_subcategory_setting(params:, category:)
+      return if params.auto_index_include_subcategories.nil?
+
+      new_value = ActiveRecord::Type::Boolean.new.cast(params.auto_index_include_subcategories)
+      idx = DocCategories::Index.find_or_initialize_by(category_id: category.id)
+      context[:subcategory_setting_changed] = idx.auto_index_include_subcategories != new_value
+      if context[:subcategory_setting_changed]
+        idx.update!(auto_index_include_subcategories: new_value)
+      end
+    end
+
+    def save_sections(category:, index:)
+      built_sections = context[:built_sections]
+
+      if built_sections.nil?
+        destroy_index!(category, index)
         return
       end
 
-      topic_ids = sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
+      idx = DocCategories::Index.find_or_initialize_by(category_id: category.id)
+      idx.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
+
+      topic_ids = built_sections.flat_map { |s| s[:links].filter_map { |l| l[:topic_id] } }.uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
 
       # Preserve auto-indexed topic IDs so they survive the destroy/recreate cycle
-      auto_indexed_topic_ids = collect_auto_indexed_topic_ids(index)
+      auto_indexed_topic_ids = collect_auto_indexed_topic_ids(idx)
 
-      ActiveRecord::Base.transaction do
-        index.save! if index.new_record?
-        index.sidebar_sections.destroy_all
+      idx.save! if idx.new_record?
+      idx.sidebar_sections.destroy_all
 
-        sections.each_with_index do |section, section_position|
-          section_record =
-            index.sidebar_sections.create!(
-              title: section[:title],
-              position: section_position,
-              auto_index: section[:auto_index] || false,
-            )
+      built_sections.each_with_index do |section, section_position|
+        section_record =
+          idx.sidebar_sections.create!(
+            title: section[:title],
+            position: section_position,
+            auto_index: section[:auto_index] || false,
+          )
 
-          section[:links].each_with_index do |link, link_position|
-            # If the title matches the topic title, store nil (auto title)
-            title = link[:title]
-            title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
+        section[:links].each_with_index do |link, link_position|
+          # If the title matches the topic title, store nil (auto title)
+          title = link[:title]
+          title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
 
-            section_record.sidebar_links.create!(
-              title: title,
-              href: link[:href],
-              icon: link[:icon],
-              topic_id: link[:topic_id],
-              position: link_position,
-              auto_indexed:
-                link[:topic_id].present? && auto_indexed_topic_ids.include?(link[:topic_id]),
-            )
-          end
+          section_record.sidebar_links.create!(
+            title: title,
+            href: link[:href],
+            icon: link[:icon],
+            topic_id: link[:topic_id],
+            position: link_position,
+            auto_indexed:
+              link[:topic_id].present? && auto_indexed_topic_ids.include?(link[:topic_id]),
+          )
         end
-
-        index.touch
       end
-      Site.clear_cache
-      @category.publish_category
+
+      idx.touch
+      context[:index_changed] = true
     end
 
-    def sync_auto_index_if_needed!(sections_data, old_auto_index_section_id: nil, force: false)
-      index = DocCategories::Index.find_by(category_id: @category.id)
-      return if index&.auto_index_section.blank?
+    def publish_changes(category:)
+      return unless context[:index_changed]
+      Site.clear_cache
+      category.publish_category
+    end
 
-      sections_data = sections_data&.map { |s| s.to_h.with_indifferent_access } || []
+    def determine_sync_needed(params:, category:)
+      idx = DocCategories::Index.find_by(category_id: category.id)
+      return if idx&.auto_index_section.blank?
+
+      context[:sync_index] = idx
+
+      sections_data = (params.sections || []).map { |s| s.to_h.with_indifferent_access }
       incoming_auto =
         sections_data.find { |s| ActiveRecord::Type::Boolean.new.cast(s[:auto_index]) }
       incoming_id = incoming_auto&.dig(:id).presence&.to_i
 
-      if force || incoming_id.nil? || incoming_id != old_auto_index_section_id
-        DocCategories::AutoIndexer::Sync.call(params: { index_id: index.id })
-        index.reload
-      end
-
-      index
+      context[:should_sync] = params.force_sync || context[:subcategory_setting_changed] ||
+        incoming_id.nil? || incoming_id != context[:old_auto_index_section_id]
     end
 
-    private
+    def should_sync_auto_index
+      context[:should_sync]
+    end
 
-    def destroy_index!(index: nil)
-      index ||= DocCategories::Index.find_by(category_id: @category.id)
-      return unless index && !index.mode_topic?
+    def sync_auto_index
+      idx = context[:sync_index]
+      return if idx.nil?
 
-      index.sidebar_sections.destroy_all
-      index.destroy!
-      @category.association(:doc_categories_index).reset
-      Site.clear_cache
-      @category.publish_category
+      DocCategories::AutoIndexer::Sync.call(params: { index_id: idx.id })
+    end
+
+    def build_response(category:)
+      current_index = DocCategories::Index.find_by(category_id: category.id)
+      context[:index_structure] = current_index&.sidebar_structure&.as_json
+    end
+
+    def destroy_index!(category, index)
+      idx = index || DocCategories::Index.find_by(category_id: category.id)
+      return unless idx && !idx.mode_topic?
+
+      idx.sidebar_sections.destroy_all
+      idx.destroy!
+      category.association(:doc_categories_index).reset
+      context[:index_changed] = true
     end
 
     def collect_auto_indexed_topic_ids(index)
@@ -114,23 +214,6 @@ module DocCategories
         .where.not(topic_id: nil)
         .pluck(:topic_id)
         .to_set
-    end
-
-    def validate_limits!(sections_data)
-      if sections_data.size > MAX_SECTIONS
-        raise Discourse::InvalidParameters.new(
-                I18n.t("doc_categories.errors.too_many_sections", max: MAX_SECTIONS),
-              )
-      end
-
-      sections_data.each do |section|
-        links = section[:links] || []
-        if links.size > MAX_LINKS_PER_SECTION
-          raise Discourse::InvalidParameters.new(
-                  I18n.t("doc_categories.errors.too_many_links", max: MAX_LINKS_PER_SECTION),
-                )
-        end
-      end
     end
 
     def build_sections(sections_data)

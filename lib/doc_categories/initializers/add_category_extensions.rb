@@ -18,7 +18,14 @@ module ::DocCategories
 
         plugin.register_category_update_param_with_callback(
           :doc_index_topic_id,
-        ) { |category, value| DocCategories::CategoryIndexManager.new(category).assign!(value) }
+        ) do |category, value|
+          DocCategories::CategoryIndexManager.call(
+            params: {
+              category_id: category.id,
+              topic_id: value,
+            },
+          )
+        end
 
         plugin.register_category_update_param_with_callback(
           :doc_index_sections,
@@ -29,11 +36,20 @@ module ::DocCategories
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end
 
-          old_auto_id = category.doc_categories_index&.auto_index_section&.id
+          if sections.present? && !sections.is_a?(::Array)
+            raise Discourse::InvalidParameters.new(:doc_index_sections)
+          end
 
-          saver = DocCategories::IndexSaver.new(category)
-          saver.save_sections!(sections)
-          saver.sync_auto_index_if_needed!(sections, old_auto_index_section_id: old_auto_id)
+          result =
+            DocCategories::IndexSaver.call(params: { category_id: category.id, sections: sections })
+
+          if result.failure?
+            if result["result.policy.not_topic_managed"]&.failure?
+              raise Discourse::InvalidAccess
+            elsif result["result.step.parse_and_validate_sections"]&.failure?
+              raise Discourse::InvalidParameters.new(:doc_index_sections)
+            end
+          end
         end
       end
     end

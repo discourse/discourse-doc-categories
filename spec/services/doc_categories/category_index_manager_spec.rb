@@ -1,140 +1,157 @@
 # frozen_string_literal: true
 
-describe DocCategories::CategoryIndexManager do
-  fab!(:category, :category_with_definition)
-  fab!(:topic) { Fabricate(:topic_with_op, category: category) }
-  fab!(:other_category, :category_with_definition)
-  fab!(:other_topic) { Fabricate(:topic_with_op, category: other_category) }
-  fab!(:private_message, :private_message_topic)
+RSpec.describe DocCategories::CategoryIndexManager do
+  describe described_class::Contract, type: :model do
+    it { is_expected.to validate_presence_of(:category_id) }
+  end
 
-  subject(:manager) { described_class.new(category) }
+  describe ".call" do
+    subject(:result) { described_class.call(params:) }
 
-  before { SiteSetting.doc_categories_enabled = true }
+    fab!(:category, :category_with_definition)
+    fab!(:topic) { Fabricate(:topic_with_op, category: category) }
+    fab!(:other_category, :category_with_definition)
+    fab!(:other_topic) { Fabricate(:topic_with_op, category: other_category) }
+    fab!(:private_message, :private_message_topic)
 
-  describe "#assign!" do
-    before { allow(Jobs).to receive(:enqueue) }
+    let(:params) { { category_id: category.id, topic_id: topic.id } }
 
-    it "persists a new index topic and enqueues a refresh" do
-      result = manager.assign!(topic.id)
-
-      expect(result).to eq(true)
-      index = DocCategories::Index.find_by(category_id: category.id)
-      expect(index&.index_topic_id).to eq(topic.id)
-      expect(Jobs).to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
+    before do
+      SiteSetting.doc_categories_enabled = true
+      allow(Jobs).to receive(:enqueue)
     end
 
-    it "rejects topics from other categories" do
-      expect(manager.assign!(other_topic.id)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+    context "when assigning a topic" do
+      it { is_expected.to run_successfully }
+
+      it "persists a new index topic and enqueues a refresh" do
+        result
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index&.index_topic_id).to eq(topic.id)
+        expect(Jobs).to have_received(:enqueue).with(
+          :doc_categories_refresh_index,
+          category_id: category.id,
+        )
+      end
     end
 
-    it "rejects private messages" do
-      expect(manager.assign!(private_message.id)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+    context "when the topic is from another category" do
+      let(:params) { { category_id: category.id, topic_id: other_topic.id } }
+
+      it { is_expected.to fail_a_policy(:valid_index_topic) }
+
+      it "does not create an index" do
+        result
+        expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      end
     end
 
-    it "rejects trashed topics" do
-      trashed_topic = Fabricate(:topic_with_op, category: category)
-      trashed_topic.trash!
+    context "when the topic is a private message" do
+      let(:params) { { category_id: category.id, topic_id: private_message.id } }
 
-      expect(manager.assign!(trashed_topic.id)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      it { is_expected.to fail_a_policy(:valid_index_topic) }
     end
 
-    it "rejects topic ids that cannot be resolved" do
-      expect(manager.assign!("abc")).to eq(false)
-      expect(manager.assign!(0)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+    context "when the topic is trashed" do
+      before { topic.trash! }
+
+      it { is_expected.to fail_to_find_a_model(:topic) }
     end
 
-    it "returns false when removing a missing index" do
-      expect(manager.assign!(nil)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
+    context "when the topic_id is unresolvable" do
+      let(:params) { { category_id: category.id, topic_id: "abc" } }
+
+      it "treats it as a remove action" do
+        result
+        expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      end
     end
 
-    it "resets an existing index when nil is provided" do
-      manager.assign!(topic.id)
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(true)
+    context "when removing an index" do
+      let(:params) { { category_id: category.id, topic_id: nil } }
 
-      expect(manager.assign!(nil)).to eq(true)
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      context "when no index exists" do
+        it { is_expected.to run_successfully }
+      end
+
+      context "when an index exists" do
+        before { described_class.call(params: { category_id: category.id, topic_id: topic.id }) }
+
+        it { is_expected.to run_successfully }
+
+        it "destroys the index" do
+          expect(DocCategories::Index.exists?(category_id: category.id)).to eq(true)
+          result
+          expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+        end
+      end
+
+      it "destroys the index even if sidebar sections exist" do
+        described_class.call(params: { category_id: category.id, topic_id: topic.id })
+        index = DocCategories::Index.find_by(category_id: category.id)
+        index.sidebar_sections.create!(title: "Test Section", position: 0)
+
+        result
+        expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      end
     end
 
-    it "destroys the index when clearing topic even if sidebar sections exist" do
-      manager.assign!(topic.id)
-      index = DocCategories::Index.find_by(category_id: category.id)
-      index.sidebar_sections.create!(title: "Test Section", position: 0)
+    context "when assigning direct mode" do
+      let(:params) { { category_id: category.id, topic_id: -1 } }
 
-      expect(manager.assign!(nil)).to eq(true)
-      expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      it { is_expected.to run_successfully }
+
+      it "creates a direct-mode index" do
+        result
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index).to be_present
+        expect(index.mode_direct?).to eq(true)
+        expect(index.index_topic_id).to eq(DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
+      end
+
+      it "is a no-op when already in direct mode" do
+        described_class.call(params: { category_id: category.id, topic_id: -1 })
+        described_class.call(params: { category_id: category.id, topic_id: -1 })
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.mode_direct?).to eq(true)
+      end
+
+      it "switches from topic mode to direct mode" do
+        described_class.call(params: { category_id: category.id, topic_id: topic.id })
+        described_class.call(params: { category_id: category.id, topic_id: -1 })
+
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.mode_direct?).to eq(true)
+      end
+
+      it "clears direct-mode sidebar sections when switching to topic mode" do
+        described_class.call(params: { category_id: category.id, topic_id: -1 })
+        index = DocCategories::Index.find_by(category_id: category.id)
+        index.sidebar_sections.create!(title: "Editor Section", position: 0)
+        expect(index.sidebar_sections.count).to eq(1)
+
+        described_class.call(params: { category_id: category.id, topic_id: topic.id })
+
+        index.reload
+        expect(index.mode_topic?).to eq(true)
+        expect(index.sidebar_sections.count).to eq(0)
+      end
     end
 
-    it "assigns direct mode when -1 is provided" do
-      result = manager.assign!(-1)
+    context "when the index is already assigned to the same topic" do
+      before { Fabricate(:doc_categories_index, category: category, index_topic: topic) }
 
-      expect(result).to eq(true)
-      index = DocCategories::Index.find_by(category_id: category.id)
-      expect(index).to be_present
-      expect(index.mode_direct?).to eq(true)
-      expect(index.index_topic_id).to eq(DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
-    end
+      it { is_expected.to run_successfully }
 
-    it "returns false when assigning direct mode to an already direct-mode index" do
-      manager.assign!(-1)
-      expect(manager.assign!(-1)).to eq(false)
-    end
-
-    it "switches from topic mode to direct mode" do
-      manager.assign!(topic.id)
-      expect(manager.assign!(-1)).to eq(true)
-
-      index = DocCategories::Index.find_by(category_id: category.id)
-      expect(index.mode_direct?).to eq(true)
-    end
-
-    it "clears direct-mode sidebar sections when switching to topic mode" do
-      manager.assign!(-1)
-      index = DocCategories::Index.find_by(category_id: category.id)
-      index.sidebar_sections.create!(title: "Editor Section", position: 0)
-      expect(index.sidebar_sections.count).to eq(1)
-
-      manager.assign!(topic.id)
-
-      index.reload
-      expect(index.mode_topic?).to eq(true)
-      expect(index.sidebar_sections.count).to eq(0)
-    end
-
-    it "does not reassign when the index is unchanged" do
-      Fabricate(:doc_categories_index, category: category, index_topic: topic)
-
-      expect(manager.assign!(topic.id)).to eq(false)
-      expect(Jobs).not_to have_received(:enqueue).with(
-        :doc_categories_refresh_index,
-        category_id: category.id,
-      )
+      it "does not enqueue a refresh" do
+        result
+        expect(Jobs).not_to have_received(:enqueue).with(
+          :doc_categories_refresh_index,
+          category_id: category.id,
+        )
+      end
     end
   end
 end
