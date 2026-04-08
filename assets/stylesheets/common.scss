@@ -464,13 +464,7 @@ body.doc-simple-mode {
     }
   }
 
-  &__auto-badge {
-    color: var(--primary-medium);
-    font-size: var(--font-down-2);
-    flex-shrink: 0;
-  }
-
-  &__auto-indexed-badge {
+  &__item-badge {
     display: inline-flex;
     align-items: center;
     padding: 0.05em 0.4em;

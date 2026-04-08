@@ -186,7 +186,7 @@ module PageObjects
       end
 
       def has_auto_indexed_link_badge?
-        has_css?(".doc-category-index-editor__auto-indexed-badge")
+        has_css?(".doc-category-index-editor__item-badge")
       end
 
       def section_count

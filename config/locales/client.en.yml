@@ -49,7 +49,7 @@ en:
           select_topic: "Select a topic..."
           remove_link: "Remove link"
           link_title_placeholder: "Link title"
-          auto_title: "auto"
+          auto_title: "auto-title"
           link_url_placeholder: "URL (e.g. https://example.com)"
           auto_index: "Auto-index"
           rebuild_index: "Rebuild index"
