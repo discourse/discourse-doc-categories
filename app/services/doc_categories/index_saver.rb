@@ -25,9 +25,10 @@ module DocCategories
     policy :not_topic_managed
     step :capture_old_auto_index_section_id
     step :parse_and_validate_sections
-    step :update_subcategory_setting
-
-    transaction { step :save_sections }
+    transaction do
+      step :update_subcategory_setting
+      step :save_sections
+    end
 
     step :publish_changes
     step :determine_sync_needed
@@ -75,7 +76,7 @@ module DocCategories
       unless sections_data.is_a?(Array)
         return(
           fail!(
-            I18n.t("doc_categories.errors.invalid_sections", default: "sections must be an array"),
+            I18n.t("doc_categories.errors.invalid_sections"),
           )
         )
       end
@@ -169,7 +170,7 @@ module DocCategories
 
       context[:sync_index] = idx
 
-      sections_data = (params.sections || []).map { |s| s.to_h.with_indifferent_access }
+      sections_data = context[:sections_data] || []
       incoming_auto =
         sections_data.find { |s| ActiveRecord::Type::Boolean.new.cast(s[:auto_index]) }
       incoming_id = incoming_auto&.dig(:id).presence&.to_i

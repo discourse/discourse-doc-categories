@@ -97,7 +97,7 @@ module ::DocCategories::Reports
           Topic
             .find_by(id: index_topic_id)
             &.yield_self do |index_topic|
-              DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
+              DocCategories::DocIndexTopicParser.new(index_topic.first_post&.cooked).sections
             end
             &.flat_map do |section|
               section[:links].filter_map do |link|
