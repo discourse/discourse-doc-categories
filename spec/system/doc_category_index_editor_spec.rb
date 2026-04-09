@@ -11,8 +11,34 @@ describe "Doc Category Index Editor" do
 
   before do
     SiteSetting.doc_categories_enabled = true
+    SiteSetting.doc_categories_index_editor = true
     SiteSetting.enable_simplified_category_creation = true
     sign_in(admin)
+  end
+
+  context "when the index editor setting is disabled" do
+    before { SiteSetting.doc_categories_index_editor = false }
+
+    it "hides the editor mode option from the mode selector" do
+      editor.visit_doc_index_tab(category)
+      editor.open_mode_selector
+      expect(editor).to have_no_mode_option("mode_direct")
+      expect(editor).to have_mode_option("mode_topic")
+      expect(editor).to have_mode_option("mode_none")
+    end
+
+    it "still shows the editor option when the category is already in direct mode" do
+      DocCategories::Index.create!(
+        category: category,
+        index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+      )
+
+      editor.visit_doc_index_tab(category)
+      expect(editor).to have_editor
+
+      editor.open_mode_selector
+      expect(editor).to have_mode_option("mode_direct")
+    end
   end
 
   context "with editor mode" do

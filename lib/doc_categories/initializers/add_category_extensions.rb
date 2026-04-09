@@ -40,6 +40,12 @@ module ::DocCategories
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end
 
+          # Gate: require the index editor setting unless the category is already in direct mode
+          if !SiteSetting.doc_categories_index_editor && sections.present?
+            index = DocCategories::Index.find_by(category_id: category.id)
+            raise Discourse::InvalidAccess if index.nil? || !index.mode_direct?
+          end
+
           result =
             DocCategories::IndexSaver.call(params: { category_id: category.id, sections: sections })
 

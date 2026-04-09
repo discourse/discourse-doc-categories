@@ -4,6 +4,7 @@ module ::DocCategories
   class IndexesController < ::ApplicationController
     requires_plugin PLUGIN_NAME
     before_action :ensure_admin
+    before_action :ensure_index_editor_enabled
 
     MAX_TOPICS = 5000
 
@@ -48,6 +49,16 @@ module ::DocCategories
         end
         on_failure { render json: failed_json, status: :unprocessable_entity }
       end
+    end
+
+    private
+
+    def ensure_index_editor_enabled
+      return if SiteSetting.doc_categories_index_editor
+
+      # Allow edits to categories already in direct mode
+      index = DocCategories::Index.find_by(category_id: params[:category_id])
+      raise Discourse::InvalidAccess if index.nil? || !index.mode_direct?
     end
   end
 end

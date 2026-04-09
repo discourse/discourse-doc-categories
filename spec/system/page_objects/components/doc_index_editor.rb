@@ -18,6 +18,25 @@ module PageObjects
         self
       end
 
+      def open_mode_selector
+        find(".doc-category-index-tab__mode-selector .fk-d-menu__trigger").click
+        self
+      end
+
+      def has_mode_option?(mode_key)
+        has_css?(
+          ".doc-category-index-tab__mode-option-label",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
+        )
+      end
+
+      def has_no_mode_option?(mode_key)
+        has_no_css?(
+          ".doc-category-index-tab__mode-option-label",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
+        )
+      end
+
       def has_editor?
         has_css?(".doc-category-index-editor")
       end

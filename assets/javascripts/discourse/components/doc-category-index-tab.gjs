@@ -13,6 +13,7 @@ import DocIndexModeSelector from "./doc-index-mode-selector";
 
 export default class DocCategoryIndexTab extends Component {
   @service dialog;
+  @service siteSettings;
 
   @tracked toolbarElement = null;
   modeState = new DocIndexModeState({
@@ -55,6 +56,13 @@ export default class DocCategoryIndexTab extends Component {
     this.#editorInstance = editor;
   }
 
+  get showEditorOption() {
+    return (
+      this.siteSettings.doc_categories_index_editor ||
+      this.modeState.isDirectMode
+    );
+  }
+
   @action
   registerToolbarElement(element) {
     this.toolbarElement = element;
@@ -69,6 +77,7 @@ export default class DocCategoryIndexTab extends Component {
         <div class="doc-category-index-tab__mode-selector">
           <DocIndexModeSelector
             @currentModeLabel={{this.modeState.currentModeLabel}}
+            @showEditorOption={{this.showEditorOption}}
             @onSwitchToNone={{this.modeState.switchToNoneMode}}
             @onSwitchToTopic={{this.modeState.switchToTopicMode}}
             @onSwitchToDirect={{this.modeState.switchToDirectMode}}

@@ -23,6 +23,7 @@ export default class DocCategorySettings extends Component {
 
   @service dialog;
   @service modal;
+  @service siteSettings;
 
   modeState = new DocIndexModeState({
     category: this.args.outletArgs.category,
@@ -50,6 +51,13 @@ export default class DocCategorySettings extends Component {
 
       return hasErrors;
     });
+  }
+
+  get showEditorOption() {
+    return (
+      this.siteSettings.doc_categories_index_editor ||
+      this.modeState.isDirectMode
+    );
   }
 
   @cached
@@ -82,6 +90,7 @@ export default class DocCategorySettings extends Component {
       >
         <DocIndexModeSelector
           @currentModeLabel={{this.modeState.currentModeLabel}}
+          @showEditorOption={{this.showEditorOption}}
           @onSwitchToNone={{this.modeState.switchToNoneMode}}
           @onSwitchToTopic={{this.modeState.switchToTopicMode}}
           @onSwitchToDirect={{this.modeState.switchToDirectMode}}
