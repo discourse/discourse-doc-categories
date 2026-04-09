@@ -90,7 +90,7 @@ module DocCategories
       end
 
       def remove_stale_links(stale_link_ids:)
-        DocCategories::SidebarLink.where(id: stale_link_ids).destroy_all if stale_link_ids.present?
+        DocCategories::SidebarLink.where(id: stale_link_ids).delete_all if stale_link_ids.present?
       end
 
       def publish_changes(index:, topics_to_add:, stale_link_ids:)

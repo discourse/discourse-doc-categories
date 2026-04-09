@@ -82,9 +82,11 @@ module DocCategories
 
     # Returns an array of category IDs to source topics from for auto-indexing.
     def matching_category_ids
-      ids = [category_id]
-      ids.concat(::Category.subcategory_ids(category_id)) if auto_index_include_subcategories
-      ids
+      if auto_index_include_subcategories
+        ::Category.subcategory_ids(category_id)
+      else
+        [category_id]
+      end
     end
 
     def valid_topic(topic)
