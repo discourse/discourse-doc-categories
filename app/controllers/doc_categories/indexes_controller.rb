@@ -6,7 +6,7 @@ module ::DocCategories
     before_action :ensure_admin
     before_action :ensure_index_editor_enabled
 
-    MAX_TOPICS = 5000
+    MAX_TOPICS = 50
 
     def topics
       category = ::Category.find_by(id: params[:category_id])
