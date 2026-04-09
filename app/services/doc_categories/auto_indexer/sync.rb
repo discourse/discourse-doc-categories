@@ -15,12 +15,12 @@ module DocCategories
 
       model :index
       policy :has_auto_index_section
-      step :fetch_qualifying_topic_ids
-      step :compute_diff
+      step :compute_topics_to_add
+      step :find_stale_links
 
       transaction do
         step :add_missing_topics
-        step :remove_stale_topics
+        step :remove_stale_links
       end
 
       step :publish_changes
@@ -36,31 +36,36 @@ module DocCategories
         context[:auto_index_section].present?
       end
 
-      def fetch_qualifying_topic_ids(index:)
-        context[:qualifying_topic_ids] = ::Topic
-          .where(category_id: index.matching_category_ids)
-          .where(visible: true)
-          .where(archetype: Archetype.default)
-          .where(deleted_at: nil)
-          .pluck(:id)
-          .to_set
-      end
-
-      def compute_diff(index:, qualifying_topic_ids:)
-        existing_linked_topic_ids =
+      def compute_topics_to_add(index:)
+        existing_topic_ids =
           DocCategories::SidebarLink
             .joins(:sidebar_section)
             .where(sidebar_section: { index_id: index.id })
             .where.not(topic_id: nil)
-            .pluck(:topic_id)
-            .to_set
+            .select(:topic_id)
 
-        context[:topics_to_add] = (qualifying_topic_ids - existing_linked_topic_ids).to_a
-        context[:topics_to_remove] = DocCategories::SidebarLink
+        context[:topics_to_add] = ::Topic
+          .where(category_id: index.matching_category_ids)
+          .where(visible: true, archetype: Archetype.default, deleted_at: nil)
+          .where.not(id: existing_topic_ids)
+          .order(created_at: :desc)
+          .limit(MAX_LINKS_PER_SECTION)
+          .pluck(:id)
+      end
+
+      def find_stale_links(index:)
+        context[:stale_link_ids] = DocCategories::SidebarLink
           .auto_indexed
           .joins(:sidebar_section)
           .where(sidebar_section: { index_id: index.id })
-          .where.not(topic_id: qualifying_topic_ids.to_a)
+          .joins("LEFT JOIN topics ON topics.id = doc_categories_sidebar_links.topic_id")
+          .where(<<~SQL, Archetype.default, index.matching_category_ids)
+            topics.id IS NULL
+            OR topics.deleted_at IS NOT NULL
+            OR topics.visible = false
+            OR topics.archetype != ?
+            OR topics.category_id NOT IN (?)
+          SQL
           .pluck(:id)
       end
 
@@ -83,10 +88,8 @@ module DocCategories
           end
       end
 
-      def remove_stale_topics(topics_to_remove:)
-        if topics_to_remove.present?
-          DocCategories::SidebarLink.where(id: topics_to_remove).destroy_all
-        end
+      def remove_stale_links(stale_link_ids:)
+        DocCategories::SidebarLink.where(id: stale_link_ids).destroy_all if stale_link_ids.present?
       end
 
       def publish_changes(index:)
