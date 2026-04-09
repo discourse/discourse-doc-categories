@@ -46,6 +46,7 @@ export class IndexEditorLink extends Component {
       this.#isNew = true;
       this.#snapshotLink();
       this.editing = true;
+      this.args.onEditStateChange?.(true);
     }
   }
 

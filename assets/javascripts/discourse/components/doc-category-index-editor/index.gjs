@@ -678,6 +678,9 @@ export default class DocCategoryIndexEditor extends Component {
       this.args.form?.commitField("_docIndexEditorState");
       this.args.form?.commitField("doc_index_sections");
       this.args.form?.commitField("doc_index_topic_id");
+      this.args.form?.commitField("_docIndexAutoIndexIncludeSubcategories");
+      this.#originalAutoIndexIncludeSubcategories =
+        this.autoIndexIncludeSubcategories;
       this.args.category?.set("doc_index_sections", null);
 
       if (response.index_structure) {
@@ -959,6 +962,9 @@ export default class DocCategoryIndexEditor extends Component {
       href: `/t/${topic.slug}/${topic.id}`,
       type: "topic",
       icon: "far-file",
+      topic_id: topic.id,
+      topicTitle: topic.title || topic.fancy_title,
+      autoTitle: true,
     });
   }
 

@@ -50,6 +50,7 @@ export class IndexEditorSection extends Component {
       this.#isNew = true;
       this._editSectionTitle = "";
       this.editingTitle = true;
+      this.args.onEditStateChange?.(true);
     }
   }
 
@@ -380,6 +381,9 @@ export class IndexEditorSection extends Component {
             href: `/t/${topic.slug}/${topic.id}`,
             type: "topic",
             icon: "far-file",
+            topic_id: topic.id,
+            topicTitle: topic.title || topic.fancy_title,
+            autoTitle: true,
           })
         );
       }
