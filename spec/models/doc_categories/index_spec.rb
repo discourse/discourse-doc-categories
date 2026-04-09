@@ -106,6 +106,126 @@ describe DocCategories::Index do
     expect(doc_index.reload.sidebar_sections.map(&:id)).to eq([earlier.id, later.id])
   end
 
+  describe "#sidebar_structure" do
+    fab!(:direct_index) do
+      described_class.create!(
+        category: category,
+        index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+      )
+    end
+
+    it "returns a link with text from topic title and href from topic URL" do
+      topic = Fabricate(:topic, category: category, title: "My awesome topic")
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(position: 0, topic: topic, href: topic.relative_url)
+
+      structure = direct_index.sidebar_structure
+      link = structure.first[:links].first
+
+      expect(link[:text]).to eq("My awesome topic")
+      expect(link[:href]).to eq(topic.relative_url)
+      expect(link[:topic_id]).to eq(topic.id)
+    end
+
+    it "filters out links whose topic has been trashed" do
+      topic = Fabricate(:topic, category: category)
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(position: 0, topic: topic, href: topic.relative_url)
+      topic.trash!
+
+      structure = direct_index.sidebar_structure
+
+      expect(structure).to be_empty
+    end
+
+    it "marks a link with custom_title when the link has its own title" do
+      topic = Fabricate(:topic, category: category, title: "Original topic title for testing")
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(
+        position: 0,
+        title: "Custom name",
+        topic: topic,
+        href: topic.relative_url,
+      )
+
+      structure = direct_index.sidebar_structure
+      link = structure.first[:links].first
+
+      expect(link[:text]).to eq("Custom name")
+      expect(link[:custom_title]).to eq(true)
+      expect(link[:topic_title]).to eq("Original topic title for testing")
+    end
+
+    it "does not set custom_title when the link has no explicit title" do
+      topic = Fabricate(:topic, category: category, title: "Original topic title for testing")
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(position: 0, topic: topic, href: topic.relative_url)
+
+      structure = direct_index.sidebar_structure
+      link = structure.first[:links].first
+
+      expect(link[:custom_title]).to eq(false)
+    end
+
+    it "includes auto_indexed flag on links that are auto-indexed" do
+      topic = Fabricate(:topic, category: category)
+      section =
+        direct_index.sidebar_sections.create!(position: 0, title: "Topics", auto_index: true)
+      section.sidebar_links.create!(
+        position: 0,
+        topic: topic,
+        href: topic.relative_url,
+        auto_indexed: true,
+      )
+
+      structure = direct_index.sidebar_structure
+      link = structure.first[:links].first
+
+      expect(link[:auto_indexed]).to eq(true)
+    end
+
+    it "does not include auto_indexed key for manually added links" do
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(position: 0, title: "Manual", href: "/t/slug/1")
+
+      structure = direct_index.sidebar_structure
+      link = structure.first[:links].first
+
+      expect(link).not_to have_key(:auto_indexed)
+    end
+
+    it "keeps an auto-index section even when it has no valid links" do
+      section =
+        direct_index.sidebar_sections.create!(position: 0, title: "Topics", auto_index: true)
+
+      structure = direct_index.sidebar_structure
+
+      expect(structure.length).to eq(1)
+      expect(structure.first[:text]).to eq("Topics")
+      expect(structure.first[:auto_index]).to eq(true)
+      expect(structure.first[:links]).to be_empty
+    end
+
+    it "omits a non-auto-index section when all its links are invalid" do
+      topic = Fabricate(:topic, category: category)
+      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
+      section.sidebar_links.create!(position: 0, topic: topic, href: topic.relative_url)
+      topic.trash!
+
+      valid_section = direct_index.sidebar_sections.create!(position: 1, title: "Others")
+      valid_section.sidebar_links.create!(
+        position: 0,
+        title: "External",
+        href: "https://example.com",
+      )
+
+      structure = direct_index.sidebar_structure
+
+      expect(structure.length).to eq(1)
+      expect(structure.first[:text]).to eq("Others")
+    end
+  end
+
   it "destroys associated sidebar sections and links when destroyed" do
     link = Fabricate(:doc_categories_sidebar_link)
     section = link.sidebar_section

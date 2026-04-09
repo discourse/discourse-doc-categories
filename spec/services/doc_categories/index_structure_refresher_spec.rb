@@ -147,6 +147,14 @@ RSpec.describe DocCategories::IndexStructureRefresher do
       expect(category_ids).to include(documentation_category.id)
     end
 
+    it "destroys the index when the index topic becomes a PM" do
+      index_topic.update_columns(archetype: Archetype.private_message, category_id: nil)
+
+      result
+
+      expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
+    end
+
     it "fails without side effects when no index exists" do
       doc_index.destroy!
       allow(Site).to receive(:clear_cache)
