@@ -5,3 +5,28 @@
 # https://translate.discourse.org/
 
 es:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Categoría"
+            include_topic_from_subcategories:
+              label: "Incluir temas de subcategorías"
+      site_settings:
+        categories:
+          doc_categories: "Categorías de documentación"
+  js:
+    doc_categories:
+      category_settings:
+        title: "Modo de documentación"
+        index_topic:
+          label: "Tema del índice"
+          errors:
+            topic_not_found: "Tema no encontrado. No se mostrará el índice."
+            mismatched-category: "El índice no se mostrará porque el tema pertenece a una categoría diferente: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'No hemos podido encontrar nada que coincida con «%{filter}».<br><br>¿Quieres realizar una <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">búsqueda en esta categoría</a> o una <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">búsqueda en todo el sitio</a>?'
