@@ -125,6 +125,15 @@ RSpec.describe DocCategories::IndexSaver do
       end
     end
 
+    context "when sections is a Hash instead of an Array" do
+      let(:sections_data) { { title: "Not an array" } }
+
+      it "does not create an index" do
+        result
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+      end
+    end
+
     context "with limits" do
       it "fails when sections exceed MAX_SECTIONS" do
         sections =

@@ -118,9 +118,36 @@ RSpec.describe ::DocCategories::IndexesController do
 
   describe "#update" do
     fab!(:admin)
+    fab!(:user)
     fab!(:category)
 
     before { SiteSetting.doc_categories_index_editor = true }
+
+    it "returns 403 for anonymous users" do
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(403)
+    end
+
+    it "returns 403 for non-admin users" do
+      sign_in(user)
+
+      put "/doc-categories/indexes/#{category.id}.json",
+          params: {
+            sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+          }.to_json,
+          headers: {
+            "CONTENT_TYPE" => "application/json",
+          }
+
+      expect(response.status).to eq(403)
+    end
 
     context "when the index editor setting is disabled" do
       before { SiteSetting.doc_categories_index_editor = false }

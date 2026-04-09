@@ -49,4 +49,76 @@ module("Unit | Lib | doc-index-validation", function () {
     const errors = validateDocIndexSections(sections);
     assert.deepEqual(errors, []);
   });
+
+  test("returns error for sections with no links", function (assert) {
+    const sections = [{ title: "Empty", links: [] }];
+
+    const errors = validateDocIndexSections(sections);
+    assert.strictEqual(errors.length, 1);
+  });
+
+  test("does not return empty section error for autoIndex sections with no links", function (assert) {
+    const sections = [{ title: "Auto", links: [], autoIndex: true }];
+
+    const errors = validateDocIndexSections(sections);
+    assert.deepEqual(errors, []);
+  });
+
+  test("returns error for links with empty title on non-topic type", function (assert) {
+    const sections = [
+      {
+        title: "Section",
+        links: [{ title: "", href: "/a", type: "manual" }],
+      },
+    ];
+
+    const errors = validateDocIndexSections(sections);
+    assert.strictEqual(errors.length, 1);
+  });
+
+  test("does not return link title error for topic type links", function (assert) {
+    const sections = [
+      {
+        title: "Section",
+        links: [{ title: "", href: "/a", type: "topic" }],
+      },
+    ];
+
+    const errors = validateDocIndexSections(sections);
+    assert.deepEqual(errors, []);
+  });
+
+  test("returns error for links with empty href", function (assert) {
+    const sections = [
+      {
+        title: "Section",
+        links: [{ title: "Link", href: "", type: "manual" }],
+      },
+    ];
+
+    const errors = validateDocIndexSections(sections);
+    assert.strictEqual(errors.length, 1);
+  });
+
+  test("returns error for links with whitespace-only href", function (assert) {
+    const sections = [
+      {
+        title: "Section",
+        links: [{ title: "Link", href: "   ", type: "manual" }],
+      },
+    ];
+
+    const errors = validateDocIndexSections(sections);
+    assert.strictEqual(errors.length, 1);
+  });
+
+  test("deduplicates identical errors across multiple sections", function (assert) {
+    const sections = [
+      { title: "First", links: [] },
+      { title: "Second", links: [] },
+    ];
+
+    const errors = validateDocIndexSections(sections);
+    assert.strictEqual(errors.length, 1);
+  });
 });
