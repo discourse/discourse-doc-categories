@@ -4,8 +4,6 @@ module ::DocCategories
   module Initializers
     class HandleTopicChanges < Initializer
       def apply
-        plugin.add_class_method(:topic, :clear_doc_categories_cache) { Site.clear_cache }
-
         plugin.on(:topic_trashed) { |topic| handle_topic_trashed(topic) }
       end
 
