@@ -444,6 +444,7 @@ export class IndexEditorSection extends Component {
           class="doc-category-index-editor__drag-handle"
           draggable="true"
           role="button"
+          tabindex="0"
           aria-label={{i18n
             "doc_categories.category_settings.index_editor.drag_section"
           }}

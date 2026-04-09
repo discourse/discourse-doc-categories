@@ -89,6 +89,7 @@ body.doc-simple-mode {
   &__header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5em;
     margin-bottom: 1em;
   }
@@ -158,11 +159,6 @@ body.doc-simple-mode {
     font-size: var(--font-down-1);
     margin-top: 0.25em;
   }
-}
-
-.doc-category-index-tab__header {
-  display: flex;
-  justify-content: space-between;
 }
 
 /* Doc category index editor */

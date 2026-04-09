@@ -104,7 +104,7 @@ export default class DocIndexModeState {
 
     if (this.indexTopic && this.indexTopic.category_id !== this.#category.id) {
       return i18n(
-        "doc_categories.category_settings.index_topic.errors.mismatched-category",
+        "doc_categories.category_settings.index_topic.errors.mismatched_category",
         { category_name: this.indexTopic.category?.name }
       );
     }
