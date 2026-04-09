@@ -12,7 +12,7 @@ module DocCategories
 
     model :index
     policy :is_topic_mode
-    step :validate_topic
+    step :ensure_valid_topic
     step :parse_first_post
     step :build_sections
 
@@ -30,7 +30,7 @@ module DocCategories
       index.mode_topic?
     end
 
-    def validate_topic(index:)
+    def ensure_valid_topic(index:)
       topic = index.index_topic
 
       if topic.blank? || topic.private_message? || topic.trashed? ||
