@@ -63,12 +63,16 @@ module ::DocCategories
       def has_auto_index_for_category?(category_id)
         return true if auto_index_exists_for?(category_id)
 
-        # A topic may be in a subcategory of a doc category that includes
-        # subcategories. Only check the parent when the parent's index has
-        # auto_index_include_subcategories enabled; otherwise the AddTopic
-        # service would find no matching indexes and the job would be a no-op.
-        parent_id = ::Category.where(id: category_id).pick(:parent_category_id)
-        parent_id && auto_index_with_subcategories_exists_for?(parent_id)
+        # Walk up the ancestor chain to find a doc category that includes
+        # subcategories in its auto-index. This handles arbitrary nesting
+        # depth (max_category_nesting can be up to 3).
+        ancestor_id = ::Category.where(id: category_id).pick(:parent_category_id)
+        while ancestor_id
+          return true if auto_index_with_subcategories_exists_for?(ancestor_id)
+          ancestor_id = ::Category.where(id: ancestor_id).pick(:parent_category_id)
+        end
+
+        false
       end
 
       def auto_index_exists_for?(cat_id)
