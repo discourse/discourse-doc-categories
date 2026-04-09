@@ -16,23 +16,25 @@ const DocIndexModeSelector = <template>
     </:trigger>
     <:content as |dMenu|>
       <DropdownMenu as |dropdown|>
-        <dropdown.item>
-          <DButton
-            @action={{fn @onSwitchToDirect dMenu}}
-            class="--with-description doc-category-index-tab__mode-option"
-          >
-            <div class="doc-category-index-tab__mode-option-texts">
-              <span class="doc-category-index-tab__mode-option-label">{{i18n
-                  "doc_categories.category_settings.index_editor.mode_direct"
-                }}</span>
-              <span
-                class="doc-category-index-tab__mode-option-description"
-              >{{i18n
-                  "doc_categories.category_settings.index_editor.mode_direct_description"
-                }}</span>
-            </div>
-          </DButton>
-        </dropdown.item>
+        {{#if @showEditorOption}}
+          <dropdown.item>
+            <DButton
+              @action={{fn @onSwitchToDirect dMenu}}
+              class="--with-description doc-category-index-tab__mode-option"
+            >
+              <div class="doc-category-index-tab__mode-option-texts">
+                <span class="doc-category-index-tab__mode-option-label">{{i18n
+                    "doc_categories.category_settings.index_editor.mode_direct"
+                  }}</span>
+                <span
+                  class="doc-category-index-tab__mode-option-description"
+                >{{i18n
+                    "doc_categories.category_settings.index_editor.mode_direct_description"
+                  }}</span>
+              </div>
+            </DButton>
+          </dropdown.item>
+        {{/if}}
         <dropdown.item>
           <DButton
             @action={{fn @onSwitchToTopic dMenu}}

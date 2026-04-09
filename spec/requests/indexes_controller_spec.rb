@@ -11,6 +11,17 @@ RSpec.describe ::DocCategories::IndexesController do
     fab!(:topic_2) { Fabricate(:topic, category: category, title: "Beta topic title here") }
     fab!(:topic_3) { Fabricate(:topic, category: category, title: "Gamma topic title here") }
 
+    before { SiteSetting.doc_categories_index_editor = true }
+
+    it "returns 403 when the index editor setting is disabled" do
+      SiteSetting.doc_categories_index_editor = false
+      sign_in(admin)
+
+      get "/doc-categories/indexes/#{category.id}/topics.json"
+
+      expect(response.status).to eq(403)
+    end
+
     it "returns 403 for anonymous users" do
       get "/doc-categories/indexes/#{category.id}/topics.json"
 
@@ -108,6 +119,88 @@ RSpec.describe ::DocCategories::IndexesController do
   describe "#update" do
     fab!(:admin)
     fab!(:category)
+
+    before { SiteSetting.doc_categories_index_editor = true }
+
+    context "when the index editor setting is disabled" do
+      before { SiteSetting.doc_categories_index_editor = false }
+
+      it "rejects new direct-mode index creation" do
+        sign_in(admin)
+
+        put "/doc-categories/indexes/#{category.id}.json",
+            params: {
+              sections: [{ title: "Section 1", links: [{ title: "Link 1", href: "/t/test/1" }] }],
+            }.to_json,
+            headers: {
+              "CONTENT_TYPE" => "application/json",
+            }
+
+        expect(response.status).to eq(403)
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+      end
+
+      it "allows updates to an existing direct-mode index" do
+        sign_in(admin)
+        DocCategories::Index.create!(
+          category: category,
+          index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+        )
+
+        put "/doc-categories/indexes/#{category.id}.json",
+            params: {
+              sections: [{ title: "Updated", links: [{ title: "Link", href: "/t/test/1" }] }],
+            }.to_json,
+            headers: {
+              "CONTENT_TYPE" => "application/json",
+            }
+
+        expect(response.status).to eq(200)
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.sidebar_sections.first.title).to eq("Updated")
+      end
+
+      it "rejects new direct-mode index creation via category save" do
+        sign_in(admin)
+
+        sections = [
+          { title: "Via Category", links: [{ title: "Link", href: "/t/test/1" }] },
+        ].to_json
+
+        put "/categories/#{category.id}.json",
+            params: {
+              name: category.name,
+              color: category.color,
+              text_color: category.text_color,
+              doc_index_sections: sections,
+            }
+
+        expect(response.status).to eq(403)
+        expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
+      end
+
+      it "allows updates to an existing direct-mode index via category save" do
+        sign_in(admin)
+        DocCategories::Index.create!(
+          category: category,
+          index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+        )
+
+        sections = [{ title: "Updated", links: [{ title: "Link", href: "/t/test/1" }] }].to_json
+
+        put "/categories/#{category.id}.json",
+            params: {
+              name: category.name,
+              color: category.color,
+              text_color: category.text_color,
+              doc_index_sections: sections,
+            }
+
+        expect(response.status).to eq(200)
+        index = DocCategories::Index.find_by(category_id: category.id)
+        expect(index.sidebar_sections.first.title).to eq("Updated")
+      end
+    end
 
     it "rejects updates when the index is in topic mode" do
       sign_in(admin)

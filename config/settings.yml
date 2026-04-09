@@ -11,6 +11,13 @@ doc_categories:
     upcoming_change:
       status: "experimental"
       impact: "other,all_members"
+  doc_categories_index_editor:
+    default: false
+    hidden: true
+    client: true
+    upcoming_change:
+      status: "experimental"
+      impact: "feature,staff"
   doc_categories_homepage:
     default: ""
     client: true
