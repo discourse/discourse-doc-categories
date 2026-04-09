@@ -1,5 +1,4 @@
 import { cached } from "@glimmer/tracking";
-import { computed } from "@ember/object";
 import { trustHTML } from "@ember/template";
 import { getOwnerWithFallback } from "discourse/lib/get-owner";
 import getURL, { samePrefix } from "discourse/lib/get-url";
@@ -185,7 +184,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
     return this.#data.text;
   }
 
-  @computed("data.text")
   get keywords() {
     return {
       navigation: this.#data.text.toLowerCase().split(/\s+/g),

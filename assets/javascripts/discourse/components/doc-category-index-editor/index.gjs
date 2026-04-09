@@ -1033,6 +1033,7 @@ export default class DocCategoryIndexEditor extends Component {
               class="doc-category-index-editor__batch-drag-handle"
               draggable="true"
               role="button"
+              tabindex="0"
               aria-label={{i18n
                 "doc_categories.category_settings.index_editor.drag_selection"
               }}

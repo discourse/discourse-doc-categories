@@ -26,7 +26,7 @@ en:
           label: "Index Topic"
           errors:
             topic_not_found: "Topic not found! The index won't be displayed"
-            mismatched-category: "The index won't be displayed because the topic belongs to a different category: %{category_name}"
+            mismatched_category: "The index won't be displayed because the topic belongs to a different category: %{category_name}"
         index_editor:
           mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content as the sidebar index"
