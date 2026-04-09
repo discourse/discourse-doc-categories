@@ -22,18 +22,18 @@ export default class DocCategoryIndexTab extends Component {
     dialog: this.dialog,
     owner: this,
   });
-  _editorInstance = null;
+  #editorInstance = null;
 
   constructor() {
     super(...arguments);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
       removeError?.("doc_index_sections");
 
-      if (!this.modeState.isDirectMode || !this._editorInstance) {
+      if (!this.modeState.isDirectMode || !this.#editorInstance) {
         return;
       }
 
-      const errors = this._editorInstance.validationErrors;
+      const errors = this.#editorInstance.validationErrors;
       if (errors.length > 0 && addError) {
         addError("doc_index_sections", {
           title: i18n(
@@ -52,7 +52,7 @@ export default class DocCategoryIndexTab extends Component {
 
   @action
   registerEditor(editor) {
-    this._editorInstance = editor;
+    this.#editorInstance = editor;
   }
 
   @action

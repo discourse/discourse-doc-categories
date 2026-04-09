@@ -170,8 +170,7 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get classNames() {
-    const list = ["docs-sidebar-nav-link"];
-    return list.join(" ");
+    return "docs-sidebar-nav-link";
   }
 
   get href() {

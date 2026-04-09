@@ -30,7 +30,7 @@ import { IndexEditorSection } from "./section";
 export default class DocCategoryIndexEditor extends Component {
   @service dialog;
 
-  @tracked sections = trackedArray(this.initSections());
+  @tracked sections = trackedArray(this.#initSections());
   @tracked saveState = null;
   @tracked includeSubcategories = false;
   @tracked
@@ -44,21 +44,19 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked batchDragType = null;
   selectedItems = trackedSet();
   selectedSections = trackedSet();
-  draggedSection = null;
+  #draggedLink = null;
+  #draggedLinkSourceSection = null;
+  #draggedSection = null;
   #originalAutoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
-
+  #saveStateTimer = null;
   @tracked _hasLocalChanges = false;
-
-  _draggedLink = null;
-  _draggedLinkSourceSection = null;
-  _saveStateTimer = null;
 
   constructor() {
     super(...arguments);
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
-      this.sections = trackedArray(this._initSectionsFromModel());
+      this.sections = trackedArray(this.#initSectionsFromModel());
       this.batchMode = false;
       this.selectedItems.clear();
       this.selectedSections.clear();
@@ -67,9 +65,9 @@ export default class DocCategoryIndexEditor extends Component {
 
   willDestroy() {
     super.willDestroy();
-    if (this._saveStateTimer) {
-      cancel(this._saveStateTimer);
-      this._saveStateTimer = null;
+    if (this.#saveStateTimer) {
+      cancel(this.#saveStateTimer);
+      this.#saveStateTimer = null;
     }
     // Only persist editor state if the mode is still "direct" (topic_id === -1).
     // When switching to "none" mode, #applyNoneMode() already set the correct
@@ -80,99 +78,8 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get serializedSections() {
-    const serialized = this._serializeSections();
+    const serialized = this.#serializeSections();
     return serialized.length > 0 ? JSON.stringify(serialized) : null;
-  }
-
-  initSections() {
-    // Restore the subcategory toggle from transient data (tab switch recovery)
-    const savedIncludeSub =
-      this.args.transientData?._docIndexAutoIndexIncludeSubcategories;
-    if (savedIncludeSub != null) {
-      this.autoIndexIncludeSubcategories = savedIncludeSub;
-    }
-
-    // Restore from FormKit transient data if available (tab switch recovery)
-    const saved = this.args.transientData?._docIndexEditorState;
-    if (saved?.length > 0) {
-      return saved.map((section) =>
-        trackedObject({
-          id: section.id ?? null,
-          title: section.title,
-          autoIndex: section.autoIndex || false,
-          links: trackedArray(
-            section.links.map((link) =>
-              trackedObject({
-                title: link.title,
-                href: link.href,
-                type: link.type || "topic",
-                topic_id: link.topic_id,
-                topicTitle: link.topicTitle,
-                autoTitle: link.autoTitle,
-                icon: link.icon || "far-file",
-                autoIndexed: link.autoIndexed || false,
-              })
-            )
-          ),
-        })
-      );
-    }
-
-    return this._initSectionsFromModel();
-  }
-
-  _initSectionsFromModel() {
-    return this._buildSectionsFrom(this.args.indexData);
-  }
-
-  _buildSectionsFrom(index) {
-    if (!index || index.length === 0) {
-      return [];
-    }
-    return index.map((section) =>
-      trackedObject({
-        id: section.id ?? null,
-        title: section.text,
-        autoIndex: section.auto_index || false,
-        links: trackedArray(
-          section.links.map((link) =>
-            trackedObject({
-              title: link.text,
-              href: link.href,
-              type: link.topic_id ? "topic" : "manual",
-              topic_id: link.topic_id ?? null,
-              topicTitle: link.topic_title,
-              autoTitle: link.topic_id && !link.custom_title,
-              icon: link.icon || "far-file",
-              autoIndexed: link.auto_indexed || false,
-            })
-          )
-        ),
-      })
-    );
-  }
-
-  _refreshFromServerData(indexStructure) {
-    const newSections = this._buildSectionsFrom(indexStructure);
-    this.sections.splice(0, this.sections.length, ...newSections);
-  }
-
-  _serializeSections() {
-    return this.sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      autoIndex: section.autoIndex || false,
-      links: section.links.map((link) => ({
-        title: link.title,
-        href: link.href,
-        type: link.type,
-        topic_id: link.topic_id,
-        topicTitle: link.topicTitle,
-        autoTitle: link.autoTitle,
-        icon: link.icon,
-        autoIndexed: link.autoIndexed || false,
-      })),
-    }));
   }
 
   get searchFilters() {
@@ -180,53 +87,6 @@ export default class DocCategoryIndexEditor extends Component {
       return "in:title include:unlisted";
     }
     return `in:title include:unlisted category:=${this.args.categoryId}`;
-  }
-
-  /**
-   * Persists the current editor state to FormKit so it survives tab switches
-   * and is available for "Save Category". Two form fields are maintained:
-   *
-   * - `_docIndexEditorState`: Rich camelCase array used to restore the full
-   *   editor UI on tab-switch recovery (includes UI-only fields like
-   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
-   * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
-   *   via `registerCategorySaveProperty` when "Save Category" is clicked.
-   *
-   * Both fields must be committed after a successful Apply to clear the
-   * "Save Category" banner.
-   */
-  @bind
-  _saveToTransientData() {
-    const sections = this._serializeSections();
-    this._hasLocalChanges = true;
-    this.args.form?.set("_docIndexEditorState", sections);
-    this.args.form?.set(
-      "_docIndexAutoIndexIncludeSubcategories",
-      this.autoIndexIncludeSubcategories
-    );
-
-    // Convert to snake_case for the backend payload
-    const backendSections = sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      auto_index: section.autoIndex || false,
-      links: section.links.map((link) => ({
-        title: link.title,
-        href: link.href,
-        topic_id: link.topic_id,
-        icon: link.icon,
-      })),
-    }));
-    const serialized =
-      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
-    this.args.form?.set("doc_index_sections", serialized);
-    if (serialized) {
-      this.args.form?.set("doc_index_topic_id", -1);
-    }
-  }
-
-  get isEmpty() {
-    return this.sections.length === 0;
   }
 
   @cached
@@ -295,175 +155,12 @@ export default class DocCategoryIndexEditor extends Component {
     return [...icons];
   }
 
+  get isEmpty() {
+    return this.sections.length === 0;
+  }
+
   get hasAutoIndexSection() {
     return this.sections.some((s) => s.autoIndex);
-  }
-
-  @action
-  addSection() {
-    this.sections.push(
-      trackedObject({
-        title: "",
-        links: trackedArray([]),
-      })
-    );
-    this._saveToTransientData();
-  }
-
-  @action
-  addAutoIndexSection() {
-    if (this.hasAutoIndexSection) {
-      return;
-    }
-    this.sections.push(
-      trackedObject({
-        title: i18n(
-          "doc_categories.category_settings.index_editor.auto_index_section_title"
-        ),
-        autoIndex: true,
-        links: trackedArray([]),
-      })
-    );
-    this._saveToTransientData();
-  }
-
-  @bind
-  cancelNewSection(section) {
-    const idx = this.sections.indexOf(section);
-    if (idx !== -1) {
-      this.sections.splice(idx, 1);
-    }
-    this._saveToTransientData();
-  }
-
-  @bind
-  removeSection(section) {
-    const message = section.autoIndex
-      ? i18n(
-          "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section"
-        )
-      : i18n(
-          "doc_categories.category_settings.index_editor.confirm_remove_section"
-        );
-
-    this.dialog.yesNoConfirm({
-      message,
-      didConfirm: () => {
-        const idx = this.sections.indexOf(section);
-        if (idx !== -1) {
-          this.sections.splice(idx, 1);
-        }
-        this._saveToTransientData();
-      },
-    });
-  }
-
-  /* Section drag */
-  @bind
-  setDraggedSection(section) {
-    this.draggedSection = section;
-    this.isDraggingSection = true;
-  }
-
-  @bind
-  clearDraggedSection() {
-    this.draggedSection = null;
-    this.isDraggingSection = false;
-  }
-
-  @bind
-  reorderSection(targetSection, isAbove) {
-    // Handle link dropped on section body (not on a specific link)
-    if (this._draggedLink) {
-      const sourceLinks = this._draggedLinkSourceSection.links;
-      const draggedIdx = sourceLinks.indexOf(this._draggedLink);
-      if (draggedIdx !== -1) {
-        sourceLinks.splice(draggedIdx, 1);
-      }
-      targetSection.links.push(this._draggedLink);
-      this._draggedLink = null;
-      this._draggedLinkSourceSection = null;
-      this._saveToTransientData();
-      return;
-    }
-
-    if (!this.draggedSection || this.draggedSection === targetSection) {
-      return;
-    }
-    const draggedIdx = this.sections.indexOf(this.draggedSection);
-    if (draggedIdx === -1) {
-      return;
-    }
-    this.sections.splice(draggedIdx, 1);
-    let targetIdx = this.sections.indexOf(targetSection);
-    if (!isAbove) {
-      targetIdx++;
-    }
-    this.sections.splice(targetIdx, 0, this.draggedSection);
-    this.draggedSection = null;
-    this.isDraggingSection = false;
-    this._saveToTransientData();
-  }
-
-  /* Cross-section link drag */
-  @bind
-  onLinkDragStart(link, sourceSection) {
-    this._draggedLink = link;
-    this._draggedLinkSourceSection = sourceSection;
-  }
-
-  @bind
-  onLinkDrop(targetLink, targetSection, isAbove) {
-    if (!this._draggedLink || this._draggedLink === targetLink) {
-      this._draggedLink = null;
-      this._draggedLinkSourceSection = null;
-      return;
-    }
-
-    const sourceLinks = this._draggedLinkSourceSection.links;
-    const draggedIdx = sourceLinks.indexOf(this._draggedLink);
-    if (draggedIdx !== -1) {
-      sourceLinks.splice(draggedIdx, 1);
-    }
-
-    const targetLinks = targetSection.links;
-    let targetIdx = targetLinks.indexOf(targetLink);
-    if (!isAbove) {
-      targetIdx++;
-    }
-    targetLinks.splice(targetIdx, 0, this._draggedLink);
-
-    this._draggedLink = null;
-    this._draggedLinkSourceSection = null;
-    this._saveToTransientData();
-  }
-
-  /* Topic fetching */
-  @bind
-  async fetchTopics(includeSubcategories) {
-    const response = await ajax(
-      `/doc-categories/indexes/${this.args.categoryId}/topics`,
-      { data: { include_subcategories: includeSubcategories } }
-    );
-    return {
-      topics: response.topics || [],
-      totalCount: response.total_count ?? 0,
-      truncated: (response.total_count ?? 0) > (response.topics || []).length,
-    };
-  }
-
-  _topicToLink(topic) {
-    return trackedObject({
-      title: topic.title || topic.fancy_title,
-      href: `/t/${topic.slug}/${topic.id}`,
-      type: "topic",
-      icon: "far-file",
-    });
-  }
-
-  @action
-  toggleIncludeSubcategories() {
-    this.includeSubcategories = !this.includeSubcategories;
   }
 
   get subcategorySettingChanged() {
@@ -473,152 +170,11 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
-  @action
-  toggleResyncAutoIndex(closeMenu) {
-    closeMenu?.();
-    this.pendingResync = !this.pendingResync;
-    this._saveToTransientData();
-  }
-
-  @action
-  toggleAutoIndexIncludeSubcategories(closeMenu) {
-    closeMenu?.();
-
-    // Toggling back to the original value doesn't trigger a resync,
-    // so no confirmation is needed.
-    const newValue = !this.autoIndexIncludeSubcategories;
-    if (newValue === this.#originalAutoIndexIncludeSubcategories) {
-      this.autoIndexIncludeSubcategories = newValue;
-      this.pendingResync = false;
-      this._saveToTransientData();
-      return;
-    }
-
-    this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.index_editor.include_subcategories_confirm"
-      ),
-      didConfirm: () => {
-        this.autoIndexIncludeSubcategories = newValue;
-        this.pendingResync = false;
-        this._saveToTransientData();
-      },
-    });
-  }
-
-  @action
-  indexAllTopics(closeMenu) {
-    closeMenu?.();
-    if (this.sections.length > 0) {
-      this.dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.index_editor.auto_populate_confirm"
-        ),
-        didConfirm: () => this._doIndexAllTopics(),
-      });
-    } else {
-      this._doIndexAllTopics();
-    }
-  }
-
-  async _doIndexAllTopics() {
-    try {
-      const result = await this.fetchTopics(this.includeSubcategories);
-      if (this.isDestroying || this.isDestroyed) {
-        return;
-      }
-      if (result.topics.length === 0) {
-        return;
-      }
-      this.sections.splice(
-        0,
-        this.sections.length,
-        trackedObject({
-          title: i18n(
-            "doc_categories.category_settings.index_editor.all_topics_section"
-          ),
-          links: trackedArray(result.topics.map((t) => this._topicToLink(t))),
-        })
-      );
-      this._saveToTransientData();
-      if (result.truncated) {
-        this.dialog.alert(
-          i18n(
-            "doc_categories.category_settings.index_editor.topics_truncated",
-            {
-              loaded: result.topics.length,
-              total: result.totalCount,
-            }
-          )
-        );
-      }
-    } catch (e) {
-      popupAjaxError(e);
-    }
-  }
-
-  /* Apply (saves doc-index only, without saving category) */
-  @action
-  async apply() {
-    if (this.validationErrors.length > 0) {
-      this.saveState = "error";
-      this.args.onApplyError?.(this.validationErrors.join(" "));
-      return;
-    }
-    this.saveState = "saving";
-    const payload = {
-      force_direct: true,
-      auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
-      force_sync: this.pendingResync,
-      sections: this.sections.map((section) => ({
-        id: section.id,
-        title: section.title,
-        auto_index: section.autoIndex || false,
-        links: section.links.map((link) => ({
-          title: link.title,
-          href: link.href,
-          topic_id: link.topic_id,
-          icon: link.icon,
-        })),
-      })),
-    };
-
-    try {
-      const response = await ajax(
-        `/doc-categories/indexes/${this.args.categoryId}`,
-        {
-          type: "PUT",
-          data: JSON.stringify(payload),
-          contentType: "application/json",
-        }
-      );
-      if (this.isDestroying || this.isDestroyed) {
-        return;
-      }
-      this.saveState = "saved";
-      this.pendingResync = false;
-      this._hasLocalChanges = false;
-      this.args.form?.set("_docIndexEditorState", null);
-      this.args.form?.commitField("_docIndexEditorState");
-      this.args.form?.commitField("doc_index_sections");
-      this.args.form?.commitField("doc_index_topic_id");
-      this.args.category?.set("doc_index_sections", null);
-
-      if (response.index_structure) {
-        this._refreshFromServerData(response.index_structure);
-      }
-      this._saveStateTimer = discourseLater(() => {
-        if (!this.isDestroying && this.saveState === "saved") {
-          this.saveState = null;
-        }
-      }, 3000);
-    } catch (e) {
-      if (this.isDestroying || this.isDestroyed) {
-        return;
-      }
-      this.saveState = "error";
-      popupAjaxError(e);
-    }
+  get hasPendingChanges() {
+    return (
+      this._hasLocalChanges ||
+      this.args.transientData?._docIndexEditorState != null
+    );
   }
 
   get applyLabel() {
@@ -632,10 +188,11 @@ export default class DocCategoryIndexEditor extends Component {
     }
   }
 
-  get hasPendingChanges() {
+  get applyDisabled() {
     return (
-      this._hasLocalChanges ||
-      this.args.transientData?._docIndexEditorState != null
+      this.saveState === "saving" ||
+      !this.hasPendingChanges ||
+      this.validationErrors.length > 0
     );
   }
 
@@ -692,28 +249,6 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
-  @action
-  toggleBatchMode() {
-    if (this.batchMode && this.hasSelection) {
-      this.dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.index_editor.batch_exit_confirm"
-        ),
-        didConfirm: () => {
-          this.batchMode = false;
-          this.selectedItems.clear();
-          this.selectedSections.clear();
-        },
-      });
-      return;
-    }
-    this.batchMode = !this.batchMode;
-    if (!this.batchMode) {
-      this.selectedItems.clear();
-      this.selectedSections.clear();
-    }
-  }
-
   @bind
   onEditStateChange(isEditing) {
     if (isEditing) {
@@ -721,6 +256,133 @@ export default class DocCategoryIndexEditor extends Component {
     } else {
       this.editingCount = Math.max(0, this.editingCount - 1);
     }
+  }
+
+  @bind
+  isFirstSection(section) {
+    return this.sections.indexOf(section) === 0;
+  }
+
+  @bind
+  cancelNewSection(section) {
+    const idx = this.sections.indexOf(section);
+    if (idx !== -1) {
+      this.sections.splice(idx, 1);
+    }
+    this._saveToTransientData();
+  }
+
+  @bind
+  removeSection(section) {
+    const message = section.autoIndex
+      ? i18n(
+          "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section"
+        )
+      : i18n(
+          "doc_categories.category_settings.index_editor.confirm_remove_section"
+        );
+
+    this.dialog.yesNoConfirm({
+      message,
+      didConfirm: () => {
+        const idx = this.sections.indexOf(section);
+        if (idx !== -1) {
+          this.sections.splice(idx, 1);
+        }
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @bind
+  setDraggedSection(section) {
+    this.#draggedSection = section;
+    this.isDraggingSection = true;
+  }
+
+  @bind
+  clearDraggedSection() {
+    this.#draggedSection = null;
+    this.isDraggingSection = false;
+  }
+
+  @bind
+  reorderSection(targetSection, isAbove) {
+    // Handle link dropped on section body (not on a specific link)
+    if (this.#draggedLink) {
+      const sourceLinks = this.#draggedLinkSourceSection.links;
+      const draggedIdx = sourceLinks.indexOf(this.#draggedLink);
+      if (draggedIdx !== -1) {
+        sourceLinks.splice(draggedIdx, 1);
+      }
+      targetSection.links.push(this.#draggedLink);
+      this.#draggedLink = null;
+      this.#draggedLinkSourceSection = null;
+      this._saveToTransientData();
+      return;
+    }
+
+    if (!this.#draggedSection || this.#draggedSection === targetSection) {
+      return;
+    }
+    const draggedIdx = this.sections.indexOf(this.#draggedSection);
+    if (draggedIdx === -1) {
+      return;
+    }
+    this.sections.splice(draggedIdx, 1);
+    let targetIdx = this.sections.indexOf(targetSection);
+    if (!isAbove) {
+      targetIdx++;
+    }
+    this.sections.splice(targetIdx, 0, this.#draggedSection);
+    this.#draggedSection = null;
+    this.isDraggingSection = false;
+    this._saveToTransientData();
+  }
+
+  @bind
+  onLinkDragStart(link, sourceSection) {
+    this.#draggedLink = link;
+    this.#draggedLinkSourceSection = sourceSection;
+  }
+
+  @bind
+  onLinkDrop(targetLink, targetSection, isAbove) {
+    if (!this.#draggedLink || this.#draggedLink === targetLink) {
+      this.#draggedLink = null;
+      this.#draggedLinkSourceSection = null;
+      return;
+    }
+
+    const sourceLinks = this.#draggedLinkSourceSection.links;
+    const draggedIdx = sourceLinks.indexOf(this.#draggedLink);
+    if (draggedIdx !== -1) {
+      sourceLinks.splice(draggedIdx, 1);
+    }
+
+    const targetLinks = targetSection.links;
+    let targetIdx = targetLinks.indexOf(targetLink);
+    if (!isAbove) {
+      targetIdx++;
+    }
+    targetLinks.splice(targetIdx, 0, this.#draggedLink);
+
+    this.#draggedLink = null;
+    this.#draggedLinkSourceSection = null;
+    this._saveToTransientData();
+  }
+
+  @bind
+  async fetchTopics(includeSubcategories) {
+    const response = await ajax(
+      `/doc-categories/indexes/${this.args.categoryId}/topics`,
+      { data: { include_subcategories: includeSubcategories } }
+    );
+    return {
+      topics: response.topics || [],
+      totalCount: response.total_count ?? 0,
+      truncated: (response.total_count ?? 0) > (response.topics || []).length,
+    };
   }
 
   @bind
@@ -742,11 +404,6 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @bind
-  isFirstSection(section) {
-    return this.sections.indexOf(section) === 0;
-  }
-
-  @bind
   isItemSelected(link) {
     return this.selectedItems.has(link);
   }
@@ -754,50 +411,6 @@ export default class DocCategoryIndexEditor extends Component {
   @bind
   isSectionSelected(section) {
     return this.selectedSections.has(section);
-  }
-
-  @action
-  clearSelection() {
-    this.selectedItems.clear();
-    this.selectedSections.clear();
-  }
-
-  @action
-  selectAll() {
-    if (this.selectedSections.size > 0) {
-      for (const section of this.sections) {
-        this.selectedSections.add(section);
-      }
-    } else {
-      for (const section of this.sections) {
-        for (const link of section.links) {
-          this.selectedItems.add(link);
-        }
-      }
-    }
-  }
-
-  @action
-  invertSelection() {
-    if (this.selectedSections.size > 0) {
-      for (const section of this.sections) {
-        if (this.selectedSections.has(section)) {
-          this.selectedSections.delete(section);
-        } else {
-          this.selectedSections.add(section);
-        }
-      }
-    } else {
-      for (const section of this.sections) {
-        for (const link of section.links) {
-          if (this.selectedItems.has(link)) {
-            this.selectedItems.delete(link);
-          } else {
-            this.selectedItems.add(link);
-          }
-        }
-      }
-    }
   }
 
   @bind
@@ -823,69 +436,6 @@ export default class DocCategoryIndexEditor extends Component {
         this.selectedItems.add(link);
       }
     }
-  }
-
-  @action
-  clearIndex(closeMenu) {
-    closeMenu?.();
-    if (this.sections.length === 0) {
-      return;
-    }
-    this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.index_editor.clear_index_confirm"
-      ),
-      didConfirm: () => {
-        this.sections.splice(0, this.sections.length);
-        this._saveToTransientData();
-      },
-    });
-  }
-
-  @action
-  bulkDelete() {
-    this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.index_editor.batch_delete_confirm"
-      ),
-      didConfirm: () => {
-        for (const section of this.selectedSections) {
-          const idx = this.sections.indexOf(section);
-          if (idx !== -1) {
-            this.sections.splice(idx, 1);
-          }
-        }
-        for (const link of this.selectedItems) {
-          for (const section of this.sections) {
-            const idx = section.links.indexOf(link);
-            if (idx !== -1) {
-              section.links.splice(idx, 1);
-              break;
-            }
-          }
-        }
-        this.selectedItems.clear();
-        this.selectedSections.clear();
-        this._saveToTransientData();
-      },
-    });
-  }
-
-  @action
-  batchDragStart(event) {
-    if (!this.canDragSelection) {
-      event.preventDefault();
-      return;
-    }
-    event.dataTransfer.effectAllowed = "move";
-    this.batchDragType = this.selectedSections.size > 0 ? "sections" : "items";
-    this.isBatchDragging = true;
-  }
-
-  @action
-  batchDragEnd() {
-    this.isBatchDragging = false;
-    this.batchDragType = null;
   }
 
   @bind
@@ -960,12 +510,456 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
   }
 
-  get applyDisabled() {
-    return (
-      this.saveState === "saving" ||
-      !this.hasPendingChanges ||
-      this.validationErrors.length > 0
+  /**
+   * Persists the current editor state to FormKit so it survives tab switches
+   * and is available for "Save Category". Two form fields are maintained:
+   *
+   * - `_docIndexEditorState`: Rich camelCase array used to restore the full
+   *   editor UI on tab-switch recovery (includes UI-only fields like
+   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
+   * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
+   *   via `registerCategorySaveProperty` when "Save Category" is clicked.
+   *
+   * Both fields must be committed after a successful Apply to clear the
+   * "Save Category" banner.
+   */
+  @bind
+  _saveToTransientData() {
+    const sections = this.#serializeSections();
+    this._hasLocalChanges = true;
+    this.args.form?.set("_docIndexEditorState", sections);
+    this.args.form?.set(
+      "_docIndexAutoIndexIncludeSubcategories",
+      this.autoIndexIncludeSubcategories
     );
+
+    // Convert to snake_case for the backend payload
+    const backendSections = sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      auto_index: section.autoIndex || false,
+      links: section.links.map((link) => ({
+        title: link.title,
+        href: link.href,
+        topic_id: link.topic_id,
+        icon: link.icon,
+      })),
+    }));
+    const serialized =
+      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
+    this.args.form?.set("doc_index_sections", serialized);
+    if (serialized) {
+      this.args.form?.set("doc_index_topic_id", -1);
+    }
+  }
+
+  @action
+  addSection() {
+    this.sections.push(
+      trackedObject({
+        title: "",
+        links: trackedArray([]),
+      })
+    );
+    this._saveToTransientData();
+  }
+
+  @action
+  addAutoIndexSection() {
+    if (this.hasAutoIndexSection) {
+      return;
+    }
+    this.sections.push(
+      trackedObject({
+        title: i18n(
+          "doc_categories.category_settings.index_editor.auto_index_section_title"
+        ),
+        autoIndex: true,
+        links: trackedArray([]),
+      })
+    );
+    this._saveToTransientData();
+  }
+
+  @action
+  toggleIncludeSubcategories() {
+    this.includeSubcategories = !this.includeSubcategories;
+  }
+
+  @action
+  toggleResyncAutoIndex(closeMenu) {
+    closeMenu?.();
+    this.pendingResync = !this.pendingResync;
+    this._saveToTransientData();
+  }
+
+  @action
+  toggleAutoIndexIncludeSubcategories(closeMenu) {
+    closeMenu?.();
+
+    // Toggling back to the original value doesn't trigger a resync,
+    // so no confirmation is needed.
+    const newValue = !this.autoIndexIncludeSubcategories;
+    if (newValue === this.#originalAutoIndexIncludeSubcategories) {
+      this.autoIndexIncludeSubcategories = newValue;
+      this.pendingResync = false;
+      this._saveToTransientData();
+      return;
+    }
+
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.include_subcategories_confirm"
+      ),
+      didConfirm: () => {
+        this.autoIndexIncludeSubcategories = newValue;
+        this.pendingResync = false;
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
+  indexAllTopics(closeMenu) {
+    closeMenu?.();
+    if (this.sections.length > 0) {
+      this.dialog.yesNoConfirm({
+        message: i18n(
+          "doc_categories.category_settings.index_editor.auto_populate_confirm"
+        ),
+        didConfirm: () => this.#doIndexAllTopics(),
+      });
+    } else {
+      this.#doIndexAllTopics();
+    }
+  }
+
+  @action
+  async apply() {
+    if (this.validationErrors.length > 0) {
+      this.saveState = "error";
+      this.args.onApplyError?.(this.validationErrors.join(" "));
+      return;
+    }
+    this.saveState = "saving";
+    const payload = {
+      force_direct: true,
+      auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
+      force_sync: this.pendingResync,
+      sections: this.sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        auto_index: section.autoIndex || false,
+        links: section.links.map((link) => ({
+          title: link.title,
+          href: link.href,
+          topic_id: link.topic_id,
+          icon: link.icon,
+        })),
+      })),
+    };
+
+    try {
+      const response = await ajax(
+        `/doc-categories/indexes/${this.args.categoryId}`,
+        {
+          type: "PUT",
+          data: JSON.stringify(payload),
+          contentType: "application/json",
+        }
+      );
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
+      this.saveState = "saved";
+      this.pendingResync = false;
+      this._hasLocalChanges = false;
+      this.args.form?.set("_docIndexEditorState", null);
+      this.args.form?.commitField("_docIndexEditorState");
+      this.args.form?.commitField("doc_index_sections");
+      this.args.form?.commitField("doc_index_topic_id");
+      this.args.category?.set("doc_index_sections", null);
+
+      if (response.index_structure) {
+        this.#refreshFromServerData(response.index_structure);
+      }
+      this.#saveStateTimer = discourseLater(() => {
+        if (!this.isDestroying && this.saveState === "saved") {
+          this.saveState = null;
+        }
+      }, 3000);
+    } catch (e) {
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
+      this.saveState = "error";
+      popupAjaxError(e);
+    }
+  }
+
+  @action
+  toggleBatchMode() {
+    if (this.batchMode && this.hasSelection) {
+      this.dialog.yesNoConfirm({
+        message: i18n(
+          "doc_categories.category_settings.index_editor.batch_exit_confirm"
+        ),
+        didConfirm: () => {
+          this.batchMode = false;
+          this.selectedItems.clear();
+          this.selectedSections.clear();
+        },
+      });
+      return;
+    }
+    this.batchMode = !this.batchMode;
+    if (!this.batchMode) {
+      this.selectedItems.clear();
+      this.selectedSections.clear();
+    }
+  }
+
+  @action
+  clearSelection() {
+    this.selectedItems.clear();
+    this.selectedSections.clear();
+  }
+
+  @action
+  selectAll() {
+    if (this.selectedSections.size > 0) {
+      for (const section of this.sections) {
+        this.selectedSections.add(section);
+      }
+    } else {
+      for (const section of this.sections) {
+        for (const link of section.links) {
+          this.selectedItems.add(link);
+        }
+      }
+    }
+  }
+
+  @action
+  invertSelection() {
+    if (this.selectedSections.size > 0) {
+      for (const section of this.sections) {
+        if (this.selectedSections.has(section)) {
+          this.selectedSections.delete(section);
+        } else {
+          this.selectedSections.add(section);
+        }
+      }
+    } else {
+      for (const section of this.sections) {
+        for (const link of section.links) {
+          if (this.selectedItems.has(link)) {
+            this.selectedItems.delete(link);
+          } else {
+            this.selectedItems.add(link);
+          }
+        }
+      }
+    }
+  }
+
+  @action
+  bulkDelete() {
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.batch_delete_confirm"
+      ),
+      didConfirm: () => {
+        for (const section of this.selectedSections) {
+          const idx = this.sections.indexOf(section);
+          if (idx !== -1) {
+            this.sections.splice(idx, 1);
+          }
+        }
+        for (const link of this.selectedItems) {
+          for (const section of this.sections) {
+            const idx = section.links.indexOf(link);
+            if (idx !== -1) {
+              section.links.splice(idx, 1);
+              break;
+            }
+          }
+        }
+        this.selectedItems.clear();
+        this.selectedSections.clear();
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
+  clearIndex(closeMenu) {
+    closeMenu?.();
+    if (this.sections.length === 0) {
+      return;
+    }
+    this.dialog.yesNoConfirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.clear_index_confirm"
+      ),
+      didConfirm: () => {
+        this.sections.splice(0, this.sections.length);
+        this._saveToTransientData();
+      },
+    });
+  }
+
+  @action
+  batchDragStart(event) {
+    if (!this.canDragSelection) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    this.batchDragType = this.selectedSections.size > 0 ? "sections" : "items";
+    this.isBatchDragging = true;
+  }
+
+  @action
+  batchDragEnd() {
+    this.isBatchDragging = false;
+    this.batchDragType = null;
+  }
+
+  #initSections() {
+    // Restore the subcategory toggle from transient data (tab switch recovery)
+    const savedIncludeSub =
+      this.args.transientData?._docIndexAutoIndexIncludeSubcategories;
+    if (savedIncludeSub != null) {
+      this.autoIndexIncludeSubcategories = savedIncludeSub;
+    }
+
+    // Restore from FormKit transient data if available (tab switch recovery)
+    const saved = this.args.transientData?._docIndexEditorState;
+    if (saved?.length > 0) {
+      return saved.map((section) =>
+        trackedObject({
+          id: section.id ?? null,
+          title: section.title,
+          autoIndex: section.autoIndex || false,
+          links: trackedArray(
+            section.links.map((link) =>
+              trackedObject({
+                title: link.title,
+                href: link.href,
+                type: link.type || "topic",
+                topic_id: link.topic_id,
+                topicTitle: link.topicTitle,
+                autoTitle: link.autoTitle,
+                icon: link.icon || "far-file",
+                autoIndexed: link.autoIndexed || false,
+              })
+            )
+          ),
+        })
+      );
+    }
+
+    return this.#initSectionsFromModel();
+  }
+
+  #initSectionsFromModel() {
+    return this.#buildSectionsFrom(this.args.indexData);
+  }
+
+  #buildSectionsFrom(index) {
+    if (!index || index.length === 0) {
+      return [];
+    }
+    return index.map((section) =>
+      trackedObject({
+        id: section.id ?? null,
+        title: section.text,
+        autoIndex: section.auto_index || false,
+        links: trackedArray(
+          section.links.map((link) =>
+            trackedObject({
+              title: link.text,
+              href: link.href,
+              type: link.topic_id ? "topic" : "manual",
+              topic_id: link.topic_id ?? null,
+              topicTitle: link.topic_title,
+              autoTitle: link.topic_id && !link.custom_title,
+              icon: link.icon || "far-file",
+              autoIndexed: link.auto_indexed || false,
+            })
+          )
+        ),
+      })
+    );
+  }
+
+  #refreshFromServerData(indexStructure) {
+    const newSections = this.#buildSectionsFrom(indexStructure);
+    this.sections.splice(0, this.sections.length, ...newSections);
+  }
+
+  #serializeSections() {
+    return this.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      autoIndex: section.autoIndex || false,
+      links: section.links.map((link) => ({
+        title: link.title,
+        href: link.href,
+        type: link.type,
+        topic_id: link.topic_id,
+        topicTitle: link.topicTitle,
+        autoTitle: link.autoTitle,
+        icon: link.icon,
+        autoIndexed: link.autoIndexed || false,
+      })),
+    }));
+  }
+
+  async #doIndexAllTopics() {
+    try {
+      const result = await this.fetchTopics(this.includeSubcategories);
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
+      if (result.topics.length === 0) {
+        return;
+      }
+      this.sections.splice(
+        0,
+        this.sections.length,
+        trackedObject({
+          title: i18n(
+            "doc_categories.category_settings.index_editor.all_topics_section"
+          ),
+          links: trackedArray(result.topics.map((t) => this.#topicToLink(t))),
+        })
+      );
+      this._saveToTransientData();
+      if (result.truncated) {
+        this.dialog.alert(
+          i18n(
+            "doc_categories.category_settings.index_editor.topics_truncated",
+            {
+              loaded: result.topics.length,
+              total: result.totalCount,
+            }
+          )
+        );
+      }
+    } catch (e) {
+      popupAjaxError(e);
+    }
+  }
+
+  #topicToLink(topic) {
+    return trackedObject({
+      title: topic.title || topic.fancy_title,
+      href: `/t/${topic.slug}/${topic.id}`,
+      type: "topic",
+      icon: "far-file",
+    });
   }
 
   <template>

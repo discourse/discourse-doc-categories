@@ -18,6 +18,7 @@ import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
+import { isAboveElement } from "../../lib/doc-index-utils";
 import { IndexEditorLink } from "./link";
 
 export class IndexEditorSection extends Component {
@@ -33,13 +34,10 @@ export class IndexEditorSection extends Component {
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
   dragCount = 0;
-
-  _addMenuApi = null;
-
+  #addMenuApi = null;
+  #autoExpandTimer = null;
+  #isNew = false;
   @tracked _editSectionTitle;
-
-  _autoExpandTimer = null;
-  _isNew = false;
 
   constructor() {
     super(...arguments);
@@ -49,7 +47,7 @@ export class IndexEditorSection extends Component {
       !this.args.section.title &&
       !this.args.isFirstSection?.(this.args.section)
     ) {
-      this._isNew = true;
+      this.#isNew = true;
       this._editSectionTitle = "";
       this.editingTitle = true;
     }
@@ -57,9 +55,9 @@ export class IndexEditorSection extends Component {
 
   willDestroy() {
     super.willDestroy();
-    if (this._autoExpandTimer) {
-      cancel(this._autoExpandTimer);
-      this._autoExpandTimer = null;
+    if (this.#autoExpandTimer) {
+      cancel(this.#autoExpandTimer);
+      this.#autoExpandTimer = null;
     }
     // Ensure editingCount is decremented if destroyed while editing title
     if (this.editingTitle) {
@@ -116,6 +114,16 @@ export class IndexEditorSection extends Component {
     );
   }
 
+  get #isEmptyItemDrag() {
+    if (this.args.section.links.length > 0) {
+      return false;
+    }
+    return (
+      !this.args.isDraggingSection &&
+      !(this.args.isBatchDragging && this.args.batchDragType === "sections")
+    );
+  }
+
   @action
   enterTitleEdit() {
     this._editSectionTitle = this.args.section.title;
@@ -134,7 +142,7 @@ export class IndexEditorSection extends Component {
     this.titleValidationError = null;
     this.args.section.title = this._editSectionTitle?.trim() || "";
     this.args.onChange?.();
-    this._isNew = false;
+    this.#isNew = false;
     this.editingTitle = false;
     this.args.onEditStateChange?.(false);
   }
@@ -142,7 +150,7 @@ export class IndexEditorSection extends Component {
   @action
   cancelTitleEdit() {
     this.titleValidationError = null;
-    if (this._isNew) {
+    if (this.#isNew) {
       this.args.onEditStateChange?.(false);
       this.args.onCancelNew?.(this.args.section);
       return;
@@ -162,10 +170,9 @@ export class IndexEditorSection extends Component {
     }
   }
 
-  isAboveElement(event) {
-    event.preventDefault();
-    const domRect = event.currentTarget.getBoundingClientRect();
-    return event.clientY - domRect.top < domRect.height / 2;
+  @action
+  updateTitle(event) {
+    this._editSectionTitle = event.target.value;
   }
 
   @action
@@ -186,16 +193,6 @@ export class IndexEditorSection extends Component {
     this.dragCssClass = "is-dragging";
   }
 
-  get #isEmptyItemDrag() {
-    if (this.args.section.links.length > 0) {
-      return false;
-    }
-    return (
-      !this.args.isDraggingSection &&
-      !(this.args.isBatchDragging && this.args.batchDragType === "sections")
-    );
-  }
-
   @action
   sectionDragOver(event) {
     event.preventDefault();
@@ -205,7 +202,7 @@ export class IndexEditorSection extends Component {
     const isBatchSectionDrag =
       this.args.isBatchDragging && this.args.batchDragType === "sections";
     if (this.args.isDraggingSection || isBatchSectionDrag) {
-      this.dragCssClass = this.isAboveElement(event)
+      this.dragCssClass = isAboveElement(event)
         ? "is-drag-above"
         : "is-drag-below";
     }
@@ -215,10 +212,10 @@ export class IndexEditorSection extends Component {
   sectionDragEnter() {
     this.dragCount++;
     if (this.collapsed) {
-      if (this._autoExpandTimer) {
-        cancel(this._autoExpandTimer);
+      if (this.#autoExpandTimer) {
+        cancel(this.#autoExpandTimer);
       }
-      this._autoExpandTimer = discourseLater(() => {
+      this.#autoExpandTimer = discourseLater(() => {
         this.collapsed = false;
       }, 500);
     }
@@ -230,9 +227,9 @@ export class IndexEditorSection extends Component {
   @action
   sectionDragLeave() {
     this.dragCount--;
-    if (this._autoExpandTimer && this.dragCount === 0) {
-      cancel(this._autoExpandTimer);
-      this._autoExpandTimer = null;
+    if (this.#autoExpandTimer && this.dragCount === 0) {
+      cancel(this.#autoExpandTimer);
+      this.#autoExpandTimer = null;
     }
     if (this.dragCount === 0) {
       this.emptyDropTarget = false;
@@ -251,9 +248,9 @@ export class IndexEditorSection extends Component {
   sectionDropItem(event) {
     event.stopPropagation();
     this.dragCount = 0;
-    if (this._autoExpandTimer) {
-      cancel(this._autoExpandTimer);
-      this._autoExpandTimer = null;
+    if (this.#autoExpandTimer) {
+      cancel(this.#autoExpandTimer);
+      this.#autoExpandTimer = null;
     }
 
     const hasIndicator =
@@ -267,17 +264,17 @@ export class IndexEditorSection extends Component {
       return;
     }
 
-    const isAbove = this.isAboveElement(event);
+    const above = isAboveElement(event);
     if (this.args.isBatchDragging && this.args.batchDragType === "sections") {
-      this.args.onBatchSectionDrop(this.args.section, isAbove);
+      this.args.onBatchSectionDrop(this.args.section, above);
     } else if (this.emptyDropTarget) {
       if (this.args.isBatchDragging && this.args.batchDragType === "items") {
         this.args.onBatchItemDrop(null, this.args.section, false);
       } else {
-        this.args.onSectionDrop(this.args.section, isAbove);
+        this.args.onSectionDrop(this.args.section, above);
       }
     } else {
-      this.args.onSectionDrop(this.args.section, isAbove);
+      this.args.onSectionDrop(this.args.section, above);
     }
     this.dragCssClass = null;
     this.emptyDropTarget = false;
@@ -289,20 +286,15 @@ export class IndexEditorSection extends Component {
     this.dragCssClass = null;
     this.emptyDropTarget = false;
     this.args.onSectionDragEnd?.();
-    if (this._autoExpandTimer) {
-      cancel(this._autoExpandTimer);
-      this._autoExpandTimer = null;
+    if (this.#autoExpandTimer) {
+      cancel(this.#autoExpandTimer);
+      this.#autoExpandTimer = null;
     }
   }
 
   @action
-  updateTitle(event) {
-    this._editSectionTitle = event.target.value;
-  }
-
-  @action
   registerAddMenuApi(api) {
-    this._addMenuApi = api;
+    this.#addMenuApi = api;
   }
 
   @action
@@ -321,13 +313,40 @@ export class IndexEditorSection extends Component {
   }
 
   @action
+  onAddTopic(topicId, topic) {
+    if (!topic) {
+      return;
+    }
+    const topicTitle = topic.title || topic.fancy_title;
+    this.args.section.links.push(
+      trackedObject({
+        title: topicTitle,
+        href: `/t/${topic.slug}/${topic.id}`,
+        type: "topic",
+        topic_id: topic.id,
+        topicTitle,
+        autoTitle: true,
+        icon: "far-file",
+      })
+    );
+    this.topicChooserContent = [];
+    this.showingTopicChooser = false;
+    this.args.onChange?.();
+  }
+
+  @action
+  cancelTopicChooser() {
+    this.showingTopicChooser = false;
+  }
+
+  @action
   toggleIncludeSubcategories() {
     this.includeSubcategories = !this.includeSubcategories;
   }
 
   @action
   async addMissingTopicsToSection() {
-    this._addMenuApi?.close();
+    this.#addMenuApi?.close();
     const includeSubcategories = this.includeSubcategories;
     try {
       const result = await this.args.fetchTopics(includeSubcategories);
@@ -380,33 +399,6 @@ export class IndexEditorSection extends Component {
     } catch (e) {
       popupAjaxError(e);
     }
-  }
-
-  @action
-  onAddTopic(topicId, topic) {
-    if (!topic) {
-      return;
-    }
-    const topicTitle = topic.title || topic.fancy_title;
-    this.args.section.links.push(
-      trackedObject({
-        title: topicTitle,
-        href: `/t/${topic.slug}/${topic.id}`,
-        type: "topic",
-        topic_id: topic.id,
-        topicTitle,
-        autoTitle: true,
-        icon: "far-file",
-      })
-    );
-    this.topicChooserContent = [];
-    this.showingTopicChooser = false;
-    this.args.onChange?.();
-  }
-
-  @action
-  cancelTopicChooser() {
-    this.showingTopicChooser = false;
   }
 
   @action
