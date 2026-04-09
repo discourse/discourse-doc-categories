@@ -73,26 +73,29 @@ module DocCategories
         current_max = auto_index_section.sidebar_links.maximum(:position) || -1
         available_slots = MAX_LINKS_PER_SECTION - auto_index_section.sidebar_links.count
 
-        topics_to_add
-          .first(available_slots)
-          .each_with_index do |topic_id, idx|
-            topic = ::Topic.find_by(id: topic_id)
-            next if topic.nil?
+        topic_ids = topics_to_add.first(available_slots)
+        topics_by_id = ::Topic.where(id: topic_ids).index_by(&:id)
 
-            auto_index_section.sidebar_links.create!(
-              topic_id: topic.id,
-              href: topic.relative_url,
-              position: current_max + idx + 1,
-              auto_indexed: true,
-            )
-          end
+        topic_ids.each_with_index do |topic_id, idx|
+          topic = topics_by_id[topic_id]
+          next if topic.nil?
+
+          auto_index_section.sidebar_links.create!(
+            topic_id: topic.id,
+            href: topic.relative_url,
+            position: current_max + idx + 1,
+            auto_indexed: true,
+          )
+        end
       end
 
       def remove_stale_links(stale_link_ids:)
         DocCategories::SidebarLink.where(id: stale_link_ids).destroy_all if stale_link_ids.present?
       end
 
-      def publish_changes(index:)
+      def publish_changes(index:, topics_to_add:, stale_link_ids:)
+        return if topics_to_add.blank? && stale_link_ids.blank?
+
         Site.clear_cache
         index.category.publish_category
       end
