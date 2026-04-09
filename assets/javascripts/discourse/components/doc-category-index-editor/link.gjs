@@ -14,6 +14,7 @@ import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
+import { isAboveElement } from "../../lib/doc-index-utils";
 
 // Selectors for floating/overlay elements that steal focus from the card.
 // When one of these is open, focusout should not auto-confirm the edit.
@@ -29,22 +30,21 @@ export class IndexEditorLink extends Component {
   @tracked swapTopicContent = [];
   @tracked validationError = null;
   dragCount = 0;
+  #isNew = false;
+  #isAbove = false;
   @tracked _editTitle;
   @tracked _editHref;
   @tracked _editIcon;
   @tracked _editType;
   @tracked _editTopicId;
-
-  _isNew = false;
-  _isAbove = false;
   @tracked _topicOriginalTitle = null;
 
   constructor() {
     super(...arguments);
     // New empty links auto-enter edit mode
     if (!this.args.link.title && !this.args.link.href) {
-      this._isNew = true;
-      this._snapshotLink();
+      this.#isNew = true;
+      this.#snapshotLink();
       this.editing = true;
     }
   }
@@ -57,54 +57,11 @@ export class IndexEditorLink extends Component {
     }
   }
 
-  _snapshotLink() {
-    this._editTitle = this.args.link.title;
-    this._editHref = this.args.link.href;
-    this._editIcon = this.args.link.icon;
-    this._editType = this.args.link.type;
-    this._editTopicId = this.args.link.topic_id;
-    this._topicOriginalTitle = this.args.link.topicTitle;
-  }
-
-  _applyEdit() {
-    const isTopicLink = this._editType === "topic";
-    const titleMatchesTopic =
-      isTopicLink &&
-      (!this._editTitle?.trim() ||
-        this._editTitle === this._topicOriginalTitle);
-
-    this.args.link.title = titleMatchesTopic
-      ? this._topicOriginalTitle
-      : this._editTitle;
-    this.args.link.href = this._editHref;
-    this.args.link.icon = this._editIcon;
-    this.args.link.type = this._editType;
-    this.args.link.topic_id = this._editTopicId;
-    this.args.link.topicTitle = this._topicOriginalTitle;
-    this.args.link.autoTitle = titleMatchesTopic;
-    this.args.onChange?.();
-  }
-
   get isTopicLink() {
     if (this.editing) {
       return this._editType === "topic";
     }
     return this.args.link.type === "topic";
-  }
-
-  @action
-  switchToManualLink() {
-    this._editType = "manual";
-    this._editHref = "";
-    this.swapping = false;
-    this.swapTopicContent = [];
-  }
-
-  @action
-  switchToTopicLink() {
-    this._editType = "topic";
-    this._editHref = "";
-    this.swapping = true;
   }
 
   get isDuplicate() {
@@ -131,14 +88,23 @@ export class IndexEditorLink extends Component {
     );
   }
 
-  isAboveElement(event) {
-    event.preventDefault();
-    const domRect = event.currentTarget.getBoundingClientRect();
-    return event.clientY - domRect.top < domRect.height / 2;
-  }
-
   get canConfirm() {
     return !!this._editHref;
+  }
+
+  @action
+  switchToManualLink() {
+    this._editType = "manual";
+    this._editHref = "";
+    this.swapping = false;
+    this.swapTopicContent = [];
+  }
+
+  @action
+  switchToTopicLink() {
+    this._editType = "topic";
+    this._editHref = "";
+    this.swapping = true;
   }
 
   @action
@@ -146,7 +112,7 @@ export class IndexEditorLink extends Component {
     if (this.args.batchMode) {
       return;
     }
-    this._snapshotLink();
+    this.#snapshotLink();
     this.editing = true;
     this.args.onEditStateChange?.(true);
   }
@@ -159,32 +125,18 @@ export class IndexEditorLink extends Component {
       return;
     }
     this.validationError = null;
-    this._applyEdit();
-    this._isNew = false;
+    this.#applyEdit();
+    this.#isNew = false;
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
     this.args.onEditStateChange?.(false);
   }
 
-  #validateLink() {
-    if (!this._editHref?.trim()) {
-      return i18n(
-        "doc_categories.category_settings.index_editor.validation_empty_link_url"
-      );
-    }
-    if (!this._editTitle?.trim() && this._editType !== "topic") {
-      return i18n(
-        "doc_categories.category_settings.index_editor.validation_empty_link_title"
-      );
-    }
-    return null;
-  }
-
   @action
   cancelEdit() {
     this.validationError = null;
-    if (this._isNew) {
+    if (this.#isNew) {
       this.args.onEditStateChange?.(false);
       const idx = this.args.section.links.indexOf(this.args.link);
       if (idx !== -1) {
@@ -226,8 +178,8 @@ export class IndexEditorLink extends Component {
       }
 
       this.validationError = null;
-      this._applyEdit();
-      this._isNew = false;
+      this.#applyEdit();
+      this.#isNew = false;
       this.editing = false;
       this.swapping = false;
       this.swapTopicContent = [];
@@ -254,9 +206,9 @@ export class IndexEditorLink extends Component {
     if (this.dragCssClass === "is-dragging" || this.args.isDraggingSection) {
       return;
     }
-    const isAbove = this.isAboveElement(event);
-    this._isAbove = isAbove;
-    this.dragCssClass = isAbove ? "is-drag-above" : "is-drag-below";
+    const above = isAboveElement(event);
+    this.#isAbove = above;
+    this.dragCssClass = above ? "is-drag-above" : "is-drag-below";
   }
 
   @action
@@ -288,10 +240,10 @@ export class IndexEditorLink extends Component {
       this.args.onBatchItemDrop(
         this.args.link,
         this.args.section,
-        this._isAbove
+        this.#isAbove
       );
     } else {
-      this.args.onDrop(this.args.link, this.args.section, this._isAbove);
+      this.args.onDrop(this.args.link, this.args.section, this.#isAbove);
     }
     this.dragCssClass = null;
   }
@@ -353,6 +305,48 @@ export class IndexEditorLink extends Component {
       }
       event.stopPropagation();
     }
+  }
+
+  #snapshotLink() {
+    this._editTitle = this.args.link.title;
+    this._editHref = this.args.link.href;
+    this._editIcon = this.args.link.icon;
+    this._editType = this.args.link.type;
+    this._editTopicId = this.args.link.topic_id;
+    this._topicOriginalTitle = this.args.link.topicTitle;
+  }
+
+  #applyEdit() {
+    const isTopicLink = this._editType === "topic";
+    const titleMatchesTopic =
+      isTopicLink &&
+      (!this._editTitle?.trim() ||
+        this._editTitle === this._topicOriginalTitle);
+
+    this.args.link.title = titleMatchesTopic
+      ? this._topicOriginalTitle
+      : this._editTitle;
+    this.args.link.href = this._editHref;
+    this.args.link.icon = this._editIcon;
+    this.args.link.type = this._editType;
+    this.args.link.topic_id = this._editTopicId;
+    this.args.link.topicTitle = this._topicOriginalTitle;
+    this.args.link.autoTitle = titleMatchesTopic;
+    this.args.onChange?.();
+  }
+
+  #validateLink() {
+    if (!this._editHref?.trim()) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.validation_empty_link_url"
+      );
+    }
+    if (!this._editTitle?.trim() && this._editType !== "topic") {
+      return i18n(
+        "doc_categories.category_settings.index_editor.validation_empty_link_title"
+      );
+    }
+    return null;
   }
 
   <template>

@@ -72,7 +72,7 @@ export default class DocIndexModeState {
   }
 
   get indexData() {
-    return this.#category?.doc_category_index;
+    return this.#category.doc_category_index;
   }
 
   get currentModeLabel() {
@@ -85,7 +85,7 @@ export default class DocIndexModeState {
   }
 
   get searchFilters() {
-    if (!this.#category?.id) {
+    if (!this.#category.id) {
       return "in:title include:unlisted";
     }
     return `in:title include:unlisted category:=${this.#category.id}`;
@@ -102,11 +102,7 @@ export default class DocIndexModeState {
       );
     }
 
-    if (
-      this.indexTopic &&
-      this.#category &&
-      this.indexTopic.category_id !== this.#category.id
-    ) {
+    if (this.indexTopic && this.indexTopic.category_id !== this.#category.id) {
       return i18n(
         "doc_categories.category_settings.index_topic.errors.mismatched-category",
         { category_name: this.indexTopic.category?.name }
