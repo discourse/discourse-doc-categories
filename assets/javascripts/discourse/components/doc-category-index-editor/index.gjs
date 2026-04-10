@@ -39,7 +39,6 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked pendingResync = false;
   @tracked isDraggingSection = false;
   @tracked batchMode = false;
-  @tracked editingCount = 0;
   @tracked isBatchDragging = false;
   @tracked batchDragType = null;
   selectedItems = trackedSet();
@@ -87,6 +86,21 @@ export default class DocCategoryIndexEditor extends Component {
       return "in:title include:unlisted";
     }
     return `in:title include:unlisted category:=${this.args.categoryId}`;
+  }
+
+  get editingCount() {
+    let count = 0;
+    for (const section of this.sections) {
+      if (section.isEditingTitle) {
+        count++;
+      }
+      for (const link of section.links) {
+        if (link.isEditing) {
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   @cached
@@ -247,15 +261,6 @@ export default class DocCategoryIndexEditor extends Component {
       "doc_categories.category_settings.index_editor.batch_selected_items",
       { count: items }
     );
-  }
-
-  @bind
-  onEditStateChange(isEditing) {
-    if (isEditing) {
-      this.editingCount++;
-    } else {
-      this.editingCount = Math.max(0, this.editingCount - 1);
-    }
   }
 
   @bind
@@ -555,10 +560,13 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   addSection() {
+    // Non-first sections with empty titles auto-enter edit mode
+    const willAutoEdit = this.sections.length > 0;
     this.sections.push(
       trackedObject({
         title: "",
         links: trackedArray([]),
+        isEditingTitle: willAutoEdit,
       })
     );
     this._saveToTransientData();
@@ -840,11 +848,12 @@ export default class DocCategoryIndexEditor extends Component {
     // Restore from FormKit transient data if available (tab switch recovery)
     const saved = this.args.transientData?._docIndexEditorState;
     if (saved?.length > 0) {
-      return saved.map((section) =>
+      return saved.map((section, idx) =>
         trackedObject({
           id: section.id ?? null,
           title: section.title,
           autoIndex: section.autoIndex || false,
+          isEditingTitle: idx > 0 && !section.title,
           links: trackedArray(
             section.links.map((link) =>
               trackedObject({
@@ -856,6 +865,7 @@ export default class DocCategoryIndexEditor extends Component {
                 autoTitle: link.autoTitle,
                 icon: link.icon || "far-file",
                 autoIndexed: link.autoIndexed || false,
+                isEditing: !link.title && !link.href,
               })
             )
           ),
@@ -874,11 +884,12 @@ export default class DocCategoryIndexEditor extends Component {
     if (!index || index.length === 0) {
       return [];
     }
-    return index.map((section) =>
+    return index.map((section, idx) =>
       trackedObject({
         id: section.id ?? null,
         title: section.text,
         autoIndex: section.auto_index || false,
+        isEditingTitle: idx > 0 && !section.text,
         links: trackedArray(
           section.links.map((link) =>
             trackedObject({
@@ -1124,7 +1135,6 @@ export default class DocCategoryIndexEditor extends Component {
             @selectAllInSection={{this.selectAllInSection}}
             @clearAllInSection={{this.clearAllInSection}}
             @invertSelectionInSection={{this.invertSelectionInSection}}
-            @onEditStateChange={{this.onEditStateChange}}
             @onRemove={{this.removeSection}}
             @onCancelNew={{this.cancelNewSection}}
             @onSectionDragStart={{this.setDraggedSection}}

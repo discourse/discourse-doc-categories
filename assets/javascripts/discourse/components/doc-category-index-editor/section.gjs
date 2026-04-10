@@ -28,7 +28,6 @@ export class IndexEditorSection extends Component {
   @tracked dragCssClass;
   @tracked emptyDropTarget = false;
   @tracked collapsed = false;
-  @tracked editingTitle = false;
   @tracked titleValidationError = null;
   @tracked includeSubcategories = false;
   @tracked showingTopicChooser = false;
@@ -43,14 +42,9 @@ export class IndexEditorSection extends Component {
     super(...arguments);
     // New sections with empty title auto-enter title edit mode,
     // but the first section is allowed to have an empty title
-    if (
-      !this.args.section.title &&
-      !this.args.isFirstSection?.(this.args.section)
-    ) {
-      this.#isNew = true;
-      this._editSectionTitle = "";
-      this.editingTitle = true;
-      this.args.onEditStateChange?.(true);
+    if (this.editingTitle) {
+      this.#isNew = !this.args.section.title;
+      this._editSectionTitle = this.args.section.title || "";
     }
   }
 
@@ -60,10 +54,14 @@ export class IndexEditorSection extends Component {
       cancel(this.#autoExpandTimer);
       this.#autoExpandTimer = null;
     }
-    // Ensure editingCount is decremented if destroyed while editing title
-    if (this.editingTitle) {
-      this.args.onEditStateChange?.(false);
-    }
+  }
+
+  get editingTitle() {
+    return !!this.args.section.isEditingTitle;
+  }
+
+  set editingTitle(value) {
+    this.args.section.isEditingTitle = value;
   }
 
   get linkCount() {
@@ -129,7 +127,6 @@ export class IndexEditorSection extends Component {
   enterTitleEdit() {
     this._editSectionTitle = this.args.section.title;
     this.editingTitle = true;
-    this.args.onEditStateChange?.(true);
   }
 
   @action
@@ -145,19 +142,17 @@ export class IndexEditorSection extends Component {
     this.args.onChange?.();
     this.#isNew = false;
     this.editingTitle = false;
-    this.args.onEditStateChange?.(false);
   }
 
   @action
   cancelTitleEdit() {
     this.titleValidationError = null;
     if (this.#isNew) {
-      this.args.onEditStateChange?.(false);
+      this.editingTitle = false;
       this.args.onCancelNew?.(this.args.section);
       return;
     }
     this.editingTitle = false;
-    this.args.onEditStateChange?.(false);
   }
 
   @action
@@ -301,7 +296,13 @@ export class IndexEditorSection extends Component {
   @action
   addManualLink() {
     this.args.section.links.push(
-      trackedObject({ title: "", href: "", type: "manual", icon: "link" })
+      trackedObject({
+        title: "",
+        href: "",
+        type: "manual",
+        icon: "link",
+        isEditing: true,
+      })
     );
     this.collapsed = false;
     this.args.onChange?.();
@@ -672,7 +673,6 @@ export class IndexEditorSection extends Component {
                   }}
                   @isSelected={{@isItemSelected link}}
                   @onToggleSelection={{fn @toggleItemSelection link}}
-                  @onEditStateChange={{@onEditStateChange}}
                   @onRemove={{this.removeLink}}
                   @onDragStart={{@onLinkDragStart}}
                   @onDrop={{@onLinkDrop}}
