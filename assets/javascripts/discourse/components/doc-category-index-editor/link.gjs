@@ -25,7 +25,6 @@ export class IndexEditorLink extends Component {
   @service site;
 
   @tracked dragCssClass;
-  @tracked editing = false;
   @tracked swapping = false;
   @tracked swapTopicContent = [];
   @tracked validationError = null;
@@ -42,20 +41,18 @@ export class IndexEditorLink extends Component {
   constructor() {
     super(...arguments);
     // New empty links auto-enter edit mode
-    if (!this.args.link.title && !this.args.link.href) {
+    if (this.editing) {
       this.#isNew = true;
       this.#snapshotLink();
-      this.editing = true;
-      this.args.onEditStateChange?.(true);
     }
   }
 
-  willDestroy() {
-    super.willDestroy();
-    // Ensure editingCount is decremented if this link is destroyed while editing
-    if (this.editing) {
-      this.args.onEditStateChange?.(false);
-    }
+  get editing() {
+    return !!this.args.link.isEditing;
+  }
+
+  set editing(value) {
+    this.args.link.isEditing = value;
   }
 
   get isTopicLink() {
@@ -115,7 +112,6 @@ export class IndexEditorLink extends Component {
     }
     this.#snapshotLink();
     this.editing = true;
-    this.args.onEditStateChange?.(true);
   }
 
   @action
@@ -131,14 +127,13 @@ export class IndexEditorLink extends Component {
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
-    this.args.onEditStateChange?.(false);
   }
 
   @action
   cancelEdit() {
     this.validationError = null;
     if (this.#isNew) {
-      this.args.onEditStateChange?.(false);
+      this.editing = false;
       const idx = this.args.section.links.indexOf(this.args.link);
       if (idx !== -1) {
         this.args.section.links.splice(idx, 1);
@@ -149,7 +144,6 @@ export class IndexEditorLink extends Component {
     this.editing = false;
     this.swapping = false;
     this.swapTopicContent = [];
-    this.args.onEditStateChange?.(false);
   }
 
   @action
@@ -184,7 +178,6 @@ export class IndexEditorLink extends Component {
       this.editing = false;
       this.swapping = false;
       this.swapTopicContent = [];
-      this.args.onEditStateChange?.(false);
     });
   }
 

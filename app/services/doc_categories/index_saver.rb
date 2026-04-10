@@ -25,6 +25,7 @@ module DocCategories
     policy :not_topic_managed
     step :capture_old_auto_index_section_id
     step :parse_and_validate_sections
+
     transaction do
       step :update_subcategory_setting
       step :save_sections
@@ -74,11 +75,7 @@ module DocCategories
       end
 
       unless sections_data.is_a?(Array)
-        return(
-          fail!(
-            I18n.t("doc_categories.errors.invalid_sections"),
-          )
-        )
+        return(fail!(I18n.t("doc_categories.errors.invalid_sections")))
       end
 
       sections_data = sections_data.map { |s| s.to_h.with_indifferent_access }
