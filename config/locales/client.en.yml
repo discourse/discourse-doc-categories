@@ -106,7 +106,7 @@ en:
           validation_empty_link_url: "All items must have a URL."
           empty: "No sections defined. Add a section or use auto-index to get started."
           add_auto_index_section: "Add auto-index section"
-          auto_index_section_title: "Topics"
+          auto_index_section_title: "Other topics"
           auto_index_badge_label: "Auto-indexed"
           auto_index_badge_label_with_subcategories: "Auto-indexed + subcategories"
           auto_index_badge_title: "This section automatically indexes new topics"
