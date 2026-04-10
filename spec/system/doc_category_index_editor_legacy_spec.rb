@@ -12,6 +12,7 @@ describe "Doc Category Index Editor (Legacy)" do
 
   before do
     SiteSetting.doc_categories_enabled = true
+    SiteSetting.doc_categories_index_editor = true
     SiteSetting.enable_simplified_category_creation = false
     sign_in(admin)
   end

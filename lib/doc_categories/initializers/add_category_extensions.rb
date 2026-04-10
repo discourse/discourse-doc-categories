@@ -36,6 +36,13 @@ module ::DocCategories
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end
 
+          # When the value is blank, there's nothing to save or clear. This
+          # happens in topic mode where the frontend sends a null value for
+          # doc_index_sections. Calling IndexSaver here would fail with the
+          # not_topic_managed policy since the index was just switched to topic
+          # mode by the doc_index_topic_id callback.
+          next if sections.nil?
+
           if sections.present? && !sections.is_a?(::Array)
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end

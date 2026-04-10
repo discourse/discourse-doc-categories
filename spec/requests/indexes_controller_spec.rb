@@ -571,6 +571,27 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
     end
 
+    it "creates a topic-mode index via category save when doc_index_sections is blank" do
+      sign_in(admin)
+      topic = Fabricate(:topic, category: category)
+      Fabricate(:post, topic: topic)
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_topic_id: topic.id.to_s,
+            doc_index_sections: "",
+          }
+
+      expect(response.status).to eq(200)
+
+      index = DocCategories::Index.find_by(category_id: category.id)
+      expect(index).to be_present
+      expect(index.index_topic_id).to eq(topic.id)
+    end
+
     it "creates an index with sections via category save using doc_index_sections" do
       sign_in(admin)
 
