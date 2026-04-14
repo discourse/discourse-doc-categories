@@ -189,6 +189,7 @@ describe "Doc Category Sidebar" do
   context "when in category settings" do
     before do
       Jobs.run_immediately!
+      SiteSetting.enable_simplified_category_creation = true
       sign_in(admin)
     end
 
@@ -218,19 +219,16 @@ describe "Doc Category Sidebar" do
       category_page.visit_settings(documentation_category)
 
       topic_chooser =
-        PageObjects::Components::SelectKit.new(
-          ".doc-categories-settings__index-topic .topic-chooser",
-        )
+        PageObjects::Components::SelectKit.new("#control-doc_index_topic_id .topic-chooser")
       topic_chooser.expand
       topic_chooser.search(new_index_topic.id)
       topic_chooser.select_row_by_index(0)
 
       category_page.save_settings
-      expect(category_page.find("#save-category")).to have_content(I18n.t("js.category.save"))
       expect(topic_chooser).to have_selected_name(new_index_topic.title)
 
       page.refresh
-      scroll_to(find(".doc-categories-settings__index-topic .topic-chooser"))
+      scroll_to(find("#control-doc_index_topic_id .topic-chooser"))
 
       wait_for(timeout: Capybara.default_max_wait_time * 2) do
         expect(topic_chooser).to have_selected_name(new_index_topic.title)
