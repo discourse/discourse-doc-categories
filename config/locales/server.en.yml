@@ -13,7 +13,15 @@ en:
         index_category: "Index Category"
         item: "Item"
         reason: "Reason"
+  doc_categories:
+    errors:
+      index_topic_managed: "This index is managed by a topic. Clear the index topic first to edit directly."
+      too_many_sections: "Too many sections. Maximum is %{max}."
+      too_many_links: "Too many links in a section. Maximum is %{max}."
+      invalid_sections: "Sections must be an array."
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
+    doc_categories_simple_mode: "Enable simple mode for doc categories. Simplifies topic lists and collapses comments behind a toggle on topic pages."
+    doc_categories_index_editor: "Enable the visual index editor for doc categories. Allows building sidebar indexes directly instead of using a topic."
     doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"
     doc_categories_homepage: "When `doc_categories_docs_legacy_enabled` the old docs homepage will redirect to this address."

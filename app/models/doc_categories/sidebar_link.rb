@@ -11,6 +11,8 @@ module DocCategories
 
     belongs_to :topic, optional: true
 
+    scope :auto_indexed, -> { where(auto_indexed: true) }
+
     before_validation :populate_href_from_topic, if: -> { topic.present? && href.blank? }
 
     validates :sidebar_section_id, presence: true
@@ -47,7 +49,9 @@ end
 # Table name: doc_categories_sidebar_links
 #
 #  id                 :bigint           not null, primary key
+#  auto_indexed       :boolean          default(FALSE), not null
 #  href               :text             not null
+#  icon               :string(100)
 #  position           :integer          not null
 #  title              :string
 #  created_at         :datetime         not null

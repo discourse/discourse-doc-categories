@@ -33,6 +33,10 @@ module ::DocCategories::Reports
       data = []
 
       categories.each do |category|
+        # Only topic-mode indexes are supported (see MissingTopicsReport for rationale).
+        index_topic_id = category.doc_index_topic_id
+        next if index_topic_id.nil? || index_topic_id < 0
+
         # existing topics
         topic_query =
           TopicQuery.new(
@@ -45,12 +49,11 @@ module ::DocCategories::Reports
         existing_topic_ids -= invisible_topic_ids
 
         # topics listed in the index
-        index_topic_id = category.doc_index_topic_id
         indexed_links =
           Topic
             .find_by(id: index_topic_id)
             &.yield_self do |index_topic|
-              DocCategories::DocIndexTopicParser.new(index_topic.first_post.cooked).sections
+              DocCategories::DocIndexTopicParser.new(index_topic.first_post&.cooked).sections
             end
             &.flat_map do |section|
               section[:links].filter_map do |link|

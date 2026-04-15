@@ -68,7 +68,12 @@ RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
       SiteSetting.doc_categories_enabled = true
 
       Jobs.with_immediate_jobs do
-        DocCategories::CategoryIndexManager.new(documentation_category).assign!(index_topic.id)
+        DocCategories::CategoryIndexManager.call(
+          params: {
+            category_id: documentation_category.id,
+            topic_id: index_topic.id,
+          },
+        )
       end
     end
 
@@ -110,8 +115,11 @@ RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
       extra_topic = Fabricate(:topic, category: documentation_category)
 
       Jobs.with_immediate_jobs do
-        DocCategories::CategoryIndexManager.new(other_category).assign!(
-          other_category_index_topic.id,
+        DocCategories::CategoryIndexManager.call(
+          params: {
+            category_id: other_category.id,
+            topic_id: other_category_index_topic.id,
+          },
         )
       end
 
