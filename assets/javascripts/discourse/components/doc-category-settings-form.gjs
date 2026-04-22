@@ -107,16 +107,17 @@ export default class DocCategorySettingsForm extends Component {
       @name="doc_index_topic_id"
       @title={{i18n "doc_categories.category_settings.index_topic.label"}}
       @format="large"
+      @type="custom"
       as |field|
     >
-      <field.Custom>
+      <field.Control>
         <TopicChooser
           @value={{this.indexTopicId}}
           @content={{this.indexTopicContent}}
           @onChange={{fn this.onChangeFormIndexTopic field}}
           @options={{hash additionalFilters=this.searchFilters}}
         />
-      </field.Custom>
+      </field.Control>
     </@outletArgs.form.Field>
   </template>
 }
