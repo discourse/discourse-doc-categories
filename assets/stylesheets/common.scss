@@ -19,3 +19,67 @@
     color: var(--danger);
   }
 }
+
+// Simple mode: topic list
+.topic-list.doc-simple-mode {
+  .topic-list-item.visited a.title:not(.badge-notification) {
+    color: var(--primary);
+  }
+
+  .link-bottom-line .badge-category__wrapper,
+  .topic-excerpt {
+    display: none;
+  }
+}
+
+// Simple mode: topic view
+body.doc-simple-mode {
+  &--collapsed {
+    .timeline-container {
+      display: none;
+    }
+  }
+
+  .post__topic-map.topic-map.--op {
+    display: none;
+  }
+
+  .topic-post[data-post-number="1"] {
+    .post-menu-area .like,
+    .post-menu-area .reply {
+      display: none;
+    }
+
+    .topic-avatar {
+      display: none;
+    }
+
+    .topic-meta-data .names {
+      display: none;
+    }
+
+    .topic-meta-data .post-infos {
+      position: absolute;
+      right: 0;
+      top: 0;
+      transform: translateY(-100%);
+      margin-top: -1em;
+    }
+
+    .topic-body {
+      position: relative;
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .cooked,
+    .post-menu-area {
+      padding-left: 0;
+    }
+  }
+}
+
+.doc-simple-mode-toggle {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
