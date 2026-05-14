@@ -29,6 +29,9 @@ module ::DocCategories
 
         prev_id, curr_id = revisor.topic_diff["category_id"]
 
+        # Always handle auto-index cleanup for the old category
+        enqueue_auto_index_remove(topic) if prev_id
+
         # topic is moved into a doc category which it is the index for
         if current_category && curr_id == current_category.id &&
              doc_index_topic?(topic, current_category)
@@ -39,14 +42,26 @@ module ::DocCategories
         # topic is moved out of a doc category which it is the index for
         prev_category = Category.find_by(id: prev_id)
         enqueue_refresh(prev_id) if prev_category && doc_index_topic?(topic, prev_category)
+
+        # handle auto-index: add to new category
+        enqueue_auto_index_add(topic) if curr_id
       end
 
       def doc_index_topic?(topic, category)
-        category&.doc_index_topic_id == topic&.id
+        topic_id = category&.doc_index_topic_id
+        topic_id&.positive? && topic_id == topic&.id
       end
 
       def enqueue_refresh(category_id)
         ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category_id)
+      end
+
+      def enqueue_auto_index_add(topic)
+        ::Jobs.enqueue(:doc_categories_auto_index, action: "add", topic_id: topic.id)
+      end
+
+      def enqueue_auto_index_remove(topic)
+        ::Jobs.enqueue(:doc_categories_auto_index, action: "remove", topic_id: topic.id)
       end
     end
   end

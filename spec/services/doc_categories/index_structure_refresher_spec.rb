@@ -1,49 +1,67 @@
 # frozen_string_literal: true
 
-describe DocCategories::IndexStructureRefresher do
-  fab!(:documentation_category, :category_with_definition)
-  fab!(:other_category, :category_with_definition)
-
-  fab!(:doc_topic) { Fabricate(:topic_with_op, category: documentation_category) }
-  fab!(:doc_topic_two) { Fabricate(:topic_with_op, category: documentation_category) }
-  fab!(:doc_topic_bare_url) { Fabricate(:topic_with_op, category: documentation_category) }
-  fab!(:other_category_topic) { Fabricate(:topic_with_op, category: other_category) }
-  fab!(:invisible_topic) do
-    Fabricate(:topic_with_op, category: documentation_category, visible: false)
+RSpec.describe DocCategories::IndexStructureRefresher do
+  describe described_class::Contract, type: :model do
+    it { is_expected.to validate_presence_of(:category_id) }
   end
-  fab!(:index_topic) do
-    Fabricate(:topic_with_op, category: documentation_category).tap do |topic|
-      topic.first_post.update!(raw: <<~MD)
-          ## Docs Section
-          * [#{doc_topic.title}](/t/#{doc_topic.slug}/#{doc_topic.id})
-          * #{doc_topic_two.slug}: [#{doc_topic_two.title}](/t/#{doc_topic_two.slug}/#{doc_topic_two.id})
-          * [#{other_category_topic.title}](/t/#{other_category_topic.slug}/#{other_category_topic.id})
-          * [#{invisible_topic.title}](/t/#{invisible_topic.slug}/#{invisible_topic.id})
-          * #{Discourse.base_url}/t/#{doc_topic_bare_url.slug}/#{doc_topic_bare_url.id}
-          * [External](https://example.com/docs)
-          * No link here
-        MD
-      topic.first_post.rebake!
+
+  describe ".call" do
+    subject(:result) { described_class.call(params:) }
+
+    fab!(:documentation_category, :category_with_definition)
+    fab!(:other_category, :category_with_definition)
+
+    fab!(:doc_topic) { Fabricate(:topic_with_op, category: documentation_category) }
+    fab!(:doc_topic_two) { Fabricate(:topic_with_op, category: documentation_category) }
+    fab!(:doc_topic_bare_url) { Fabricate(:topic_with_op, category: documentation_category) }
+    fab!(:other_category_topic) { Fabricate(:topic_with_op, category: other_category) }
+    fab!(:invisible_topic) do
+      Fabricate(:topic_with_op, category: documentation_category, visible: false)
     end
-  end
+    fab!(:index_topic) do
+      Fabricate(:topic_with_op, category: documentation_category).tap do |topic|
+        topic.first_post.update!(raw: <<~MD)
+            ## Docs Section
+            * [#{doc_topic.title}](/t/#{doc_topic.slug}/#{doc_topic.id})
+            * #{doc_topic_two.slug}: [#{doc_topic_two.title}](/t/#{doc_topic_two.slug}/#{doc_topic_two.id})
+            * [#{other_category_topic.title}](/t/#{other_category_topic.slug}/#{other_category_topic.id})
+            * [#{invisible_topic.title}](/t/#{invisible_topic.slug}/#{invisible_topic.id})
+            * #{Discourse.base_url}/t/#{doc_topic_bare_url.slug}/#{doc_topic_bare_url.id}
+            * [External](https://example.com/docs)
+            * No link here
+          MD
+        topic.first_post.rebake!
+      end
+    end
 
-  fab!(:doc_index) do
-    Fabricate(:doc_categories_index, category: documentation_category, index_topic: index_topic)
-  end
+    fab!(:doc_index) do
+      Fabricate(:doc_categories_index, category: documentation_category, index_topic: index_topic)
+    end
 
-  let(:refresher) { described_class.new(documentation_category.id) }
+    let(:params) { { category_id: documentation_category.id } }
 
-  before { SiteSetting.doc_categories_enabled = true }
+    before { SiteSetting.doc_categories_enabled = true }
 
-  def sidebar_sections
-    DocCategories::SidebarSection
-      .joins(:index)
-      .where(doc_categories_indexes: { category_id: documentation_category.id })
-      .includes(:sidebar_links)
-      .order(:position)
-  end
+    def sidebar_sections
+      DocCategories::SidebarSection
+        .joins(:index)
+        .where(doc_categories_indexes: { category_id: documentation_category.id })
+        .includes(:sidebar_links)
+        .order(:position)
+    end
 
-  describe "#refresh!" do
+    context "when the index does not exist" do
+      let(:params) { { category_id: -999 } }
+
+      it { is_expected.to fail_to_find_a_model(:index) }
+    end
+
+    context "when the index is not in topic mode" do
+      before { doc_index.update!(index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT) }
+
+      it { is_expected.to fail_a_policy(:is_topic_mode) }
+    end
+
     it "rebuilds the sidebar structure from the index topic" do
       doc_index
         .sidebar_sections
@@ -52,7 +70,7 @@ describe DocCategories::IndexStructureRefresher do
           section.sidebar_links.create!(position: 4, title: "Old", href: "/outdated")
         end
 
-      refresher.refresh!
+      result
 
       sections = sidebar_sections
       expect(sections.length).to eq(1)
@@ -106,7 +124,7 @@ describe DocCategories::IndexStructureRefresher do
 
       allow(Site).to receive(:clear_cache)
 
-      messages = MessageBus.track_publish("/categories") { refresher.refresh! }
+      messages = MessageBus.track_publish("/categories") { result }
 
       expect(sidebar_sections).to be_empty
       expect(Site).to have_received(:clear_cache)
@@ -120,7 +138,7 @@ describe DocCategories::IndexStructureRefresher do
 
       index_topic.update!(category: other_category)
 
-      messages = MessageBus.track_publish("/categories") { refresher.refresh! }
+      messages = MessageBus.track_publish("/categories") { result }
 
       expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
       expect(Site).to have_received(:clear_cache)
@@ -129,11 +147,19 @@ describe DocCategories::IndexStructureRefresher do
       expect(category_ids).to include(documentation_category.id)
     end
 
-    it "returns without side effects when no index exists" do
+    it "destroys the index when the index topic becomes a PM" do
+      index_topic.update_columns(archetype: Archetype.private_message, category_id: nil)
+
+      result
+
+      expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
+    end
+
+    it "fails without side effects when no index exists" do
       doc_index.destroy!
       allow(Site).to receive(:clear_cache)
 
-      expect { refresher.refresh! }.not_to change { DocCategories::SidebarSection.count }
+      expect { result }.not_to change { DocCategories::SidebarSection.count }
       expect(Site).not_to have_received(:clear_cache)
     end
   end
