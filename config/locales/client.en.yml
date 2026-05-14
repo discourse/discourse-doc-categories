@@ -13,6 +13,12 @@ en:
           doc_categories: "Documentation Categories"
   js:
     doc_categories:
+      simple_mode:
+        show_comments:
+          one: "Show %{count} comment"
+          other: "Show %{count} comments"
+        hide_comments: "Hide comments"
+        updated: "Updated"
       category_settings:
         title: "Documentation Mode"
         index_topic:
