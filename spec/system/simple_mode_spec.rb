@@ -94,6 +94,30 @@ describe "Doc Categories Simple Mode" do
     expect(page).to have_css("[data-post-number='4']")
   end
 
+  it "preserves expanded state across an in-session post stream refresh" do
+    topic_page.visit_topic(documentation_topic)
+
+    toggle.click_toggle
+    expect(toggle).to have_hide_comments_button
+    expect(page).to have_css("[data-post-number='2']")
+
+    # Trigger an in-session refresh (e.g., the same code path filters and the
+    # back/forward URL handler use). The postStream instance is preserved, so
+    # the user's expanded choice should survive.
+    page.execute_script(<<~JS)
+      (function() {
+        const container = window.Discourse.__container__;
+        const topicController = container.lookup("controller:topic");
+        topicController.model.postStream.refresh();
+      })();
+    JS
+
+    expect(toggle).to have_hide_comments_button
+    expect(page).to have_css("[data-post-number='2']")
+    expect(page).to have_css("[data-post-number='3']")
+    expect(page).to have_css("[data-post-number='4']")
+  end
+
   it "resets comments state when navigating between doc topics" do
     topic_page.visit_topic(documentation_topic)
 

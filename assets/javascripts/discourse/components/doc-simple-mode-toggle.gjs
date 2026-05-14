@@ -5,30 +5,15 @@ import DButton from "discourse/components/d-button";
 import bodyClass from "discourse/helpers/body-class";
 import { and } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
-import isDocCategory, { DOC_ORIGINAL_STREAM } from "../lib/simple-mode";
+import {
+  collapseStream,
+  expandStream,
+  getState,
+  inDocSimpleMode,
+} from "../lib/simple-mode";
 
 export default class DocSimpleModeToggle extends Component {
   @service siteSettings;
-
-  get commentsVisible() {
-    const ps = this.postStream;
-    return !!ps?.[DOC_ORIGINAL_STREAM] && ps.stream.length > 1;
-  }
-
-  get isSimpleMode() {
-    return (
-      this.siteSettings.doc_categories_simple_mode &&
-      isDocCategory(this.topic?.category)
-    );
-  }
-
-  get replyCount() {
-    return this.topic?.replyCount || 0;
-  }
-
-  get hasReplies() {
-    return this.replyCount > 0;
-  }
 
   get post() {
     return this.args.outletArgs.post;
@@ -38,53 +23,57 @@ export default class DocSimpleModeToggle extends Component {
     return this.post?.topic;
   }
 
-  get isFirstPost() {
-    return this.post?.post_number === 1;
-  }
-
   get postStream() {
     return this.topic?.postStream;
   }
 
+  get isSimpleMode() {
+    return inDocSimpleMode(this.siteSettings, this.topic?.category);
+  }
+
+  get isFirstPost() {
+    return this.post?.post_number === 1;
+  }
+
+  get commentsVisible() {
+    return getState(this.postStream)?.expanded ?? false;
+  }
+
+  // While collapsed we surface the count of hidden replies (which includes
+  // live MessageBus arrivals). While expanded we fall back to the topic's
+  // reply count (only used to decide whether to render the toggle at all).
+  get replyCount() {
+    if (this.commentsVisible) {
+      return this.topic?.replyCount || 0;
+    }
+    return getState(this.postStream)?.hiddenCount ?? 0;
+  }
+
+  get hasReplies() {
+    if (this.commentsVisible) {
+      return (this.topic?.replyCount || 0) > 0;
+    }
+    return this.replyCount > 0;
+  }
+
+  get toggleLabel() {
+    if (this.commentsVisible) {
+      return i18n("doc_categories.simple_mode.hide_comments");
+    }
+    return i18n("doc_categories.simple_mode.show_comments", {
+      count: this.replyCount,
+    });
+  }
+
   @action
   toggleComments() {
+    if (!this.postStream) {
+      return;
+    }
     if (this.commentsVisible) {
-      this.#hideComments();
+      collapseStream(this.postStream);
     } else {
-      this.#showComments();
-    }
-  }
-
-  #showComments() {
-    const postStream = this.postStream;
-    const originalStream = postStream?.[DOC_ORIGINAL_STREAM];
-    if (!originalStream) {
-      return;
-    }
-
-    postStream.stream.length = 0;
-    postStream.stream.push(...originalStream);
-
-    postStream.posts.length = 0;
-    for (const id of originalStream) {
-      const post = postStream.findLoadedPost(id);
-      if (post) {
-        postStream.posts.push(post);
-      }
-    }
-  }
-
-  #hideComments() {
-    const postStream = this.postStream;
-    if (!postStream || postStream.stream.length === 0) {
-      return;
-    }
-
-    postStream.stream.length = 1;
-    const op = postStream.posts.find((p) => p.post_number === 1);
-    postStream.posts.length = 0;
-    if (op) {
-      postStream.posts.push(op);
+      expandStream(this.postStream);
     }
   }
 
@@ -96,24 +85,11 @@ export default class DocSimpleModeToggle extends Component {
       }}
       {{#if this.hasReplies}}
         <div class="doc-simple-mode-toggle">
-          {{#if this.commentsVisible}}
-            <DButton
-              @action={{this.toggleComments}}
-              @translatedLabel={{i18n
-                "doc_categories.simple_mode.hide_comments"
-              }}
-              class="btn-default doc-simple-mode-toggle__button"
-            />
-          {{else}}
-            <DButton
-              @action={{this.toggleComments}}
-              @translatedLabel={{i18n
-                "doc_categories.simple_mode.show_comments"
-                count=this.replyCount
-              }}
-              class="btn-default doc-simple-mode-toggle__button"
-            />
-          {{/if}}
+          <DButton
+            @action={{this.toggleComments}}
+            @translatedLabel={{this.toggleLabel}}
+            class="btn-default doc-simple-mode-toggle__button"
+          />
         </div>
       {{/if}}
     {{/if}}

@@ -4,7 +4,12 @@ import DocCategorySettingsForm from "../components/doc-category-settings-form";
 import DocSimpleModeToggle from "../components/doc-simple-mode-toggle";
 import DocUpdatedHeaderCell from "../components/doc-updated-header-cell";
 import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel";
-import isDocCategory, { DOC_ORIGINAL_STREAM } from "../lib/simple-mode";
+import {
+  attachNewPostInterceptor,
+  collapseStream,
+  getState,
+  inDocSimpleMode,
+} from "../lib/simple-mode";
 
 export default {
   name: "doc-categories",
@@ -26,29 +31,26 @@ export default {
         ({ next, context }) => {
           next();
 
-          if (!siteSettings.doc_categories_simple_mode) {
-            return;
-          }
-
           const { postStream } = context;
-          if (!isDocCategory(postStream.topic?.category)) {
+          if (!inDocSimpleMode(siteSettings, postStream.topic?.category)) {
             return;
           }
 
-          postStream[DOC_ORIGINAL_STREAM] = [...postStream.stream];
+          attachNewPostInterceptor(postStream);
+          const state = getState(postStream);
 
-          // When the user navigated directly to a reply URL (e.g., /t/slug/id/4),
-          // keep all posts so they see the full thread.
-          const enteredOnReply =
-            postStream.loadingNearPost != null &&
-            postStream.loadingNearPost > 1;
-          if (!enteredOnReply && postStream.stream.length > 0) {
-            postStream.stream.length = 1;
-            const op = postStream.posts.find((p) => p.post_number === 1);
-            postStream.posts.length = 0;
-            if (op) {
-              postStream.posts.push(op);
-            }
+          if (state.expanded === undefined) {
+            // First load for this postStream. When the user navigated directly
+            // to a reply URL (e.g., /t/slug/id/4), start expanded so they see
+            // the full thread.
+            const enteredOnReply =
+              postStream.loadingNearPost != null &&
+              postStream.loadingNearPost > 1;
+            state.expanded = enteredOnReply;
+          }
+
+          if (!state.expanded) {
+            collapseStream(postStream);
           }
         }
       );
@@ -56,10 +58,7 @@ export default {
       api.registerValueTransformer(
         "topic-list-columns",
         ({ value: columns, context }) => {
-          if (!siteSettings.doc_categories_simple_mode) {
-            return columns;
-          }
-          if (!isDocCategory(context.category)) {
+          if (!inDocSimpleMode(siteSettings, context.category)) {
             return columns;
           }
           columns.delete("posters");
@@ -73,10 +72,7 @@ export default {
       api.registerValueTransformer(
         "topic-list-class",
         ({ value: classes, context }) => {
-          if (!siteSettings.doc_categories_simple_mode) {
-            return classes;
-          }
-          if (!isDocCategory(context.category)) {
+          if (!inDocSimpleMode(siteSettings, context.category)) {
             return classes;
           }
           classes.push("doc-simple-mode");
@@ -87,10 +83,7 @@ export default {
       api.registerValueTransformer(
         "more-topics-tabs",
         ({ value: tabs, context }) => {
-          if (!siteSettings.doc_categories_simple_mode) {
-            return tabs;
-          }
-          if (!isDocCategory(context.topic?.category)) {
+          if (!inDocSimpleMode(siteSettings, context.topic?.category)) {
             return tabs;
           }
           return tabs.filter((tab) => tab.id !== "suggested-topics");

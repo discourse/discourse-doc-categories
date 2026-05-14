@@ -20,6 +20,12 @@
   }
 }
 
+// Simple mode
+//
+// NOTE: selectors below (.post__topic-map, .topic-meta-data, .post-menu-area,
+// etc.) match Core's rendered post and topic-list markup. Keep them in sync if
+// Core's class names change.
+
 // Simple mode: topic list
 .topic-list.doc-simple-mode {
   .topic-list-item.visited a.title:not(.badge-notification) {
