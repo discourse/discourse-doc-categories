@@ -19,6 +19,8 @@ zh_CN:
           doc_categories: "文档类别"
   js:
     doc_categories:
+      simple_mode:
+        updated: "更新时间"
       category_settings:
         title: "文档模式"
         index_topic:

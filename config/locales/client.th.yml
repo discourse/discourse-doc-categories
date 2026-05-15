@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 th:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "อัปเดตแล้ว"

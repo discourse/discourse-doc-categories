@@ -19,6 +19,8 @@ pt_BR:
           doc_categories: "Categorias de documentação"
   js:
     doc_categories:
+      simple_mode:
+        updated: "Atualizado(a)"
       category_settings:
         title: "Modo de documentação"
         index_topic:

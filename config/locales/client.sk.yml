@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 sk:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Aktualizované"

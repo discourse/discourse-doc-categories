@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 gl:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Actualizado"
