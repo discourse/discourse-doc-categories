@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 hy:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Թարմացված"

@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 nl:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Bijgewerkt"

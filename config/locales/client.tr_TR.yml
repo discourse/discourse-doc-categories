@@ -19,6 +19,8 @@ tr_TR:
           doc_categories: "Dokümantasyon Kategorileri"
   js:
     doc_categories:
+      simple_mode:
+        updated: "Güncellendi"
       category_settings:
         title: "Dokümantasyon Modu"
         index_topic:

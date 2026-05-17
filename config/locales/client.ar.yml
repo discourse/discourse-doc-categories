@@ -19,6 +19,8 @@ ar:
           doc_categories: "فئات المستندات"
   js:
     doc_categories:
+      simple_mode:
+        updated: "تاريخ التحديث"
       category_settings:
         title: "وضع المستندات"
         index_topic:

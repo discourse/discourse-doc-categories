@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 bs_BA:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Ažurirano"
