@@ -5,3 +5,22 @@
 # https://translate.discourse.org/
 
 nl:
+  reports:
+    doc_categories_missing_topics:
+      title: "Docs - Topics niet geïndexeerd"
+      description: "Geef topics weer uit de documentatiecategorieën die niet geïndexeerd zijn in de zijbalk"
+      labels:
+        index_category: "Indexcategorie"
+        topic: "Topic"
+    doc_categories_extraneous_items:
+      title: "Docs - Vreemde items"
+      description: "Geef items weer die geïndexeerd zijn in de documentatiecategorieën die niet overeenkomen met een topic in de categorie"
+      labels:
+        index_category: "Indexcategorie"
+        item: "Item"
+        reason: "Reden"
+  site_settings:
+    doc_categories_enabled: "Schakel de Discourse Doc Categories-plug-in in."
+    doc_categories_simple_mode: "Schakel de eenvoudige modus in voor documentcategorieën. Vereenvoudigt topiclijsten en vouwt reacties samen achter een schakelaar op topicpagina's."
+    doc_categories_docs_legacy_enabled: "Schakel omleidingen voor oude URL's van de Docs-plug-in in. Deze instelling heeft geen effect als de Docs-plug-in is geïnstalleerd en ingeschakeld."
+    doc_categories_homepage: "Wanneer 'doc_categories_docs_legacy_enabled' verwijst de oude Docs-startpagina naar dit adres."
