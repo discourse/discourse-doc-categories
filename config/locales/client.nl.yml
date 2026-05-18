@@ -5,7 +5,34 @@
 # https://translate.discourse.org/
 
 nl:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Categorie"
+            include_topic_from_subcategories:
+              label: "Topics uit subcategorieën opnemen"
+      site_settings:
+        categories:
+          doc_categories: "Documentatiecategorieën"
   js:
     doc_categories:
       simple_mode:
+        show_comments:
+          one: "%{count} reactie weergeven"
+          other: "%{count} reacties weergeven"
+        hide_comments: "Reacties verbergen"
         updated: "Bijgewerkt"
+      category_settings:
+        title: "Documentatiemodus"
+        index_topic:
+          label: "Indextopic"
+          errors:
+            topic_not_found: "Topic niet gevonden! De index wordt niet weergegeven."
+            mismatched-category: "De index wordt niet weergegeven omdat het topic tot een andere categorie behoort: %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'We kunnen niets vinden dat overeenkomt met ''%{filter}''.<br><br>Wil je in plaats daarvan een <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">zoekopdracht op deze categorie</a> of een <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">sitebrede zoekopdracht</a> uitvoeren?'
