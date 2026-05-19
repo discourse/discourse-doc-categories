@@ -11,6 +11,7 @@ doc_categories:
     upcoming_change:
       status: "experimental"
       impact: "other,all_members"
+      learn_more_url: "https://meta.discourse.org/t/-/403366"
   doc_categories_homepage:
     default: ""
     client: true
