@@ -1,125 +1,144 @@
 import Component from "@glimmer/component";
-import { tracked } from "@glimmer/tracking";
+import { cached } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
+import { service } from "@ember/service";
+import DButton from "discourse/components/d-button";
 import icon from "discourse/helpers/d-icon";
-import { resettableTracked } from "discourse/lib/tracked-tools";
-import Topic from "discourse/models/topic";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
+import DocIndexModeState from "../lib/doc-index-mode-state";
+import validateDocIndexSections from "../lib/doc-index-validation";
+import DocIndexEditorModal from "./doc-index-editor-modal";
+import DocIndexModeSelector from "./doc-index-mode-selector";
 
 export default class DocCategorySettings extends Component {
   static shouldRender(args, context) {
-    return context.siteSettings.doc_categories_enabled;
+    return (
+      context.siteSettings.doc_categories_enabled &&
+      !context.siteSettings.enable_simplified_category_creation
+    );
   }
 
-  @tracked indexTopic;
-  @tracked loadingIndexTopic = !!this.indexTopicId;
-  @resettableTracked
-  indexTopicId = this.args.outletArgs.category.doc_index_topic_id;
+  @service dialog;
+  @service modal;
+  @service siteSettings;
+
+  modeState = new DocIndexModeState({
+    category: this.args.outletArgs.category,
+    form: this.args.outletArgs.form,
+    getTransientData: () => this.args.outletArgs.transientData,
+    dialog: this.dialog,
+    owner: this,
+  });
 
   constructor() {
     super(...arguments);
+    this.args.outletArgs.registerValidator?.(() => {
+      if (!this.modeState.isDirectMode) {
+        return;
+      }
 
-    if (this.indexTopicId) {
-      this.loadIndexTopic();
-    }
+      const hasErrors = this.editorValidationErrors.length > 0;
+      if (hasErrors) {
+        this.dialog.alert(
+          i18n(
+            "doc_categories.category_settings.index_editor.save_validation_error"
+          )
+        );
+      }
+
+      return hasErrors;
+    });
   }
 
-  get category() {
-    return this.args.outletArgs.category;
+  get showEditorOption() {
+    return (
+      this.siteSettings.doc_categories_index_editor ||
+      this.modeState.isDirectMode
+    );
   }
 
-  get errorMessage() {
-    if (this.loadingIndexTopic) {
-      return;
-    }
-
-    if (this.indexTopicId && !this.indexTopic) {
-      return i18n(
-        "doc_categories.category_settings.index_topic.errors.topic_not_found"
-      );
-    } else if (
-      this.indexTopic &&
-      this.indexTopic.category_id !== this.category.id
-    ) {
-      return i18n(
-        "doc_categories.category_settings.index_topic.errors.mismatched-category",
-        {
-          category_name: this.indexTopic.category?.name,
-        }
-      );
-    }
-  }
-
-  get indexTopicContent() {
-    if (this.loadingIndexTopic || !this.indexTopicId) {
+  @cached
+  get editorValidationErrors() {
+    const sections = this.args.outletArgs.transientData?._docIndexEditorState;
+    if (!sections?.length) {
       return [];
     }
-
-    return [this.indexTopic];
-  }
-
-  get searchFilters() {
-    return [
-      "in:title",
-      "include:unlisted",
-      `category:${this.category.id}`,
-    ].join(" ");
-  }
-
-  get shouldDisplayErrorMessage() {
-    return !this.loadingIndexTopic && this.errorMessage;
-  }
-
-  async loadIndexTopic() {
-    if (!this.indexTopicId) {
-      return;
-    }
-
-    this.loadingIndexTopic = true;
-
-    try {
-      // using store.find doesn't work for topics
-      const topic = await Topic.find(this.indexTopicId, {});
-      this.onChangeIndexTopic(this.indexTopicId, topic);
-    } finally {
-      this.loadingIndexTopic = false;
-    }
+    return validateDocIndexSections(sections);
   }
 
   @action
-  onChangeIndexTopic(topicId, topic) {
-    this.indexTopic = topic;
-    this.indexTopicId = topicId;
-    this.category.doc_index_topic_id = topicId;
+  openEditorModal() {
+    this.modal.show(DocIndexEditorModal, {
+      model: {
+        category: this.modeState.category,
+        indexData: this.modeState.indexData,
+        form: this.args.outletArgs.form,
+        transientData: this.args.outletArgs.transientData,
+      },
+    });
   }
 
   <template>
-    <span {{didInsert this.loadIndexTopic}}></span>
-
     <h3>{{i18n "doc_categories.category_settings.title"}}</h3>
-    <section
-      class="field doc-categories-settings doc-categories-settings__index-topic"
-    >
-      <label class="label">
-        {{i18n "doc_categories.category_settings.index_topic.label"}}
-      </label>
-      <div class="controls">
-        <TopicChooser
-          @value={{this.indexTopicId}}
-          @content={{this.indexTopicContent}}
-          @onChange={{this.onChangeIndexTopic}}
-          @options={{hash additionalFilters=this.searchFilters}}
+    <section class="field doc-categories-settings">
+      <div
+        class="doc-categories-settings__mode-selector"
+        {{didInsert this.modeState.loadIndexTopic}}
+      >
+        <DocIndexModeSelector
+          @currentModeLabel={{this.modeState.currentModeLabel}}
+          @showEditorOption={{this.showEditorOption}}
+          @onSwitchToNone={{this.modeState.switchToNoneMode}}
+          @onSwitchToTopic={{this.modeState.switchToTopicMode}}
+          @onSwitchToDirect={{this.modeState.switchToDirectMode}}
         />
-        {{#if this.shouldDisplayErrorMessage}}
-          <div class="validation-error">
-            {{icon "xmark"}}
-            {{this.errorMessage}}
-          </div>
-        {{/if}}
       </div>
+
+      {{#if this.modeState.isNoneMode}}
+        <p class="doc-category-index-tab__none-help">
+          {{i18n
+            "doc_categories.category_settings.index_editor.none_mode_help"
+          }}
+        </p>
+      {{else if this.modeState.isTopicMode}}
+        <div class="doc-categories-settings__index-topic">
+          <label class="label">
+            {{i18n "doc_categories.category_settings.index_topic.label"}}
+          </label>
+          <div class="controls">
+            <TopicChooser
+              @value={{this.modeState.indexTopicId}}
+              @content={{this.modeState.indexTopicContent}}
+              @onChange={{this.modeState.onChangeIndexTopic}}
+              @options={{hash additionalFilters=this.modeState.searchFilters}}
+            />
+            {{#if this.modeState.topicErrorMessage}}
+              <div class="validation-error">
+                {{icon "xmark"}}
+                {{this.modeState.topicErrorMessage}}
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      {{else if this.modeState.isDirectMode}}
+        <div class="doc-categories-settings__editor-trigger">
+          <DButton
+            @icon="pencil"
+            @label="doc_categories.category_settings.index_editor.open_editor"
+            @action={{this.openEditorModal}}
+            class="btn-default"
+          />
+          {{#each this.editorValidationErrors as |error|}}
+            <div class="doc-categories-settings__editor-errors">
+              {{icon "xmark"}}
+              {{error}}
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
     </section>
   </template>
 }
