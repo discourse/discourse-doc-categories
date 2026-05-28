@@ -71,6 +71,7 @@ body.doc-simple-mode {
     .topic-meta-data {
       padding-block: 0;
       font-size: var(--font-down-1);
+      justify-content: end;
 
       .post-infos {
         justify-content: end;
