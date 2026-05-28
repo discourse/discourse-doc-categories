@@ -60,16 +60,30 @@ body.doc-simple-mode {
       display: none;
     }
 
+    .topic-body {
+      padding-top: 0;
+    }
+
     .topic-meta-data .names {
       display: none;
     }
 
-    .topic-meta-data .post-infos {
-      position: absolute;
-      right: 0;
-      top: 0;
-      transform: translateY(-100%);
-      margin-top: -1em;
+    .topic-meta-data {
+      padding-block: 0;
+      font-size: var(--font-down-1);
+      justify-content: end;
+
+      .post-infos {
+        justify-content: end;
+      }
+    }
+
+    .boxed .contents {
+      padding-top: 0;
+    }
+
+    .cooked {
+      padding-top: 0;
     }
 
     .topic-body {
