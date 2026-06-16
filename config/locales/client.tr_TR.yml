@@ -20,6 +20,10 @@ tr_TR:
   js:
     doc_categories:
       simple_mode:
+        show_comments:
+          one: "%{count} yorum göster"
+          other: "%{count} yorum göster"
+        hide_comments: "Yorumları gizle"
         updated: "Güncellendi"
       category_settings:
         title: "Dokümantasyon Modu"
