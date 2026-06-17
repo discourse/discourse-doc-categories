@@ -60,7 +60,7 @@ module DocCategories
           .filter_map { |link| DocCategories::Url.extract_topic_id_from_url(link[:href]) }
           .uniq
 
-      topics_by_id = ::Topic.where(id: topic_ids).index_by(&:id)
+      topics_by_id = ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
 
       raw_sections.filter_map do |section|
         links =
@@ -71,17 +71,29 @@ module DocCategories
             link_text = link[:text]
 
             topic_id = DocCategories::Url.extract_topic_id_from_url(href)
-            target_topic = topic_id.present? ? topics_by_id[topic_id] : nil
+            target_topic =
+              topic_id.present? ? sidebar_visible_target_topic(topics_by_id[topic_id]) : nil
             has_explicit_title = link_text.present? && link_text != href
             text = has_explicit_title ? link_text : (target_topic&.title || href)
 
-            { text: text, href: href, topic_id: topic_id }
+            { text: text, href: href, topic_id: target_topic&.id }
           end
 
         next if links.blank?
 
         { text: section[:text], links: links }
       end
+    end
+
+    def sidebar_visible_target_topic(topic)
+      return nil if topic.blank?
+      return nil if topic.private_message?
+      return nil if topic.trashed?
+      return nil if !topic.visible?
+      return topic if topic.category_id == category_id
+      return nil if topic.category&.read_restricted?
+
+      topic
     end
 
     def valid_topic?(topic)

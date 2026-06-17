@@ -73,12 +73,7 @@ describe DocCategories::IndexStructureRefresher do
             other_category_topic.title,
             other_category_topic.id,
           ],
-          [
-            3,
-            "/t/#{invisible_topic.slug}/#{invisible_topic.id}",
-            invisible_topic.title,
-            invisible_topic.id,
-          ],
+          [3, "/t/#{invisible_topic.slug}/#{invisible_topic.id}", invisible_topic.title, nil],
           [
             4,
             "#{Discourse.base_url}/t/#{doc_topic_bare_url.slug}/#{doc_topic_bare_url.id}",
@@ -86,6 +81,35 @@ describe DocCategories::IndexStructureRefresher do
             doc_topic_bare_url.id,
           ],
           [5, "https://example.com/docs", "External", nil],
+        ],
+      )
+    end
+
+    it "keeps bare URLs for private topic targets" do
+      restricted_group = Fabricate(:group)
+      private_category = Fabricate(:private_category, group: restricted_group)
+      private_category_topic = Fabricate(:topic_with_op, category: private_category)
+      private_message_topic = Fabricate(:private_message_topic)
+      private_category_url =
+        "#{Discourse.base_url}/t/#{private_category_topic.slug}/#{private_category_topic.id}"
+      private_message_url =
+        "#{Discourse.base_url}/t/#{private_message_topic.slug}/#{private_message_topic.id}"
+      index_topic.first_post.update!(raw: <<~MD)
+          ## Sensitive Links
+          * #{private_category_url}
+          * #{private_message_url}
+        MD
+      index_topic.first_post.rebake!
+
+      refresher.refresh!
+
+      section = sidebar_sections.first
+      expect(
+        section.sidebar_links.map { |link| [link.position, link.href, link.title, link.topic_id] },
+      ).to eq(
+        [
+          [0, private_category_url, private_category_url, nil],
+          [1, private_message_url, private_message_url, nil],
         ],
       )
     end
