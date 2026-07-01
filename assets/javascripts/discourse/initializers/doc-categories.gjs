@@ -1,3 +1,5 @@
+import { schedule } from "@ember/runloop";
+import DiscourseURL from "discourse/lib/url";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DocCategorySettings from "../components/doc-category-settings";
 import DocCategorySettingsForm from "../components/doc-category-settings-form";
@@ -89,6 +91,47 @@ export default {
           return tabs.filter((tab) => tab.id !== "suggested-topics");
         }
       );
+
+      // Own replies should be visible immediately rather than flashing and
+      // then getting swallowed back behind "Show xx comments". While
+      // collapsed, the stream only has the OP loaded, so committing a reply
+      // several posts ahead (post_number-wise) leaves a gap of un-fetched
+      // posts between the OP and the new reply. Force an authoritative
+      // reload of that window instead of trying to reconstruct it locally.
+      api.onAppEvent("post:created", async (post) => {
+        const postStream =
+          post.topic?.postStream ??
+          container.lookup("controller:topic")?.model?.postStream;
+        if (
+          !postStream ||
+          !inDocSimpleMode(siteSettings, postStream.topic?.category)
+        ) {
+          return;
+        }
+
+        const state = getState(postStream);
+        if (state.expanded === false) {
+          const index = postStream.posts.indexOf(post);
+          const previousPost = index > 0 ? postStream.posts[index - 1] : null;
+          const hasGap =
+            previousPost && post.post_number > previousPost.post_number + 1;
+
+          state.hiddenIds = [];
+          state.hiddenCount = 0;
+          state.expanded = true;
+
+          if (hasGap) {
+            await postStream.refresh({
+              nearPost: post.post_number,
+              forceLoad: true,
+            });
+          }
+        }
+
+        schedule("afterRender", () => {
+          DiscourseURL.jumpToPost(post.post_number, { jumpEnd: true });
+        });
+      });
 
       api.renderAfterWrapperOutlet("post-links", DocSimpleModeToggle);
     });

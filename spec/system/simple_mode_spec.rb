@@ -118,6 +118,21 @@ describe "Doc Categories Simple Mode" do
     expect(page).to have_css("[data-post-number='4']")
   end
 
+  it "expands and shows the user's own reply immediately after posting" do
+    topic_page.visit_topic(documentation_topic)
+
+    expect(toggle).to have_show_comments_button(count: 3)
+
+    topic_page.click_reply_button
+    topic_page.send_reply("This is my own new reply")
+
+    expect(page).to have_css("[data-post-number='5']", text: "This is my own new reply")
+    expect(toggle).to have_hide_comments_button
+    expect(page).to have_css("[data-post-number='2']")
+    expect(page).to have_css("[data-post-number='3']")
+    expect(page).to have_css("[data-post-number='4']")
+  end
+
   it "resets comments state when navigating between doc topics" do
     topic_page.visit_topic(documentation_topic)
 
