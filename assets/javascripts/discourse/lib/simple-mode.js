@@ -71,11 +71,10 @@ export function expandStream(postStream) {
 
   postStream.stream.splice(0, postStream.stream.length, ...fullStream);
 
-  // Posts other than the OP are lazy-loaded as the user scrolls; we only need
-  // to ensure the OP is still present in the `posts` array.
-  if (!postStream.posts.find((p) => p.post_number === 1)) {
-    postStream.posts.splice(0, postStream.posts.length, opPost);
-  }
+  const restoredPosts = fullStream
+    .map((id) => postStream.findLoadedPost(id))
+    .filter(Boolean);
+  postStream.posts.splice(0, postStream.posts.length, ...restoredPosts);
 
   state.hiddenIds = [];
   state.hiddenCount = 0;

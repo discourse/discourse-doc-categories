@@ -1,3 +1,5 @@
+import { schedule } from "@ember/runloop";
+import DiscourseURL from "discourse/lib/url";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DocCategorySettings from "../components/doc-category-settings";
 import DocCategorySettingsForm from "../components/doc-category-settings-form";
@@ -7,6 +9,7 @@ import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel";
 import {
   attachNewPostInterceptor,
   collapseStream,
+  expandStream,
   getState,
   inDocSimpleMode,
 } from "../lib/simple-mode";
@@ -89,6 +92,27 @@ export default {
           return tabs.filter((tab) => tab.id !== "suggested-topics");
         }
       );
+
+      api.onAppEvent("post:created", (post) => {
+        const postStream =
+          post.topic?.postStream ??
+          container.lookup("controller:topic")?.model?.postStream;
+        if (
+          !postStream ||
+          !inDocSimpleMode(siteSettings, postStream.topic?.category)
+        ) {
+          return;
+        }
+
+        const state = getState(postStream);
+        if (state.expanded === false) {
+          expandStream(postStream);
+        }
+
+        schedule("afterRender", () => {
+          DiscourseURL.jumpToPost(post.post_number, { jumpEnd: true });
+        });
+      });
 
       api.renderAfterWrapperOutlet("post-links", DocSimpleModeToggle);
     });

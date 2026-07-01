@@ -137,10 +137,10 @@ module("Integration | Component | doc-simple-mode-toggle", function (hooks) {
       [100, 101, 102, 103],
       "stream is restored to the original"
     );
-    assert.strictEqual(
-      postStream.posts.length,
-      1,
-      "only the OP stays in posts (other posts are lazy-loaded)"
+    assert.deepEqual(
+      postStream.posts.map((p) => p.id),
+      [100, 101, 102, 103],
+      "posts are restored from the identity map"
     );
 
     await click(".doc-simple-mode-toggle__button");
