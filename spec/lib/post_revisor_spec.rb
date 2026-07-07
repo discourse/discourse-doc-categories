@@ -60,7 +60,11 @@ describe PostRevisor do
       revisor = PostRevisor.new(post)
 
       expect {
-        revisor.revise!(post.user, raw: "#{post.raw}\nUpdated content", title: "A valid updated topic title")
+        revisor.revise!(
+          post.user,
+          raw: "#{post.raw}\nUpdated content",
+          title: "A valid updated topic title",
+        )
       }.to change { post.topic.reload.bumped_at }
     end
   end
