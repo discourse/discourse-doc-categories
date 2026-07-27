@@ -77,6 +77,14 @@ describe "Doc Category Sidebar" do
     { title: title || topic.title, href: href, topic: topic }
   end
 
+  def set_navigation_menu(value)
+    if SiteSetting.themeable[:navigation_menu]
+      Fabricate(:theme_site_setting_with_service, name: "navigation_menu", value:)
+    else
+      SiteSetting.navigation_menu = value
+    end
+  end
+
   def create_doc_categories_index(category:, index_topic:, sections: [])
     DocCategories::Index
       .create!(category: category, index_topic: index_topic)
@@ -98,7 +106,7 @@ describe "Doc Category Sidebar" do
   end
 
   before do
-    SiteSetting.navigation_menu = "sidebar"
+    set_navigation_menu("sidebar")
     SiteSetting.doc_categories_enabled = true
     Site.clear_cache
   end
@@ -110,6 +118,25 @@ describe "Doc Category Sidebar" do
 
       visit("/t/#{topic.slug}/#{topic.id}")
       expect(sidebar).to have_section("categories")
+    end
+  end
+
+  context "when using header dropdown navigation" do
+    let(:sidebar_dropdown) { PageObjects::Components::SidebarHeaderDropdown.new }
+
+    before { set_navigation_menu("header dropdown") }
+
+    it "displays the docs navigation in the header dropdown" do
+      visit("/c/#{documentation_category.slug}/#{documentation_category.id}")
+
+      expect(sidebar).to be_not_visible
+
+      sidebar_dropdown.click
+      expect(sidebar_dropdown).to be_visible
+      expect_docs_sidebar_to_be_correct
+
+      page.find(".sidebar-section-link", text: documentation_topic.title).click
+      expect(page).to have_current_path(documentation_topic.relative_url)
     end
   end
 

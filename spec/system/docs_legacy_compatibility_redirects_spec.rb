@@ -17,7 +17,6 @@ RSpec.describe "Docs Category Sidebar" do
   before do
     GlobalSetting.stubs(:docs_path).returns("docs")
 
-    SiteSetting.navigation_menu = "sidebar"
     SiteSetting.doc_categories_enabled = true
     SiteSetting.doc_categories_homepage = "/c/#{category.slug}/#{category.id}"
   end
