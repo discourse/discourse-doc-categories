@@ -21,5 +21,6 @@ zh_CN:
         reason: "原因"
   site_settings:
     doc_categories_enabled: "启用 Discourse Doc Categories 插件"
+    doc_categories_simple_mode: "为文档类别启用简易模式。简化话题列表，并在话题页面上的切换按钮之后收起评论。"
     doc_categories_docs_legacy_enabled: "为旧版 Docs 插件 URL 启用重定向。如果已安装并启用 Docs 插件，此设置将不会生效。"
     doc_categories_homepage: "启用 `doc_categories_docs_legacy_enabled` 时，旧版文档首页将重定向到此地址。"
