@@ -20,6 +20,10 @@ de:
   js:
     doc_categories:
       simple_mode:
+        show_comments:
+          one: "%{count} Kommentar anzeigen"
+          other: "%{count} Kommentare anzeigen"
+        hide_comments: "Kommentare ausblenden"
         updated: "Aktualisiert"
       category_settings:
         title: "Dokumentationsmodus"

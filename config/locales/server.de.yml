@@ -21,5 +21,6 @@ de:
         reason: "Grund"
   site_settings:
     doc_categories_enabled: "Aktiviere das Discourse Doc Categories Plugin"
+    doc_categories_simple_mode: "Aktiviere den einfachen Modus für Dokumentkategorien. Dadurch werden Themenlisten vereinfacht und Kommentare auf Themenseiten hinter einem Schalter ausgeblendet."
     doc_categories_docs_legacy_enabled: "Aktiviere Weiterleitungen für alte Docs-Plugin-URLs. Diese Einstellung hat keine Auswirkungen, wenn das Docs-Plugin installiert und aktiviert ist"
     doc_categories_homepage: "Wenn die Einstellung `doc_categories_docs_legacy_enabled` aktiviert ist, wird die alte Docs-Homepage auf diese Adresse umgeleitet."
