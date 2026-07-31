@@ -21,5 +21,6 @@ ar:
         reason: "السبب"
   site_settings:
     doc_categories_enabled: "تمكين المكون الإضافي لفئات مستندات Discourse"
+    doc_categories_simple_mode: "تفعيل الوضع البسيط لفئات المستندات. يبسِّط قوائم الموضوعات ويطوي التعليقات خلف زر تبديل على صفحات الموضوعات."
     doc_categories_docs_legacy_enabled: "تمكين عمليات إعادة التوجيه لعناوين URL لإضافات المستندات القديمة. هذا الإعداد ليس له أي تأثير إذا كان المكون الإضافي المستندات مثبتًا وممكّنًا"
     doc_categories_homepage: "عندما يتم تمكين 'doc_coc_categories_docs_docs_legacy_enabled' ستتم إعادة توجيه الصفحة الرئيسية للمستندات القديمة إلى هذا العنوان."
