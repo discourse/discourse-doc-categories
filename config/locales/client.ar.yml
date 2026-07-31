@@ -20,6 +20,14 @@ ar:
   js:
     doc_categories:
       simple_mode:
+        show_comments:
+          zero: "لا توجد تعليقات لعرضها"
+          one: "عرض تعليق واحد (%{count})"
+          two: "عرض تعليقين (%{count})"
+          few: "عرض %{count} تعليقات"
+          many: "عرض %{count} تعليقًا"
+          other: "عرض %{count} تعليق"
+        hide_comments: "إخفاء التعليقات"
         updated: "تاريخ التحديث"
       category_settings:
         title: "وضع المستندات"
