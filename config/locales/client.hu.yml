@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 hu:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Frissítve"

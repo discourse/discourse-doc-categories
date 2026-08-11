@@ -50,7 +50,7 @@ describe PostRevisor do
       post = doc_topic.first_post
       revisor = PostRevisor.new(post)
 
-      expect { revisor.revise!(post.user, title: "New Title") }.not_to change {
+      expect { revisor.revise!(post.user, title: "A valid updated topic title") }.not_to change {
         post.topic.reload.bumped_at
       }
     end
@@ -60,7 +60,11 @@ describe PostRevisor do
       revisor = PostRevisor.new(post)
 
       expect {
-        revisor.revise!(post.user, raw: "#{post.raw}\nUpdated content", title: "New Title")
+        revisor.revise!(
+          post.user,
+          raw: "#{post.raw}\nUpdated content",
+          title: "A valid updated topic title",
+        )
       }.to change { post.topic.reload.bumped_at }
     end
   end

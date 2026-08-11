@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 ko:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "업데이트"

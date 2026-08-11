@@ -52,8 +52,8 @@ module DocCategories
       context[:raw_sections] = DocCategories::DocIndexTopicParser.new(first_post.cooked).sections
     end
 
-    def build_sections(raw_sections:)
-      context[:built_sections] = process_raw_sections(raw_sections)
+    def build_sections(index:, raw_sections:)
+      context[:built_sections] = process_raw_sections(raw_sections, index.category_id)
     end
 
     def replace_sections(index:, built_sections:)
@@ -80,7 +80,7 @@ module DocCategories
       publish_changes_for(index.category_id)
     end
 
-    def process_raw_sections(raw_sections)
+    def process_raw_sections(raw_sections, category_id)
       return [] if raw_sections.blank?
 
       topic_ids =
@@ -89,7 +89,7 @@ module DocCategories
           .filter_map { |link| DocCategories::Url.extract_topic_id_from_url(link[:href]) }
           .uniq
 
-      topics_by_id = ::Topic.where(id: topic_ids).index_by(&:id)
+      topics_by_id = ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
 
       raw_sections.filter_map do |section|
         links =
@@ -100,17 +100,35 @@ module DocCategories
             link_text = link[:text]
 
             topic_id = DocCategories::Url.extract_topic_id_from_url(href)
-            target_topic = topic_id.present? ? topics_by_id[topic_id] : nil
+            target_topic =
+              if topic_id.present?
+                sidebar_visible_target_topic(topics_by_id[topic_id], category_id)
+              end
             has_explicit_title = link_text.present? && link_text != href
             text = has_explicit_title ? link_text : (target_topic&.title || href)
 
-            { text: text, href: href, topic_id: topic_id }
+            { text: text, href: href, topic_id: target_topic&.id }
           end
 
         next if links.blank?
 
         { text: section[:text], links: links }
       end
+    end
+
+    # Kept from `main`: a link may point anywhere, so a topic the reader cannot
+    # see must not reach the sidebar, title included. The index's own category is
+    # allowed outright; anything else has to be in a category that is not
+    # read restricted.
+    def sidebar_visible_target_topic(topic, category_id)
+      return nil if topic.blank?
+      return nil if topic.private_message?
+      return nil if topic.trashed?
+      return nil if !topic.visible?
+      return topic if topic.category_id == category_id
+      return nil if topic.category&.read_restricted?
+
+      topic
     end
 
     def publish_changes_for(category_id)

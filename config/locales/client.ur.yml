@@ -14,3 +14,7 @@ ur:
               label: "زمرہ"
             include_topic_from_subcategories:
               label: "ذیلی زمرہ جات سے موضوعات شامل کریں"
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "اپ ڈیٹ"

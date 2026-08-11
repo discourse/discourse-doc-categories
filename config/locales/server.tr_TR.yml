@@ -21,5 +21,6 @@ tr_TR:
         reason: "Neden"
   site_settings:
     doc_categories_enabled: "Discourse Doküman Kategorileri Eklentisini Etkinleştirin"
+    doc_categories_simple_mode: "Belge kategorileri için basit modu etkinleştir. Konu listelerini sadeleştirir ve konu sayfalarında yorumları bir açma/kapama düğmesinin arkasına gizler."
     doc_categories_docs_legacy_enabled: "Eski Dökümanlar Eklentisi URL'leri için yönlendirmeleri etkinleştirin. Dökümanlar eklentisi yüklü ve etkinleştirilmişse bu ayar hiçbir etkiye sahip değildir."
     doc_categories_homepage: "`doc_categories_docs_legacy_enabled` olduğunda, eski dokümanlar ana sayfası bu adrese yönlendirilecektir."

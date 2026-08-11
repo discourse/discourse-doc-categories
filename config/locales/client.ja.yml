@@ -19,6 +19,8 @@ ja:
           doc_categories: "ドキュメントのカテゴリ"
   js:
     doc_categories:
+      simple_mode:
+        updated: "更新"
       category_settings:
         title: "ドキュメントモード"
         index_topic:

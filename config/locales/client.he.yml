@@ -17,3 +17,13 @@ he:
       site_settings:
         categories:
           doc_categories: "קטגוריות תיעוד"
+  js:
+    doc_categories:
+      simple_mode:
+        show_comments:
+          one: "הצגת תגובה"
+          two: "הצגת שתי תגובות"
+          many: "הצגת %{count} תגובות"
+          other: "הצגת %{count} תגובות"
+        hide_comments: "הסתרת תגובות"
+        updated: "עודכן"

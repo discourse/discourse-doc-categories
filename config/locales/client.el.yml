@@ -19,6 +19,8 @@ el:
           doc_categories: "Κατηγορίες τεκμηρίωσης"
   js:
     doc_categories:
+      simple_mode:
+        updated: "Ενημερώθηκε"
       category_settings:
         title: "Λειτουργία τεκμηρίωσης"
         index_topic:

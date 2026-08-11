@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 fi:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "Päivitetty"

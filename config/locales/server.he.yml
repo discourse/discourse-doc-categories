@@ -5,3 +5,5 @@
 # https://translate.discourse.org/
 
 he:
+  site_settings:
+    doc_categories_simple_mode: "הפעלת מצב פשוט לקטגוריות מסמכים. מפשט את רשימות הנושאים ומצמצם תגובות מאחורי מצד בעמודי נושאים."

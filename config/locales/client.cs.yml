@@ -19,6 +19,8 @@ cs:
           doc_categories: "Dokumentované kategorie"
   js:
     doc_categories:
+      simple_mode:
+        updated: "Aktualizováno"
       category_settings:
         title: "Dokumentace"
         index_topic:

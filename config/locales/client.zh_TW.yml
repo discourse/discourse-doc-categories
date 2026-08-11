@@ -5,3 +5,7 @@
 # https://translate.discourse.org/
 
 zh_TW:
+  js:
+    doc_categories:
+      simple_mode:
+        updated: "更新時間"

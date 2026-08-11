@@ -19,6 +19,11 @@ zh_CN:
           doc_categories: "文档类别"
   js:
     doc_categories:
+      simple_mode:
+        show_comments:
+          other: "显示 %{count} 条评论"
+        hide_comments: "隐藏评论"
+        updated: "更新时间"
       category_settings:
         title: "文档模式"
         index_topic:
