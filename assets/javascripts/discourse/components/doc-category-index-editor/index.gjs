@@ -1018,6 +1018,7 @@ export default class DocCategoryIndexEditor extends Component {
             />
             <DMenu
               @identifier="index-options-menu"
+              @placement="bottom-end"
               @triggerClass="btn-default doc-category-index-editor__options-trigger"
             >
               <:trigger>
@@ -1181,15 +1182,23 @@ export default class DocCategoryIndexEditor extends Component {
       >
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__footer">
-            <DComboButton class="--has-menu btn-small">
+            <DComboButton
+              class={{concatClass
+                (unless this.hasAutoIndexSection "--has-menu")
+              }}
+            >
               <:default as |combo|>
                 <combo.Button
                   @action={{this.addSection}}
                   @icon="plus"
                   @label="doc_categories.category_settings.index_editor.add_section"
+                  class="btn-default btn-small"
                 />
                 {{#unless this.hasAutoIndexSection}}
-                  <combo.Menu @identifier="add-section-menu">
+                  <combo.Menu
+                    @identifier="add-section-menu"
+                    class="btn-default btn-small"
+                  >
                     <DropdownMenu as |dropdown|>
                       <dropdown.item>
                         <DButton

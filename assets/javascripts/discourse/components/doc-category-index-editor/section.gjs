@@ -734,16 +734,18 @@ export class IndexEditorSection extends Component {
 
             {{#unless @batchMode}}
               <div class="doc-category-index-editor__section-actions">
-                <DComboButton class="--has-menu btn-small">
+                <DComboButton class="--has-menu">
                   <:default as |combo|>
                     <combo.Button
                       @action={{this.showTopicChooser}}
                       @icon="plus"
                       @label="doc_categories.category_settings.index_editor.add_topic"
+                      class="btn-default btn-small"
                     />
                     <combo.Menu
                       @identifier="section-add-menu"
                       @onRegisterApi={{this.registerAddMenuApi}}
+                      class="btn-default btn-small"
                     >
                       <DropdownMenu as |dropdown|>
                         <dropdown.item>

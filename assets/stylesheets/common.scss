@@ -829,14 +829,14 @@ body.doc-simple-mode {
 label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5em;
-  padding: 0.25em var(--d-sidebar-row-horizontal-padding);
+  gap: var(--d-sidebar-section-link-prefix-margin-right);
+  height: var(--d-sidebar-row-height);
+  padding-inline: var(--d-sidebar-row-horizontal-padding);
   cursor: pointer;
-  font-size: var(--font-down-1);
   font-weight: normal;
-  color: var(--primary-medium);
 
   input[type="checkbox"] {
+    width: var(--d-sidebar-section-link-prefix-width);
     margin: 0;
   }
 }
