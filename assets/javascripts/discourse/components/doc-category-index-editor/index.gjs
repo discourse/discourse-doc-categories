@@ -35,6 +35,7 @@ const DRAGGABLE_TYPES = [SECTION_DRAG_TYPE, LINK_DRAG_TYPE];
 
 /* Main index editor */
 export default class DocCategoryIndexEditor extends Component {
+  @service a11y;
   @service dialog;
 
   @tracked sections = trackedArray(this.#initSections());
@@ -48,8 +49,18 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked batchMode = false;
   @tracked isBatchDragging = false;
   @tracked batchDragType = null;
+
+  /**
+   * Which link should take the focus its row lost, and in which direction.
+   * Written from the press that moves the row, never from a render, so tracking
+   * it costs nothing and an untracked one would simply never reach the row: the
+   * child's argument would keep the value it was last rendered with.
+   */
+  @tracked pendingArrowFocus = null;
+
   selectedItems = trackedSet();
   selectedSections = trackedSet();
+
   #draggedLink = null;
   #draggedLinkSourceSection = null;
   #draggedSection = null;
@@ -350,6 +361,109 @@ export default class DocCategoryIndexEditor extends Component {
     this.#draggedSection = null;
     this.isDraggingSection = false;
     this._saveToTransientData();
+  }
+
+  /**
+   * Moves a section one place, for the keyboard path beside the drag.
+   *
+   * @param section - The section being moved.
+   * @param delta - `-1` for earlier, `1` for later.
+   * @param label - What to call the section when announcing the move, which the
+   *   section itself already resolves for its own heading.
+   */
+  @action
+  moveSection(section, delta, label) {
+    const from = this.sections.indexOf(section);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= this.sections.length) {
+      return;
+    }
+
+    this.sections.splice(from, 1);
+    this.sections.splice(to, 0, section);
+    this.a11y.announce(
+      i18n("reorder_announcement", {
+        label,
+        position: to + 1,
+        total: this.sections.length,
+      })
+    );
+    this._saveToTransientData();
+  }
+
+  /**
+   * Moves a link one place, carrying it into the neighbouring section when it
+   * steps past either end of its own, so the arrows reach everywhere the drag
+   * does and nothing here is pointer-only.
+   *
+   * @param link - The link being moved.
+   * @param section - The section it currently sits in.
+   * @param delta - `-1` for earlier, `1` for later.
+   */
+  @action
+  moveLink(link, section, delta) {
+    const links = section.links;
+    const from = links.indexOf(link);
+    if (from === -1) {
+      return;
+    }
+
+    const to = from + delta;
+    if (to >= 0 && to < links.length) {
+      links.splice(from, 1);
+      links.splice(to, 0, link);
+      this.a11y.announce(
+        i18n("reorder_announcement", {
+          label: link.title,
+          position: to + 1,
+          total: links.length,
+        })
+      );
+      this._saveToTransientData();
+      return;
+    }
+
+    const neighbor = this.sections[this.sections.indexOf(section) + delta];
+    if (!neighbor) {
+      return;
+    }
+
+    // The row is about to be destroyed and rebuilt under the other section, so
+    // the pair cannot take its own focus back the way it does within a list.
+    this.pendingArrowFocus = { link, direction: delta > 0 ? "down" : "up" };
+
+    links.splice(from, 1);
+    // Entering from above lands first and entering from below lands last, so
+    // the link keeps travelling the way it was pushed.
+    const insertAt = delta > 0 ? 0 : neighbor.links.length;
+    neighbor.links.splice(insertAt, 0, link);
+    // Names the section it landed in: crossing that boundary is the one part of
+    // the move a listener has no way to infer.
+    this.a11y.announce(
+      i18n("doc_categories.category_settings.index_editor.moved_to_section", {
+        label: link.title,
+        section: this.#sectionLabel(neighbor),
+        position: insertAt + 1,
+        total: neighbor.links.length,
+      })
+    );
+    this._saveToTransientData();
+  }
+
+  /** The row took the focus it was owed, so the debt is settled. */
+  @action
+  clearArrowFocus() {
+    this.pendingArrowFocus = null;
+  }
+
+  /** What to call a section a link has just landed in. */
+  #sectionLabel(section) {
+    return (
+      section.title?.trim() ||
+      i18n(
+        "doc_categories.category_settings.index_editor.first_section_no_title"
+      )
+    );
   }
 
   @bind
@@ -1135,10 +1249,16 @@ export default class DocCategoryIndexEditor extends Component {
       {{/if}}
 
       <div class="doc-category-index-editor__sections">
-        {{#each this.sections as |section|}}
+        {{#each this.sections as |section index|}}
           <IndexEditorSection
             @section={{section}}
             @isFirstSection={{this.isFirstSection}}
+            @sectionIndex={{index}}
+            @sectionCount={{this.sections.length}}
+            @moveSection={{this.moveSection}}
+            @moveLink={{this.moveLink}}
+            @pendingArrowFocus={{this.pendingArrowFocus}}
+            @onArrowFocusClaimed={{this.clearArrowFocus}}
             @categoryId={{@categoryId}}
             @searchFilters={{this.searchFilters}}
             @duplicateHrefs={{this.duplicateHrefs}}

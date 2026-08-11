@@ -14,6 +14,7 @@ import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import DReorderButtons from "discourse/ui-kit/d-reorder-buttons";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
@@ -42,6 +43,35 @@ export class IndexEditorLink extends Component {
   captureGrip = createModifier((element) => {
     this.gripElement = element;
     return () => (this.gripElement = undefined);
+  });
+
+  /**
+   * Takes back the focus a cross-section move dropped.
+   *
+   * The pair restores its own focus after a move within one list, but a move
+   * across sections destroys this row and builds a new one under the other
+   * section, so the pair that was pressed is gone before it can. The editor
+   * names the link it owes focus to and this claims it on the way in.
+   *
+   * Matched on the button's accessible name rather than its position, since
+   * that name is this row's own and the order of the pair is not ours.
+   */
+  claimArrowFocus = createModifier((element) => {
+    const pending = this.args.pendingArrowFocus;
+    if (pending?.link !== this.args.link) {
+      return;
+    }
+
+    const label =
+      pending.direction === "up" ? this.moveUpLabel : this.moveDownLabel;
+    [...element.querySelectorAll("button")]
+      .find((button) => button.title === label)
+      ?.focus();
+
+    // Cleared after the render that consumed it, never during: the editor holds
+    // this in tracked state and writing it here would be a mutation inside the
+    // render that just read it.
+    next(() => this.args.onArrowFocusClaimed?.());
   });
 
   #isNew = false;
@@ -96,6 +126,19 @@ export class IndexEditorLink extends Component {
         "doc_categories.category_settings.index_editor.link_title_placeholder"
       )
     );
+  }
+
+  get moveDownLabel() {
+    return i18n(
+      "doc_categories.category_settings.index_editor.move_link_down",
+      { label: this.displayTitle }
+    );
+  }
+
+  get moveUpLabel() {
+    return i18n("doc_categories.category_settings.index_editor.move_link_up", {
+      label: this.displayTitle,
+    });
   }
 
   get canConfirm() {
@@ -348,6 +391,25 @@ export class IndexEditorLink extends Component {
           class="doc-category-index-editor__drag-handle"
         />
       {{/if}}
+
+      {{#unless @batchMode}}
+        {{! The arrows are the only keyboard path to reorder, so they render on
+            every viewport. The drag beside them on desktop is an alternative to
+            them rather than a replacement. }}
+        <span
+          class="doc-category-index-editor__arrows-slot --link"
+          {{this.claimArrowFocus}}
+        >
+          <DReorderButtons
+            @onMoveUp={{@onMoveUp}}
+            @onMoveDown={{@onMoveDown}}
+            @disableUp={{@disableUp}}
+            @disableDown={{@disableDown}}
+            @upLabel={{this.moveUpLabel}}
+            @downLabel={{this.moveDownLabel}}
+          />
+        </span>
+      {{/unless}}
 
       {{#if this.isDuplicate}}
         <span

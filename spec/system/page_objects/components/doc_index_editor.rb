@@ -304,6 +304,48 @@ module PageObjects
         self
       end
 
+      # The arrows are the keyboard path beside the drag. Found by their
+      # accessible name rather than by position, since that name is the contract
+      # a screen reader user navigates by, and an index is what a reorder moves.
+      def move_link(title, direction)
+        find("button[title='#{move_link_label(title, direction)}']").click
+        self
+      end
+
+      def move_section(title, direction)
+        find("button[title='#{move_section_label(title, direction)}']").click
+        self
+      end
+
+      def has_link_move_disabled?(title, direction)
+        has_css?("button[title='#{move_link_label(title, direction)}'][aria-disabled='true']")
+      end
+
+      def has_link_move_available?(title, direction)
+        has_no_css?("button[title='#{move_link_label(title, direction)}'][aria-disabled='true']")
+      end
+
+      # A move that crosses a section boundary destroys the row and builds a new
+      # one, so keeping focus on the pressed arrow is the editor's job rather
+      # than the button pair's.
+      def has_focused_move_button?(title, direction)
+        has_css?("button[title='#{move_link_label(title, direction)}']:focus")
+      end
+
+      def move_link_label(title, direction)
+        I18n.t(
+          "js.doc_categories.category_settings.index_editor.move_link_#{direction}",
+          label: title,
+        )
+      end
+
+      def move_section_label(title, direction)
+        I18n.t(
+          "js.doc_categories.category_settings.index_editor.move_section_#{direction}",
+          label: title,
+        )
+      end
+
       # Link titles in render order, which is the only thing a reorder changes
       # and so the only thing worth measuring one against.
       def link_labels

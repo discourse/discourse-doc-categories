@@ -19,6 +19,7 @@ import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import DReorderButtons from "discourse/ui-kit/d-reorder-buttons";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
@@ -91,6 +92,28 @@ export class IndexEditorSection extends Component {
 
   get isFirstSection() {
     return this.args.isFirstSection?.(this.args.section);
+  }
+
+  get isLastSection() {
+    return this.args.sectionIndex === this.args.sectionCount - 1;
+  }
+
+  get lastLinkIndex() {
+    return this.args.section.links.length - 1;
+  }
+
+  get moveSectionDownLabel() {
+    return i18n(
+      "doc_categories.category_settings.index_editor.move_section_down",
+      { label: this.displayTitle }
+    );
+  }
+
+  get moveSectionUpLabel() {
+    return i18n(
+      "doc_categories.category_settings.index_editor.move_section_up",
+      { label: this.displayTitle }
+    );
   }
 
   get missingTitleError() {
@@ -203,6 +226,26 @@ export class IndexEditorSection extends Component {
   @action
   canDropLinkIntoSection() {
     return this.#isEmptyItemDrag;
+  }
+
+  @action
+  moveLinkDown(link) {
+    this.args.moveLink(link, this.args.section, 1);
+  }
+
+  @action
+  moveLinkUp(link) {
+    this.args.moveLink(link, this.args.section, -1);
+  }
+
+  @action
+  moveSectionDown() {
+    this.args.moveSection(this.args.section, 1, this.displayTitle);
+  }
+
+  @action
+  moveSectionUp() {
+    this.args.moveSection(this.args.section, -1, this.displayTitle);
   }
 
   @action
@@ -455,6 +498,22 @@ export class IndexEditorSection extends Component {
         />
       {{/if}}
 
+      {{#unless @batchMode}}
+        {{! The arrows are the only keyboard path to reorder, so they render on
+            every viewport. The drag beside them on desktop is an alternative to
+            them rather than a replacement. }}
+        <span class="doc-category-index-editor__arrows-slot --section">
+          <DReorderButtons
+            @onMoveUp={{this.moveSectionUp}}
+            @onMoveDown={{this.moveSectionDown}}
+            @disableUp={{eq @sectionIndex 0}}
+            @disableDown={{this.isLastSection}}
+            @upLabel={{this.moveSectionUpLabel}}
+            @downLabel={{this.moveSectionDownLabel}}
+          />
+        </span>
+      {{/unless}}
+
       <div
         class={{concatClass
           "doc-category-index-editor__section"
@@ -662,10 +721,22 @@ export class IndexEditorSection extends Component {
         >
           {{#unless this.collapsed}}
             <div class="doc-category-index-editor__links">
-              {{#each @section.links as |link|}}
+              {{#each @section.links as |link index|}}
                 <IndexEditorLink
                   @link={{link}}
                   @section={{@section}}
+                  @pendingArrowFocus={{@pendingArrowFocus}}
+                  @onArrowFocusClaimed={{@onArrowFocusClaimed}}
+                  @onMoveUp={{fn this.moveLinkUp link}}
+                  @onMoveDown={{fn this.moveLinkDown link}}
+                  {{! A link steps into the neighbouring section at either end,
+                      so a direction only runs out at the very top or bottom of
+                      the whole index. }}
+                  @disableUp={{and (eq index 0) this.isFirstSection}}
+                  @disableDown={{and
+                    (eq index this.lastLinkIndex)
+                    this.isLastSection
+                  }}
                   @searchFilters={{@searchFilters}}
                   @duplicateHrefs={{@duplicateHrefs}}
                   @favoriteIcons={{@favoriteIcons}}
