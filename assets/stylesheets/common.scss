@@ -171,6 +171,9 @@ body.doc-simple-mode {
 .doc-category-index-editor {
   --doc-index-section-gap: 0.75em;
 
+  /* The grip's box: its icon plus the padding around it. */
+  --doc-index-grip-size: calc(1em + 0.5em);
+
   &__toolbar-actions {
     display: flex;
     align-items: stretch;
@@ -463,7 +466,7 @@ body.doc-simple-mode {
 
   &__drag-handle-spacer {
     flex-shrink: 0;
-    width: calc(1em + 0.5em);
+    width: var(--doc-index-grip-size);
   }
 
   &__link-card.--ghost {
@@ -638,6 +641,30 @@ body.doc-simple-mode {
 
     /* Align with link card icons (link padding + card border + card padding) */
     .doc-category-index-editor__link > & {
+      margin-top: calc(0.15em + 0.35em);
+    }
+  }
+
+  /* A box the size of the grip, holding the reorder pair centred within it, so
+     the two line up on one optical row. The pair carries a font-size of its own,
+     which is why the offsets live out here: an `em` written on the pair itself
+     is a fraction of the grip's, and lands short. The pair is taller than the
+     box and overhangs it evenly, which keeps it out of the row's height. */
+
+  &__arrows-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--doc-index-grip-size);
+    height: var(--doc-index-grip-size);
+
+    /* Each matches the grip's own offset in the same row. */
+    &.--section {
+      margin-top: calc(0.75em + 0.25em);
+    }
+
+    &.--link {
       margin-top: calc(0.15em + 0.35em);
     }
   }
