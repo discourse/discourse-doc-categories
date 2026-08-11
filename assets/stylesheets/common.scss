@@ -169,6 +169,8 @@ body.doc-simple-mode {
 
 /* Doc category index editor */
 .doc-category-index-editor {
+  --doc-index-section-gap: 0.75em;
+
   &__toolbar-actions {
     display: flex;
     align-items: stretch;
@@ -190,8 +192,11 @@ body.doc-simple-mode {
   &__sections {
     display: flex;
     flex-direction: column;
-    gap: 0.75em;
+    gap: var(--doc-index-section-gap);
   }
+
+  /* The dragging and insertion-line treatments come from the shared drag
+     primitives now, keyed off the attributes their registrations stamp. */
 
   &__section-row {
     display: flex;
@@ -199,28 +204,17 @@ body.doc-simple-mode {
     gap: 0.35em;
     position: relative;
 
-    &.is-dragging {
-      opacity: 0.5;
+    /* Sections are spaced apart rather than adjacent, so a line sitting against
+       a row edge lands nearer one section than the other and the same slot
+       draws in two places depending on which row answered. Centred in the gap,
+       "after this one" and "before the next" share a position. */
+
+    &[data-drop-target].--drag-above::before {
+      top: calc(var(--doc-index-section-gap) / -2 - 1px);
     }
 
-    &.is-drag-above::before,
-    &.is-drag-below::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--tertiary);
-      border-radius: 1px;
-      z-index: 1;
-    }
-
-    &.is-drag-above::before {
-      top: -1px;
-    }
-
-    &.is-drag-below::after {
-      bottom: -1px;
+    &[data-drop-target].--drag-below::after {
+      bottom: calc(var(--doc-index-section-gap) / -2 - 1px);
     }
   }
 
@@ -318,14 +312,13 @@ body.doc-simple-mode {
     flex-shrink: 0;
   }
 
+  /* No reserved border: the into-this-section mark is an outline from the drag
+     primitives, which costs no layout, where the old one was a top border this
+     had to keep space for. */
+
   &__section-body {
     margin-top: 0.5em;
-    border-top: 2px solid transparent;
     transition: opacity 0.15s ease-out;
-
-    &.--drop-target {
-      border-top-color: var(--tertiary);
-    }
 
     &.--collapsed {
       opacity: 0;
@@ -351,34 +344,14 @@ body.doc-simple-mode {
     min-height: 2em;
     position: relative;
 
-    &.is-dragging {
-      opacity: 0.5;
-    }
-
-    &.is-drag-above::before,
-    &.is-drag-below::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--tertiary);
-      border-radius: 1px;
-    }
-
-    &.is-drag-above::before {
-      top: -1px;
-    }
-
-    &.is-drag-below::after {
-      bottom: -1px;
-    }
-
     &:last-child {
       padding-bottom: 0.75em;
       margin-bottom: -0.6em;
 
-      &.is-drag-below::after {
+      /* The last row's own padding sits between it and the section edge, so the
+         shared below-the-row line would otherwise be drawn adrift in it. */
+
+      &.--drag-below::after {
         bottom: calc(0.75em - 0.15em - 1px);
       }
     }
@@ -847,6 +820,11 @@ body.doc-simple-mode {
   The class is doubled to raise specificity above the DMenu dropdown's
   own label styles (`.fk-d-menu__content label`).
 */
+
+/* The only menu row that is not a button, so it borrows the metrics the others
+   get from the shared menu-item treatment: same gutter, same row height, and a
+   checkbox occupying the column their icons do. It also keeps the ordinary text
+   colour, since a dimmed row beside them reads as unavailable. */
 
 label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
   display: flex;

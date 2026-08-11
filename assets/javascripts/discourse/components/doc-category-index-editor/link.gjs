@@ -5,16 +5,21 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { next } from "@ember/runloop";
 import { service } from "@ember/service";
+import { modifier as createModifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DIconGridPicker from "discourse/components/d-icon-grid-picker";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
-import discourseLater from "discourse/lib/later";
 import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
+import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
+import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
-import { isAboveElement } from "../../lib/doc-index-utils";
+
+/** What a dragged link publishes, and what a row or a section accepts. */
+export const LINK_DRAG_TYPE = "doc-index-link";
 
 // Selectors for floating/overlay elements that steal focus from the card.
 // When one of these is open, focusout should not auto-confirm the edit.
@@ -24,13 +29,23 @@ const FLOATING_ELEMENT_SELECTOR =
 export class IndexEditorLink extends Component {
   @service site;
 
-  @tracked dragCssClass;
   @tracked swapping = false;
   @tracked swapTopicContent = [];
   @tracked validationError = null;
-  dragCount = 0;
+
+  /**
+   * The grip, so the drag can be scoped to it while the whole row is what
+   * moves. Captured through a modifier because the row renders before it.
+   */
+  @tracked gripElement;
+
+  captureGrip = createModifier((element) => {
+    this.gripElement = element;
+    return () => (this.gripElement = undefined);
+  });
+
   #isNew = false;
-  #isAbove = false;
+
   @tracked _editTitle;
   @tracked _editHref;
   @tracked _editIcon;
@@ -68,9 +83,6 @@ export class IndexEditorLink extends Component {
 
   get linkClasses() {
     const classes = ["doc-category-index-editor__link"];
-    if (this.dragCssClass) {
-      classes.push(this.dragCssClass);
-    }
     if (this.isDuplicate) {
       classes.push("--duplicate");
     }
@@ -182,70 +194,25 @@ export class IndexEditorLink extends Component {
   }
 
   @action
-  dragHasStarted(event) {
-    event.stopPropagation();
-    const row = event.target.closest(".doc-category-index-editor__link");
-    if (row) {
-      event.dataTransfer.setDragImage(row, 0, 0);
-    }
-    event.dataTransfer.effectAllowed = "move";
+  onDragStart() {
     this.args.onDragStart(this.args.link, this.args.section);
-    this.dragCssClass = "is-dragging";
   }
 
+  /**
+   * Where the drop landed, translated back to the flag the editor's model
+   * expects. The primitives resolve the pointer against the row's midpoint, so
+   * the depth counting and the manual above/below classes this used to keep are
+   * gone; only the decision of what to do with the answer is left here.
+   */
   @action
-  dragOver(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    if (this.dragCssClass === "is-dragging" || this.args.isDraggingSection) {
-      return;
-    }
-    const above = isAboveElement(event);
-    this.#isAbove = above;
-    this.dragCssClass = above ? "is-drag-above" : "is-drag-below";
-  }
+  onRowDrop({ position }) {
+    const above = position === "before";
 
-  @action
-  dragEnter(event) {
-    event.stopPropagation();
-    this.dragCount++;
-  }
-
-  @action
-  dragLeave(event) {
-    event.stopPropagation();
-    this.dragCount--;
-    if (
-      this.dragCount === 0 &&
-      (this.dragCssClass === "is-drag-above" ||
-        this.dragCssClass === "is-drag-below")
-    ) {
-      discourseLater(() => {
-        this.dragCssClass = null;
-      }, 10);
-    }
-  }
-
-  @action
-  dropItem(event) {
-    event.stopPropagation();
-    this.dragCount = 0;
     if (this.args.isBatchDraggingItems) {
-      this.args.onBatchItemDrop(
-        this.args.link,
-        this.args.section,
-        this.#isAbove
-      );
+      this.args.onBatchItemDrop(this.args.link, this.args.section, above);
     } else {
-      this.args.onDrop(this.args.link, this.args.section, this.#isAbove);
+      this.args.onDrop(this.args.link, this.args.section, above);
     }
-    this.dragCssClass = null;
-  }
-
-  @action
-  dragEnd() {
-    this.dragCount = 0;
-    this.dragCssClass = null;
   }
 
   @action
@@ -347,11 +314,20 @@ export class IndexEditorLink extends Component {
     {{! template-lint-disable no-invalid-interactive }}
 
     <div
-      {{on "dragover" this.dragOver}}
-      {{on "dragenter" this.dragEnter}}
-      {{on "dragleave" this.dragLeave}}
-      {{on "dragend" this.dragEnd}}
-      {{on "drop" this.dropItem}}
+      {{dDragAndDropSource
+        type=LINK_DRAG_TYPE
+        data=(hash link=@link section=@section)
+        dragHandle=this.gripElement
+        disabled=(not this.site.desktopView)
+        onDragStart=this.onDragStart
+      }}
+      {{! A section drag carries its own type, so a row no longer has to check
+          whether one is in flight before offering itself. }}
+      {{dDragAndDropTarget
+        accepts=LINK_DRAG_TYPE
+        acceptsSelf=false
+        onDrop=this.onRowDrop
+      }}
       {{on "keydown" this.onKeydown}}
       class={{this.linkClasses}}
     >
@@ -364,18 +340,13 @@ export class IndexEditorLink extends Component {
           />
         </label>
       {{else if this.site.desktopView}}
-        <span
-          class="doc-category-index-editor__drag-handle"
-          draggable="true"
-          role="button"
-          tabindex="0"
-          aria-label={{i18n
+        <DDragHandle
+          {{this.captureGrip}}
+          @label={{i18n
             "doc_categories.category_settings.index_editor.drag_link"
           }}
-          {{on "dragstart" this.dragHasStarted}}
-        >
-          {{icon "grip-lines"}}
-        </span>
+          class="doc-category-index-editor__drag-handle"
+        />
       {{/if}}
 
       {{#if this.isDuplicate}}

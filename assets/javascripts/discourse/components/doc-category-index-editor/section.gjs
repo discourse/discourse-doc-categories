@@ -6,6 +6,7 @@ import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
 import { cancel } from "@ember/runloop";
 import { service } from "@ember/service";
+import { modifier as createModifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
@@ -17,22 +18,36 @@ import discourseLater from "discourse/lib/later";
 import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
+import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
+import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
-import { isAboveElement } from "../../lib/doc-index-utils";
-import { IndexEditorLink } from "./link";
+import { IndexEditorLink, LINK_DRAG_TYPE } from "./link";
+
+/** What a dragged section publishes, and what another section reorders against. */
+export const SECTION_DRAG_TYPE = "doc-index-section";
+
+/** How long a link has to hover a collapsed section before it opens. */
+const AUTO_EXPAND_DELAY = 500;
 
 export class IndexEditorSection extends Component {
   @service dialog;
   @service site;
 
-  @tracked dragCssClass;
-  @tracked emptyDropTarget = false;
   @tracked collapsed = false;
   @tracked titleValidationError = null;
   @tracked includeSubcategories = false;
   @tracked showingTopicChooser = false;
   @tracked topicChooserContent = [];
-  dragCount = 0;
+
+  /** The grip, so the drag starts there while the whole row moves. */
+  @tracked gripElement;
+
+  captureGrip = createModifier((element) => {
+    this.gripElement = element;
+    return () => (this.gripElement = undefined);
+  });
+
   #addMenuApi = null;
   #autoExpandTimer = null;
   #isNew = false;
@@ -177,115 +192,71 @@ export class IndexEditorSection extends Component {
   }
 
   @action
-  sectionDragHasStarted(event) {
-    const section = event.target.closest(
-      ".doc-category-index-editor__section-row"
-    );
-    if (section) {
-      event.dataTransfer.setDragImage(section, 0, 0);
-    }
-    event.dataTransfer.effectAllowed = "move";
+  onSectionDragStart() {
     this.args.onSectionDragStart(this.args.section);
-    this.dragCssClass = "is-dragging";
+  }
+
+  /**
+   * A section takes a link only when it has none of its own: with rows on
+   * screen the link aims at one of them instead, and each row is its own target.
+   */
+  @action
+  canDropLinkIntoSection() {
+    return this.#isEmptyItemDrag;
   }
 
   @action
-  sectionDragOver(event) {
-    event.preventDefault();
-    if (this.dragCssClass === "is-dragging") {
-      return;
-    }
-    const isBatchSectionDrag =
-      this.args.isBatchDragging && this.args.batchDragType === "sections";
-    if (this.args.isDraggingSection || isBatchSectionDrag) {
-      this.dragCssClass = isAboveElement(event)
-        ? "is-drag-above"
-        : "is-drag-below";
-    }
-  }
-
-  @action
-  sectionDragEnter() {
-    this.dragCount++;
+  onSectionDragEnter() {
     if (this.collapsed) {
-      if (this.#autoExpandTimer) {
-        cancel(this.#autoExpandTimer);
-      }
-      this.#autoExpandTimer = discourseLater(() => {
-        this.collapsed = false;
-      }, 500);
-    }
-    if (this.#isEmptyItemDrag) {
-      this.emptyDropTarget = true;
+      this.#autoExpand();
     }
   }
 
   @action
-  sectionDragLeave() {
-    this.dragCount--;
-    if (this.#autoExpandTimer && this.dragCount === 0) {
-      cancel(this.#autoExpandTimer);
-      this.#autoExpandTimer = null;
-    }
-    if (this.dragCount === 0) {
-      this.emptyDropTarget = false;
-      if (
-        this.dragCssClass === "is-drag-above" ||
-        this.dragCssClass === "is-drag-below"
-      ) {
-        discourseLater(() => {
-          this.dragCssClass = null;
-        }, 10);
-      }
-    }
+  onSectionDragLeave() {
+    this.#cancelAutoExpand();
   }
 
   @action
-  sectionDropItem(event) {
-    event.stopPropagation();
-    this.dragCount = 0;
-    if (this.#autoExpandTimer) {
-      cancel(this.#autoExpandTimer);
-      this.#autoExpandTimer = null;
-    }
+  onSectionDrop({ position }) {
+    this.#cancelAutoExpand();
 
-    const hasIndicator =
-      this.dragCssClass === "is-drag-above" ||
-      this.dragCssClass === "is-drag-below" ||
-      this.emptyDropTarget;
+    const above = position === "before";
 
-    if (!hasIndicator) {
-      this.dragCssClass = null;
-      this.emptyDropTarget = false;
-      return;
-    }
-
-    const above = isAboveElement(event);
     if (this.args.isBatchDragging && this.args.batchDragType === "sections") {
       this.args.onBatchSectionDrop(this.args.section, above);
-    } else if (this.emptyDropTarget) {
-      if (this.args.isBatchDragging && this.args.batchDragType === "items") {
-        this.args.onBatchItemDrop(null, this.args.section, false);
-      } else {
-        this.args.onSectionDrop(this.args.section, above);
-      }
-    } else {
-      this.args.onSectionDrop(this.args.section, above);
+      return;
     }
-    this.dragCssClass = null;
-    this.emptyDropTarget = false;
+
+    this.args.onSectionDrop(this.args.section, above);
   }
 
+  /**
+   * A link landing in this section rather than beside one of its rows. It goes
+   * through the same editor handler as a section reorder, which tells the two
+   * apart by whether a link is the thing in flight.
+   */
   @action
-  sectionDragEnd() {
-    this.dragCount = 0;
-    this.dragCssClass = null;
-    this.emptyDropTarget = false;
-    this.args.onSectionDragEnd?.();
-    if (this.#autoExpandTimer) {
-      cancel(this.#autoExpandTimer);
-      this.#autoExpandTimer = null;
+  onLinkDroppedIntoSection() {
+    this.#cancelAutoExpand();
+
+    if (this.args.isBatchDragging && this.args.batchDragType === "items") {
+      this.args.onBatchItemDrop(null, this.args.section, false);
+      return;
     }
+
+    this.args.onSectionDrop(this.args.section, false);
+  }
+
+  /**
+   * Fires on the dragged section only, which is what `dragend` always did. The
+   * parent is told either way, so it stops reporting a section as in flight
+   * whether the drag landed or was abandoned.
+   */
+  @action
+  onSectionDragEnd() {
+    this.#cancelAutoExpand();
+    this.args.onSectionDragEnd?.();
   }
 
   @action
@@ -422,19 +393,49 @@ export class IndexEditorSection extends Component {
     });
   }
 
+  /**
+   * Opens a collapsed section once a drag has dwelled over it, so its rows can
+   * be aimed at. A pending timer is restarted rather than left, because entering
+   * again is the user still deciding.
+   */
+  #autoExpand() {
+    this.#cancelAutoExpand();
+    this.#autoExpandTimer = discourseLater(() => {
+      this.collapsed = false;
+    }, AUTO_EXPAND_DELAY);
+  }
+
+  #cancelAutoExpand() {
+    if (this.#autoExpandTimer) {
+      cancel(this.#autoExpandTimer);
+      this.#autoExpandTimer = null;
+    }
+  }
+
   <template>
     {{! template-lint-disable no-invalid-interactive }}
 
     <div
-      {{on "dragover" this.sectionDragOver}}
-      {{on "dragenter" this.sectionDragEnter}}
-      {{on "dragleave" this.sectionDragLeave}}
-      {{on "dragend" this.sectionDragEnd}}
-      {{on "drop" this.sectionDropItem}}
-      class={{concatClass
-        "doc-category-index-editor__section-row"
-        this.dragCssClass
+      {{dDragAndDropSource
+        type=SECTION_DRAG_TYPE
+        data=(hash section=@section)
+        dragHandle=this.gripElement
+        disabled=(not this.site.desktopView)
+        onDragStart=this.onSectionDragStart
+        onDragEnd=this.onSectionDragEnd
       }}
+      {{! Sections only. A link landing in this section is a different question
+          with a different answer, and it is asked of the body below: one
+          registration resolves one position, so asking both here drew the
+          reorder line and the into-the-section outline at once. }}
+      {{dDragAndDropTarget
+        accepts=SECTION_DRAG_TYPE
+        acceptsSelf=false
+        onDragEnter=this.onSectionDragEnter
+        onDragLeave=this.onSectionDragLeave
+        onDrop=this.onSectionDrop
+      }}
+      class="doc-category-index-editor__section-row"
     >
       {{#if @batchMode}}
         <label class="doc-category-index-editor__batch-checkbox">
@@ -445,18 +446,13 @@ export class IndexEditorSection extends Component {
           />
         </label>
       {{else if this.site.desktopView}}
-        <span
-          class="doc-category-index-editor__drag-handle"
-          draggable="true"
-          role="button"
-          tabindex="0"
-          aria-label={{i18n
+        <DDragHandle
+          {{this.captureGrip}}
+          @label={{i18n
             "doc_categories.category_settings.index_editor.drag_section"
           }}
-          {{on "dragstart" this.sectionDragHasStarted}}
-        >
-          {{icon "grip-lines"}}
-        </span>
+          class="doc-category-index-editor__drag-handle"
+        />
       {{/if}}
 
       <div
@@ -645,11 +641,22 @@ export class IndexEditorSection extends Component {
           </div>
         {{/if}}
 
+        {{! Only ever an empty section, so the one place a link could land is the
+            top of the list. Fixed to `before` rather than left to resolve, so
+            the whole body reads as the target while the line stays where the
+            link will actually go. }}
         <div
+          {{dDragAndDropTarget
+            accepts=LINK_DRAG_TYPE
+            position="before"
+            canDrop=this.canDropLinkIntoSection
+            onDragEnter=this.onSectionDragEnter
+            onDragLeave=this.onSectionDragLeave
+            onDrop=this.onLinkDroppedIntoSection
+          }}
           class={{concatClass
             "doc-category-index-editor__section-body"
             (if this.collapsed "--collapsed")
-            (if this.emptyDropTarget "--drop-target")
           }}
           aria-hidden={{if this.collapsed "true"}}
         >

@@ -22,9 +22,16 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import { not } from "discourse/truth-helpers";
+import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
+import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
 import validateDocIndexSections from "../../lib/doc-index-validation";
-import { IndexEditorSection } from "./section";
+import { LINK_DRAG_TYPE } from "./link";
+import { IndexEditorSection, SECTION_DRAG_TYPE } from "./section";
+
+/** Everything this editor drags, for the auto-scroll to engage on and nothing else. */
+const DRAGGABLE_TYPES = [SECTION_DRAG_TYPE, LINK_DRAG_TYPE];
 
 /* Main index editor */
 export default class DocCategoryIndexEditor extends Component {
@@ -820,13 +827,22 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
+  /**
+   * A batch publishes the type of whatever is selected, so the rows that
+   * already accept that kind accept the batch too and no target has to learn
+   * what a batch is.
+   */
+  get batchSourceType() {
+    return this.selectedSections.size > 0 ? SECTION_DRAG_TYPE : LINK_DRAG_TYPE;
+  }
+
   @action
-  batchDragStart(event) {
-    if (!this.canDragSelection) {
-      event.preventDefault();
-      return;
-    }
-    event.dataTransfer.effectAllowed = "move";
+  canDragBatch() {
+    return this.canDragSelection;
+  }
+
+  @action
+  batchDragStart() {
     this.batchDragType = this.selectedSections.size > 0 ? "sections" : "items";
     this.isBatchDragging = true;
   }
@@ -980,7 +996,11 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   <template>
+    {{! The page scrolls, not the editor: it has no scroll container of its own,
+        so a row dragged toward the viewport edge has to move the window or a
+        long index cannot be reordered end to end without dropping halfway. }}
     <div
+      {{dDragAndDropAutoScroll target="window" types=DRAGGABLE_TYPES}}
       class={{concatClass
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")
@@ -1046,19 +1066,18 @@ export default class DocCategoryIndexEditor extends Component {
       {{#if this.batchMode}}
         <div class="doc-category-index-editor__batch-bar">
           {{#if this.canDragSelection}}
-            <span
-              class="doc-category-index-editor__batch-drag-handle"
-              draggable="true"
-              role="button"
-              tabindex="0"
-              aria-label={{i18n
+            <DDragHandle
+              {{dDragAndDropSource
+                type=this.batchSourceType
+                canDrag=this.canDragBatch
+                onDragStart=this.batchDragStart
+                onDragEnd=this.batchDragEnd
+              }}
+              @label={{i18n
                 "doc_categories.category_settings.index_editor.drag_selection"
               }}
-              {{on "dragstart" this.batchDragStart}}
-              {{on "dragend" this.batchDragEnd}}
-            >
-              {{icon "grip-lines"}}
-            </span>
+              class="doc-category-index-editor__batch-drag-handle"
+            />
           {{/if}}
 
           <span class="doc-category-index-editor__batch-count">

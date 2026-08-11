@@ -60,10 +60,18 @@ module PageObjects
         ).click
 
         within all(".doc-category-index-editor__section").last do
-          # First section doesn't auto-enter edit mode; click the pencil to start editing
-          if has_no_css?(".doc-category-index-editor__section-title", wait: 0.5)
-            find(".doc-category-index-editor__edit-btn").click
-          end
+          # The first section does not auto-enter edit mode and later ones do, so
+          # wait for whichever of the two states arrived and then branch without
+          # waiting again. Asking for the absence of one instead waits out the
+          # full duration whenever it is present, which the suite treats as a
+          # failure in its own right.
+          has_css?(
+            ".doc-category-index-editor__section-title, .doc-category-index-editor__edit-btn",
+          )
+          find(".doc-category-index-editor__edit-btn").click if has_css?(
+            ".doc-category-index-editor__edit-btn",
+            wait: 0,
+          )
           find(".doc-category-index-editor__section-title").fill_in(with: title)
           find(".doc-category-index-editor__confirm-title-btn").click
         end
@@ -294,6 +302,37 @@ module PageObjects
       def save_legacy_category
         find("#save-category").click
         self
+      end
+
+      # Link titles in render order, which is the only thing a reorder changes
+      # and so the only thing worth measuring one against.
+      def link_labels
+        all(".doc-category-index-editor__link-label").map(&:text)
+      end
+
+      def section_labels
+        all(".doc-category-index-editor__section-title-label").map(&:text)
+      end
+
+      def links_in_section(title)
+        all(".doc-category-index-editor__section")
+          .find { |section| section.text.include?(title) }
+          .all(".doc-category-index-editor__link-label", minimum: 0)
+          .map(&:text)
+      end
+
+      # Retrying matchers rather than a bare comparison against `link_labels`:
+      # `drag_and_drop` drives the browser directly and so skips Capybara's
+      # settle, meaning an order read straight after a drop can still be the
+      # order from before it.
+      def has_link_order?(titles)
+        has_css?(".doc-category-index-editor__link-label", count: titles.size) &&
+          link_labels == titles
+      end
+
+      def has_section_order?(titles)
+        has_css?(".doc-category-index-editor__section-title-label", count: titles.size) &&
+          section_labels == titles
       end
     end
   end
