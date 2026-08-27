@@ -1,8 +1,8 @@
 import { fn } from "@ember/helper";
-import DButton from "discourse/components/d-button";
-import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
-import icon from "discourse/helpers/d-icon";
+import DButton from "discourse/ui-kit/d-button";
+import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
+import icon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 
 const DocIndexModeSelector = <template>
@@ -15,7 +15,7 @@ const DocIndexModeSelector = <template>
       {{icon "angle-down"}}
     </:trigger>
     <:content as |dMenu|>
-      <DropdownMenu as |dropdown|>
+      <DDropdownMenu as |dropdown|>
         {{#if @showEditorOption}}
           <dropdown.item>
             <DButton
@@ -69,7 +69,7 @@ const DocIndexModeSelector = <template>
             </div>
           </DButton>
         </dropdown.item>
-      </DropdownMenu>
+      </DDropdownMenu>
     </:content>
   </DMenu>
 </template>;

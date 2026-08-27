@@ -5,17 +5,17 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
-import DComboButton from "discourse/components/d-combo-button";
-import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
+import DComboButton from "discourse/ui-kit/d-combo-button";
+import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
 import DReorderableList from "discourse/ui-kit/d-reorderable-list";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import icon from "discourse/ui-kit/helpers/d-icon";
+import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import dDragDwell from "discourse/ui-kit/modifiers/d-drag-dwell";
 import { i18n } from "discourse-i18n";
@@ -400,7 +400,7 @@ export class IndexEditorSection extends Component {
       {{! A collapsed section has no rows on screen to aim at, so a link held
             over it opens it. The dwell owns the wait and the cancelling. }}
       {{dDragDwell types=@group.token onDwell=this.expandForDrag}}
-      class={{concatClass
+      class={{dConcatClass
         "doc-category-index-editor__section"
         (if (@isSectionSelected @section) "--selected")
         (if (or this.titleValidationError this.missingTitleError) "--error")
@@ -434,7 +434,7 @@ export class IndexEditorSection extends Component {
             {{icon "angle-down"}}
           </:trigger>
           <:content as |args|>
-            <DropdownMenu as |dropdown|>
+            <DDropdownMenu as |dropdown|>
               <dropdown.item>
                 <label
                   class="doc-category-index-editor__auto-index-subcategories"
@@ -467,7 +467,7 @@ export class IndexEditorSection extends Component {
                   />
                 </dropdown.item>
               {{/unless}}
-            </DropdownMenu>
+            </DDropdownMenu>
           </:content>
         </DMenu>
       {{/if}}
@@ -487,7 +487,7 @@ export class IndexEditorSection extends Component {
               "doc_categories.category_settings.index_editor.section_title_placeholder"
             }}
             class="doc-category-index-editor__section-title"
-            {{autoFocus selectText=true}}
+            {{dAutoFocus selectText=true}}
             {{on "input" this.updateTitle}}
             {{on "keydown" this.onTitleKeydown}}
           />
@@ -506,7 +506,7 @@ export class IndexEditorSection extends Component {
         {{else}}
           {{! template-lint-disable no-invalid-interactive }}
           <span
-            class={{concatClass
+            class={{dConcatClass
               "doc-category-index-editor__section-title-label"
               (unless @section.title "--placeholder")
             }}
@@ -595,7 +595,7 @@ export class IndexEditorSection extends Component {
           canDrop=this.canDropBatchLinks
           onDrop=this.onBatchLinkDrop
         }}
-        class={{concatClass
+        class={{dConcatClass
           "doc-category-index-editor__section-body"
           (if this.collapsed "--collapsed")
         }}
@@ -702,7 +702,7 @@ export class IndexEditorSection extends Component {
                     @onRegisterApi={{this.registerAddMenuApi}}
                     class="btn-default btn-small"
                   >
-                    <DropdownMenu as |dropdown|>
+                    <DDropdownMenu as |dropdown|>
                       <dropdown.item>
                         <DButton
                           @icon="link"
@@ -734,7 +734,7 @@ export class IndexEditorSection extends Component {
                           }}
                         </label>
                       </dropdown.item>
-                    </DropdownMenu>
+                    </DDropdownMenu>
                   </combo.Menu>
                 </:default>
               </DComboButton>

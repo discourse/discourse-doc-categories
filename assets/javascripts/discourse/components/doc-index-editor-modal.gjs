@@ -2,7 +2,7 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
-import DModal from "discourse/components/d-modal";
+import DModal from "discourse/ui-kit/d-modal";
 import { i18n } from "discourse-i18n";
 import DocCategoryIndexEditor from "./doc-category-index-editor";
 

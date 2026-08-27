@@ -10,21 +10,21 @@ import {
 } from "@ember/reactive/collections";
 import { cancel } from "@ember/runloop";
 import { service } from "@ember/service";
-import ConditionalInElement from "discourse/components/conditional-in-element";
-import DButton from "discourse/components/d-button";
-import DComboButton from "discourse/components/d-combo-button";
-import DropdownMenu from "discourse/components/dropdown-menu";
 import DMenu from "discourse/float-kit/components/d-menu";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import { not } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
+import DComboButton from "discourse/ui-kit/d-combo-button";
+import DConditionalInElement from "discourse/ui-kit/d-conditional-in-element";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
 import DReorderableList from "discourse/ui-kit/d-reorderable-list";
 import DReorderableListGroup from "discourse/ui-kit/d-reorderable-list-group";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import icon from "discourse/ui-kit/helpers/d-icon";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
@@ -1006,12 +1006,12 @@ export default class DocCategoryIndexEditor extends Component {
       {{! Untyped: the reorderable lists keep their drag tokens to themselves,
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}
-      class={{concatClass
+      class={{dConcatClass
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")
       }}
     >
-      <ConditionalInElement @element={{@toolbarElement}} @append={{true}}>
+      <DConditionalInElement @element={{@toolbarElement}} @append={{true}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">
             <DButton
@@ -1030,7 +1030,7 @@ export default class DocCategoryIndexEditor extends Component {
                 {{icon "wrench"}}
               </:trigger>
               <:content as |menuArgs|>
-                <DropdownMenu as |dropdown|>
+                <DDropdownMenu as |dropdown|>
                   <dropdown.item>
                     <DButton
                       @icon="arrows-rotate"
@@ -1062,12 +1062,12 @@ export default class DocCategoryIndexEditor extends Component {
                       class="btn-transparent doc-category-index-editor__clear-index-btn"
                     />
                   </dropdown.item>
-                </DropdownMenu>
+                </DDropdownMenu>
               </:content>
             </DMenu>
           </div>
         {{/unless}}
-      </ConditionalInElement>
+      </DConditionalInElement>
 
       {{#if this.batchMode}}
         <div class="doc-category-index-editor__batch-bar">
@@ -1193,7 +1193,7 @@ export default class DocCategoryIndexEditor extends Component {
         </DReorderableList>
       </DReorderableListGroup>
 
-      <ConditionalInElement
+      <DConditionalInElement
         @element={{@footerElement}}
         @inline={{not @footerElement}}
         @append={{true}}
@@ -1214,7 +1214,7 @@ export default class DocCategoryIndexEditor extends Component {
                   @identifier="add-section-menu"
                   class="btn-default btn-small"
                 >
-                  <DropdownMenu as |dropdown|>
+                  <DDropdownMenu as |dropdown|>
                     <dropdown.item>
                       <DButton
                         @icon="bolt"
@@ -1223,7 +1223,7 @@ export default class DocCategoryIndexEditor extends Component {
                         class="btn-transparent"
                       />
                     </dropdown.item>
-                  </DropdownMenu>
+                  </DDropdownMenu>
                 </combo.Menu>
               </:default>
             </DComboButton>
@@ -1239,7 +1239,7 @@ export default class DocCategoryIndexEditor extends Component {
             class="btn-primary btn-small doc-category-index-editor__apply-btn"
           />
         </div>
-      </ConditionalInElement>
+      </DConditionalInElement>
     </div>
   </template>
 }

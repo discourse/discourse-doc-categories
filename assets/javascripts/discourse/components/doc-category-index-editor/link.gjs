@@ -4,13 +4,13 @@ import { hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { next } from "@ember/runloop";
-import DButton from "discourse/components/d-button";
-import DIconGridPicker from "discourse/components/d-icon-grid-picker";
-import concatClass from "discourse/helpers/concat-class";
-import icon from "discourse/helpers/d-icon";
-import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
+import DIconGridPicker from "discourse/ui-kit/d-icon-grid-picker";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
+import icon from "discourse/ui-kit/helpers/d-icon";
+import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
 
@@ -313,7 +313,7 @@ export class IndexEditorLink extends Component {
     {{#if this.editing}}
       {{! Edit mode: expanded card with all fields }}
       <div
-        class={{concatClass
+        class={{dConcatClass
           "doc-category-index-editor__link-card --editing"
           (if this.validationError "--error")
         }}
@@ -337,7 +337,7 @@ export class IndexEditorLink extends Component {
               )
             }}
             class="doc-category-index-editor__link-title"
-            {{autoFocus selectText=true}}
+            {{dAutoFocus selectText=true}}
             {{on "input" this.updateTitle}}
           />
         </div>
@@ -432,7 +432,7 @@ export class IndexEditorLink extends Component {
           and this carries one instead. Gated rather than conditional, since a
           re-curried modifier would re-register mid-drag. }}
       <div
-        class={{concatClass
+        class={{dConcatClass
           "doc-category-index-editor__link-card"
           (if @isSelected "--selected")
         }}
@@ -449,7 +449,7 @@ export class IndexEditorLink extends Component {
             {{icon (or @link.icon "far-file")}}
           </span>
           <span
-            class={{concatClass
+            class={{dConcatClass
               "doc-category-index-editor__link-label"
               (unless @link.title "--placeholder")
             }}
