@@ -4,9 +4,7 @@ import { fn, hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
-import { cancel } from "@ember/runloop";
 import { service } from "@ember/service";
-import { modifier as createModifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DComboButton from "discourse/components/d-combo-button";
 import DropdownMenu from "discourse/components/dropdown-menu";
@@ -14,44 +12,33 @@ import DMenu from "discourse/float-kit/components/d-menu";
 import concatClass from "discourse/helpers/concat-class";
 import icon from "discourse/helpers/d-icon";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import discourseLater from "discourse/lib/later";
 import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
-import DDragHandle from "discourse/ui-kit/d-drag-handle";
-import DReorderButtons from "discourse/ui-kit/d-reorder-buttons";
-import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
+import DReorderableList from "discourse/ui-kit/d-reorderable-list";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
+import dDragDwell from "discourse/ui-kit/modifiers/d-drag-dwell";
 import { i18n } from "discourse-i18n";
 import { IndexEditorLink, LINK_DRAG_TYPE } from "./link";
 
-/** What a dragged section publishes, and what another section reorders against. */
+/** What a dragged batch selection of sections publishes. */
 export const SECTION_DRAG_TYPE = "doc-index-section";
-
-/** How long a link has to hover a collapsed section before it opens. */
-const AUTO_EXPAND_DELAY = 500;
 
 export class IndexEditorSection extends Component {
   @service dialog;
-  @service site;
 
-  @tracked collapsed = false;
   @tracked titleValidationError = null;
+
   @tracked includeSubcategories = false;
+
   @tracked showingTopicChooser = false;
+
   @tracked topicChooserContent = [];
 
-  /** The grip, so the drag starts there while the whole row moves. */
-  @tracked gripElement;
-
-  captureGrip = createModifier((element) => {
-    this.gripElement = element;
-    return () => (this.gripElement = undefined);
-  });
-
   #addMenuApi = null;
-  #autoExpandTimer = null;
+
   #isNew = false;
+
   @tracked _editSectionTitle;
 
   constructor() {
@@ -64,12 +51,16 @@ export class IndexEditorSection extends Component {
     }
   }
 
-  willDestroy() {
-    super.willDestroy();
-    if (this.#autoExpandTimer) {
-      cancel(this.#autoExpandTimer);
-      this.#autoExpandTimer = null;
-    }
+  /**
+   * Held on the section rather than here, so the editor can open one it has
+   * just sent a link into. Never serialized: the writer names its fields.
+   */
+  get collapsed() {
+    return !!this.args.section.collapsed;
+  }
+
+  set collapsed(value) {
+    this.args.section.collapsed = value;
   }
 
   get editingTitle() {
@@ -92,28 +83,6 @@ export class IndexEditorSection extends Component {
 
   get isFirstSection() {
     return this.args.isFirstSection?.(this.args.section);
-  }
-
-  get isLastSection() {
-    return this.args.sectionIndex === this.args.sectionCount - 1;
-  }
-
-  get lastLinkIndex() {
-    return this.args.section.links.length - 1;
-  }
-
-  get moveSectionDownLabel() {
-    return i18n(
-      "doc_categories.category_settings.index_editor.move_section_down",
-      { label: this.displayTitle }
-    );
-  }
-
-  get moveSectionUpLabel() {
-    return i18n(
-      "doc_categories.category_settings.index_editor.move_section_up",
-      { label: this.displayTitle }
-    );
   }
 
   get missingTitleError() {
@@ -148,16 +117,6 @@ export class IndexEditorSection extends Component {
 
     return i18n(
       "doc_categories.category_settings.index_editor.section_title_placeholder"
-    );
-  }
-
-  get #isEmptyItemDrag() {
-    if (this.args.section.links.length > 0) {
-      return false;
-    }
-    return (
-      !this.args.isDraggingSection &&
-      !(this.args.isBatchDragging && this.args.batchDragType === "sections")
     );
   }
 
@@ -214,92 +173,39 @@ export class IndexEditorSection extends Component {
     this.collapsed = !this.collapsed;
   }
 
+  /**
+   * Opens a collapsed section once a drag has dwelled over it, so its rows can
+   * be aimed at. Never re-collapsed: the reader was heading in.
+   */
   @action
-  onSectionDragStart() {
-    this.args.onSectionDragStart(this.args.section);
+  expandForDrag() {
+    this.collapsed = false;
+  }
+
+  /** Whether a batch selection of sections may land on this one. */
+  @action
+  canDropBatchSections() {
+    return this.args.batchMode && this.args.batchDragType === "sections";
   }
 
   /**
-   * A section takes a link only when it has none of its own: with rows on
-   * screen the link aims at one of them instead, and each row is its own target.
+   * Whether a batch selection of links may land in this section's body. Only
+   * the batch path asks: an ordinary link aims at a row, or at the links list
+   * itself when the section has none.
    */
   @action
-  canDropLinkIntoSection() {
-    return this.#isEmptyItemDrag;
+  canDropBatchLinks() {
+    return this.args.batchMode && this.args.batchDragType === "items";
   }
 
   @action
-  moveLinkDown(link) {
-    this.args.moveLink(link, this.args.section, 1);
+  onBatchSectionDrop({ position }) {
+    this.args.onBatchSectionDrop(this.args.section, position === "before");
   }
 
   @action
-  moveLinkUp(link) {
-    this.args.moveLink(link, this.args.section, -1);
-  }
-
-  @action
-  moveSectionDown() {
-    this.args.moveSection(this.args.section, 1, this.displayTitle);
-  }
-
-  @action
-  moveSectionUp() {
-    this.args.moveSection(this.args.section, -1, this.displayTitle);
-  }
-
-  @action
-  onSectionDragEnter() {
-    if (this.collapsed) {
-      this.#autoExpand();
-    }
-  }
-
-  @action
-  onSectionDragLeave() {
-    this.#cancelAutoExpand();
-  }
-
-  @action
-  onSectionDrop({ position }) {
-    this.#cancelAutoExpand();
-
-    const above = position === "before";
-
-    if (this.args.isBatchDragging && this.args.batchDragType === "sections") {
-      this.args.onBatchSectionDrop(this.args.section, above);
-      return;
-    }
-
-    this.args.onSectionDrop(this.args.section, above);
-  }
-
-  /**
-   * A link landing in this section rather than beside one of its rows. It goes
-   * through the same editor handler as a section reorder, which tells the two
-   * apart by whether a link is the thing in flight.
-   */
-  @action
-  onLinkDroppedIntoSection() {
-    this.#cancelAutoExpand();
-
-    if (this.args.isBatchDragging && this.args.batchDragType === "items") {
-      this.args.onBatchItemDrop(null, this.args.section, false);
-      return;
-    }
-
-    this.args.onSectionDrop(this.args.section, false);
-  }
-
-  /**
-   * Fires on the dragged section only, which is what `dragend` always did. The
-   * parent is told either way, so it stops reporting a section as in flight
-   * whether the drag landed or was abandoned.
-   */
-  @action
-  onSectionDragEnd() {
-    this.#cancelAutoExpand();
-    this.args.onSectionDragEnd?.();
+  onBatchLinkDrop() {
+    this.args.onBatchItemDrop(null, this.args.section, false);
   }
 
   @action
@@ -420,9 +326,14 @@ export class IndexEditorSection extends Component {
     }
   }
 
+  /**
+   * Returned rather than fired and forgotten: the list waits on it before
+   * announcing the removal and re-placing focus, so cancelling is not spoken as
+   * a removal that happened.
+   */
   @action
   removeLink(link) {
-    this.dialog.yesNoConfirm({
+    return this.dialog.yesNoConfirm({
       message: i18n(
         "doc_categories.category_settings.index_editor.confirm_remove_link"
       ),
@@ -436,428 +347,400 @@ export class IndexEditorSection extends Component {
     });
   }
 
-  /**
-   * Opens a collapsed section once a drag has dwelled over it, so its rows can
-   * be aimed at. A pending timer is restarted rather than left, because entering
-   * again is the user still deciding.
-   */
-  #autoExpand() {
-    this.#cancelAutoExpand();
-    this.#autoExpandTimer = discourseLater(() => {
-      this.collapsed = false;
-    }, AUTO_EXPAND_DELAY);
+  /** What to call a link: its own title, or the placeholder standing for one. */
+  @action
+  linkLabel(link) {
+    return (
+      link.title ||
+      i18n(
+        "doc_categories.category_settings.index_editor.link_title_placeholder"
+      )
+    );
   }
 
-  #cancelAutoExpand() {
-    if (this.#autoExpandTimer) {
-      cancel(this.#autoExpandTimer);
-      this.#autoExpandTimer = null;
-    }
+  /**
+   * The row class, carrying the duplicate mark. On the row element rather than
+   * inside it, because that element is the list's and the mark applies to the
+   * whole row.
+   */
+  @action
+  linkRowClass(link) {
+    return this.args.duplicateHrefs?.has(link.href)
+      ? "doc-category-index-editor__link --duplicate"
+      : "doc-category-index-editor__link";
   }
 
   <template>
-    {{! template-lint-disable no-invalid-interactive }}
+    {{! The row element belongs to the list: it carries the drag registration,
+        the class and the keyed identity, and this fills it. }}
+    {{#if @batchMode}}
+      <label class="doc-category-index-editor__batch-checkbox">
+        <input
+          type="checkbox"
+          checked={{@isSectionSelected @section}}
+          {{on "click" (fn @toggleSectionSelection @section)}}
+        />
+      </label>
+    {{else if @controls.handle}}
+      {{! On every viewport, unlike the grip it replaces: it is the menu
+          trigger and the keyboard path as well as the drag, so hiding it
+          where a drag is impractical would remove the reorder entirely. }}
+      <@controls.handle class="doc-category-index-editor__drag-handle" />
+    {{/if}}
 
     <div
-      {{dDragAndDropSource
-        type=SECTION_DRAG_TYPE
-        data=(hash section=@section)
-        dragHandle=this.gripElement
-        disabled=(not this.site.desktopView)
-        onDragStart=this.onSectionDragStart
-        onDragEnd=this.onSectionDragEnd
-      }}
-      {{! Sections only. A link landing in this section is a different question
-          with a different answer, and it is asked of the body below: one
-          registration resolves one position, so asking both here drew the
-          reorder line and the into-the-section outline at once. }}
+      {{! A batch selection of sections lands here rather than on the row: the
+            row belongs to the list, which is switched off in batch mode. }}
       {{dDragAndDropTarget
         accepts=SECTION_DRAG_TYPE
         acceptsSelf=false
-        onDragEnter=this.onSectionDragEnter
-        onDragLeave=this.onSectionDragLeave
-        onDrop=this.onSectionDrop
+        canDrop=this.canDropBatchSections
+        onDrop=this.onBatchSectionDrop
       }}
-      class="doc-category-index-editor__section-row"
+      {{! A collapsed section has no rows on screen to aim at, so a link held
+            over it opens it. The dwell owns the wait and the cancelling. }}
+      {{dDragDwell types=@group.token onDwell=this.expandForDrag}}
+      class={{concatClass
+        "doc-category-index-editor__section"
+        (if (@isSectionSelected @section) "--selected")
+        (if (or this.titleValidationError this.missingTitleError) "--error")
+      }}
     >
-      {{#if @batchMode}}
-        <label class="doc-category-index-editor__batch-checkbox">
-          <input
-            type="checkbox"
-            checked={{@isSectionSelected @section}}
-            {{on "click" (fn @toggleSectionSelection @section)}}
-          />
-        </label>
-      {{else if this.site.desktopView}}
-        <DDragHandle
-          {{this.captureGrip}}
-          @label={{i18n
-            "doc_categories.category_settings.index_editor.drag_section"
+      {{#if @section.autoIndex}}
+        <DMenu
+          @identifier="auto-index-badge-menu"
+          @triggerClass="doc-category-index-editor__auto-index-badge"
+          title={{i18n
+            "doc_categories.category_settings.index_editor.auto_index_badge_title"
           }}
-          class="doc-category-index-editor__drag-handle"
-        />
+        >
+          <:trigger>
+            {{icon (if @pendingResync "arrows-rotate" "bolt")}}
+            {{if
+              @pendingResync
+              (i18n
+                "doc_categories.category_settings.index_editor.resync_auto_index"
+              )
+              (if
+                @autoIndexIncludeSubcategories
+                (i18n
+                  "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
+                )
+                (i18n
+                  "doc_categories.category_settings.index_editor.auto_index_badge_label"
+                )
+              )
+            }}
+            {{icon "angle-down"}}
+          </:trigger>
+          <:content as |args|>
+            <DropdownMenu as |dropdown|>
+              <dropdown.item>
+                <label
+                  class="doc-category-index-editor__auto-index-subcategories"
+                >
+                  <input
+                    type="checkbox"
+                    checked={{@autoIndexIncludeSubcategories}}
+                    {{on
+                      "change"
+                      (fn @onToggleAutoIndexIncludeSubcategories args.close)
+                    }}
+                  />
+                  {{i18n
+                    "doc_categories.category_settings.index_editor.include_subcategories"
+                  }}
+                </label>
+              </dropdown.item>
+              {{#unless @hideResyncToggle}}
+                <dropdown.divider />
+                <dropdown.item>
+                  <DButton
+                    @icon={{if @pendingResync "xmark" "arrows-rotate"}}
+                    @label={{if
+                      @pendingResync
+                      "doc_categories.category_settings.index_editor.cancel_resync"
+                      "doc_categories.category_settings.index_editor.resync_auto_index"
+                    }}
+                    @action={{fn @onToggleResyncAutoIndex args.close}}
+                    class="btn-transparent"
+                  />
+                </dropdown.item>
+              {{/unless}}
+            </DropdownMenu>
+          </:content>
+        </DMenu>
       {{/if}}
 
-      {{#unless @batchMode}}
-        {{! The arrows are the only keyboard path to reorder, so they render on
-            every viewport. The drag beside them on desktop is an alternative to
-            them rather than a replacement. }}
-        <span class="doc-category-index-editor__arrows-slot --section">
-          <DReorderButtons
-            @onMoveUp={{this.moveSectionUp}}
-            @onMoveDown={{this.moveSectionDown}}
-            @disableUp={{eq @sectionIndex 0}}
-            @disableDown={{this.isLastSection}}
-            @upLabel={{this.moveSectionUpLabel}}
-            @downLabel={{this.moveSectionDownLabel}}
-          />
-        </span>
-      {{/unless}}
+      <div class="doc-category-index-editor__section-header">
+        <DButton
+          @icon={{if this.collapsed "angle-right" "angle-down"}}
+          @action={{this.toggleCollapsed}}
+          class="btn-flat btn-small doc-category-index-editor__collapse-btn"
+        />
 
-      <div
-        class={{concatClass
-          "doc-category-index-editor__section"
-          (if (@isSectionSelected @section) "--selected")
-          (if (or this.titleValidationError this.missingTitleError) "--error")
-        }}
-      >
-        {{#if @section.autoIndex}}
-          <DMenu
-            @identifier="auto-index-badge-menu"
-            @triggerClass="doc-category-index-editor__auto-index-badge"
-            title={{i18n
-              "doc_categories.category_settings.index_editor.auto_index_badge_title"
+        {{#if this.editingTitle}}
+          <input
+            type="text"
+            value={{this._editSectionTitle}}
+            placeholder={{i18n
+              "doc_categories.category_settings.index_editor.section_title_placeholder"
             }}
+            class="doc-category-index-editor__section-title"
+            {{autoFocus selectText=true}}
+            {{on "input" this.updateTitle}}
+            {{on "keydown" this.onTitleKeydown}}
+          />
+          <DButton
+            @icon="check"
+            @action={{this.confirmTitleEdit}}
+            @title="doc_categories.category_settings.index_editor.confirm_edit"
+            class="btn-flat btn-small doc-category-index-editor__confirm-title-btn"
+          />
+          <DButton
+            @icon="xmark"
+            @action={{this.cancelTitleEdit}}
+            @title="cancel"
+            class="btn-flat btn-small doc-category-index-editor__cancel-title-btn"
+          />
+        {{else}}
+          {{! template-lint-disable no-invalid-interactive }}
+          <span
+            class={{concatClass
+              "doc-category-index-editor__section-title-label"
+              (unless @section.title "--placeholder")
+            }}
+            {{on "dblclick" this.enterTitleEdit}}
           >
-            <:trigger>
-              {{icon (if @pendingResync "arrows-rotate" "bolt")}}
-              {{if
-                @pendingResync
-                (i18n
-                  "doc_categories.category_settings.index_editor.resync_auto_index"
-                )
-                (if
-                  @autoIndexIncludeSubcategories
-                  (i18n
-                    "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
-                  )
-                  (i18n
-                    "doc_categories.category_settings.index_editor.auto_index_badge_label"
-                  )
-                )
-              }}
-              {{icon "angle-down"}}
-            </:trigger>
-            <:content as |args|>
-              <DropdownMenu as |dropdown|>
-                <dropdown.item>
-                  <label
-                    class="doc-category-index-editor__auto-index-subcategories"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={{@autoIndexIncludeSubcategories}}
-                      {{on
-                        "change"
-                        (fn @onToggleAutoIndexIncludeSubcategories args.close)
-                      }}
-                    />
-                    {{i18n
-                      "doc_categories.category_settings.index_editor.include_subcategories"
-                    }}
-                  </label>
-                </dropdown.item>
-                {{#unless @hideResyncToggle}}
-                  <dropdown.divider />
-                  <dropdown.item>
-                    <DButton
-                      @icon={{if @pendingResync "xmark" "arrows-rotate"}}
-                      @label={{if
-                        @pendingResync
-                        "doc_categories.category_settings.index_editor.cancel_resync"
-                        "doc_categories.category_settings.index_editor.resync_auto_index"
-                      }}
-                      @action={{fn @onToggleResyncAutoIndex args.close}}
-                      class="btn-transparent"
-                    />
-                  </dropdown.item>
-                {{/unless}}
-              </DropdownMenu>
-            </:content>
-          </DMenu>
+            {{this.displayTitle}}
+          </span>
         {{/if}}
 
-        <div class="doc-category-index-editor__section-header">
-          <DButton
-            @icon={{if this.collapsed "angle-right" "angle-down"}}
-            @action={{this.toggleCollapsed}}
-            class="btn-flat btn-small doc-category-index-editor__collapse-btn"
-          />
+        {{#if this.isDuplicateTitle}}
+          <span
+            class="doc-category-index-editor__duplicate-icon"
+            title={{i18n
+              "doc_categories.category_settings.index_editor.duplicate_title_warning"
+            }}
+          >
+            {{icon "triangle-exclamation"}}
+          </span>
+        {{/if}}
 
-          {{#if this.editingTitle}}
-            <input
-              type="text"
-              value={{this._editSectionTitle}}
-              placeholder={{i18n
-                "doc_categories.category_settings.index_editor.section_title_placeholder"
-              }}
-              class="doc-category-index-editor__section-title"
-              {{autoFocus selectText=true}}
-              {{on "input" this.updateTitle}}
-              {{on "keydown" this.onTitleKeydown}}
-            />
-            <DButton
-              @icon="check"
-              @action={{this.confirmTitleEdit}}
-              @title="doc_categories.category_settings.index_editor.confirm_edit"
-              class="btn-flat btn-small doc-category-index-editor__confirm-title-btn"
-            />
-            <DButton
-              @icon="xmark"
-              @action={{this.cancelTitleEdit}}
-              @title="cancel"
-              class="btn-flat btn-small doc-category-index-editor__cancel-title-btn"
-            />
-          {{else}}
-            {{! template-lint-disable no-invalid-interactive }}
-            <span
-              class={{concatClass
-                "doc-category-index-editor__section-title-label"
-                (unless @section.title "--placeholder")
-              }}
-              {{on "dblclick" this.enterTitleEdit}}
-            >
-              {{this.displayTitle}}
-            </span>
-          {{/if}}
-
-          {{#if this.isDuplicateTitle}}
+        {{#if this.collapsed}}
+          {{#if this.hasDuplicateLinks}}
             <span
               class="doc-category-index-editor__duplicate-icon"
               title={{i18n
-                "doc_categories.category_settings.index_editor.duplicate_title_warning"
+                "doc_categories.category_settings.index_editor.duplicate_warning"
               }}
             >
               {{icon "triangle-exclamation"}}
             </span>
           {{/if}}
-
-          {{#if this.collapsed}}
-            {{#if this.hasDuplicateLinks}}
-              <span
-                class="doc-category-index-editor__duplicate-icon"
-                title={{i18n
-                  "doc_categories.category_settings.index_editor.duplicate_warning"
-                }}
-              >
-                {{icon "triangle-exclamation"}}
-              </span>
-            {{/if}}
-            <span class="doc-category-index-editor__link-count">
-              {{this.linkCount}}
-            </span>
-          {{/if}}
-
-          {{#if @batchMode}}
-            <DButton
-              @icon="check-double"
-              @action={{fn @selectAllInSection @section}}
-              @title="doc_categories.category_settings.index_editor.batch_select_all"
-              class="btn-flat btn-small"
-            />
-            <DButton
-              @icon="right-left"
-              @action={{fn @invertSelectionInSection @section}}
-              @title="doc_categories.category_settings.index_editor.batch_invert"
-              class="btn-flat btn-small"
-            />
-            <DButton
-              @icon="eraser"
-              @action={{fn @clearAllInSection @section}}
-              @title="doc_categories.category_settings.index_editor.batch_clear_selection"
-              class="btn-flat btn-small"
-            />
-          {{else}}{{#unless this.editingTitle}}
-              <DButton
-                @icon="pencil"
-                @action={{this.enterTitleEdit}}
-                @title="doc_categories.category_settings.index_editor.edit_section_title"
-                class="btn-flat btn-small doc-category-index-editor__edit-btn"
-              />
-              <DButton
-                @icon="trash-can"
-                @action={{fn @onRemove @section}}
-                @title="doc_categories.category_settings.index_editor.remove_section"
-                class="btn-flat btn-small doc-category-index-editor__remove-btn"
-              />
-            {{/unless}}{{/if}}
-        </div>
-
-        {{#if (or this.titleValidationError this.missingTitleError)}}
-          <div class="doc-category-index-editor__validation-error">
-            {{icon "triangle-exclamation"}}
-            {{or this.titleValidationError this.missingTitleError}}
-          </div>
+          <span class="doc-category-index-editor__link-count">
+            {{this.linkCount}}
+          </span>
         {{/if}}
 
-        {{! Only ever an empty section, so the one place a link could land is the
-            top of the list. Fixed to `before` rather than left to resolve, so
-            the whole body reads as the target while the line stays where the
-            link will actually go. }}
-        <div
-          {{dDragAndDropTarget
-            accepts=LINK_DRAG_TYPE
-            position="before"
-            canDrop=this.canDropLinkIntoSection
-            onDragEnter=this.onSectionDragEnter
-            onDragLeave=this.onSectionDragLeave
-            onDrop=this.onLinkDroppedIntoSection
-          }}
-          class={{concatClass
-            "doc-category-index-editor__section-body"
-            (if this.collapsed "--collapsed")
-          }}
-          aria-hidden={{if this.collapsed "true"}}
-        >
-          {{#unless this.collapsed}}
-            <div class="doc-category-index-editor__links">
-              {{#each @section.links as |link index|}}
-                <IndexEditorLink
-                  @link={{link}}
-                  @section={{@section}}
-                  @pendingArrowFocus={{@pendingArrowFocus}}
-                  @onArrowFocusClaimed={{@onArrowFocusClaimed}}
-                  @onMoveUp={{fn this.moveLinkUp link}}
-                  @onMoveDown={{fn this.moveLinkDown link}}
-                  {{! A link steps into the neighbouring section at either end,
-                      so a direction only runs out at the very top or bottom of
-                      the whole index. }}
-                  @disableUp={{and (eq index 0) this.isFirstSection}}
-                  @disableDown={{and
-                    (eq index this.lastLinkIndex)
-                    this.isLastSection
-                  }}
-                  @searchFilters={{@searchFilters}}
-                  @duplicateHrefs={{@duplicateHrefs}}
-                  @favoriteIcons={{@favoriteIcons}}
-                  @batchMode={{@batchMode}}
-                  @isBatchDraggingItems={{and
-                    @isBatchDragging
-                    (eq @batchDragType "items")
-                  }}
-                  @isDraggingSection={{or
-                    @isDraggingSection
-                    (and @isBatchDragging (eq @batchDragType "sections"))
-                  }}
-                  @isSelected={{@isItemSelected link}}
-                  @onToggleSelection={{fn @toggleItemSelection link}}
-                  @onRemove={{this.removeLink}}
-                  @onDragStart={{@onLinkDragStart}}
-                  @onDrop={{@onLinkDrop}}
-                  @onBatchItemDrop={{@onBatchItemDrop}}
-                  @onChange={{@onChange}}
-                />
-              {{/each}}
-
-              {{#if @section.autoIndex}}
-                <div class="doc-category-index-editor__link --ghost">
-                  {{#if this.site.desktopView}}
-                    <span
-                      class="doc-category-index-editor__drag-handle-spacer"
-                    ></span>
-                  {{/if}}
-                  <div class="doc-category-index-editor__link-card --ghost">
-                    <div class="doc-category-index-editor__link-card-header">
-                      <span class="doc-category-index-editor__link-icon">
-                        {{icon "far-file"}}
-                      </span>
-                      <span class="doc-category-index-editor__link-label">
-                        {{i18n
-                          "doc_categories.category_settings.index_editor.auto_index_placeholder"
-                        }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              {{/if}}
-            </div>
-
-            {{#if (and this.showingTopicChooser (not @batchMode))}}
-              <div class="doc-category-index-editor__inline-topic-chooser">
-                <div class="doc-category-index-editor__link-card --adding">
-                  <TopicChooser
-                    @value={{null}}
-                    @content={{this.topicChooserContent}}
-                    @onChange={{this.onAddTopic}}
-                    @options={{hash
-                      additionalFilters=@searchFilters
-                      none="doc_categories.category_settings.index_editor.select_topic"
-                    }}
-                  />
-                  <DButton
-                    @icon="xmark"
-                    @action={{this.cancelTopicChooser}}
-                    class="btn-flat btn-small"
-                  />
-                </div>
-              </div>
+        {{#if @batchMode}}
+          <DButton
+            @icon="check-double"
+            @action={{fn @selectAllInSection @section}}
+            @title="doc_categories.category_settings.index_editor.batch_select_all"
+            class="btn-flat btn-small"
+          />
+          <DButton
+            @icon="right-left"
+            @action={{fn @invertSelectionInSection @section}}
+            @title="doc_categories.category_settings.index_editor.batch_invert"
+            class="btn-flat btn-small"
+          />
+          <DButton
+            @icon="eraser"
+            @action={{fn @clearAllInSection @section}}
+            @title="doc_categories.category_settings.index_editor.batch_clear_selection"
+            class="btn-flat btn-small"
+          />
+        {{else}}{{#unless this.editingTitle}}
+            <DButton
+              @icon="pencil"
+              @action={{this.enterTitleEdit}}
+              @title="doc_categories.category_settings.index_editor.edit_section_title"
+              class="btn-flat btn-small doc-category-index-editor__edit-btn"
+            />
+            {{#if @controls.remove}}
+              <@controls.remove
+                class="btn-flat btn-small doc-category-index-editor__remove-btn"
+              />
             {{/if}}
+          {{/unless}}{{/if}}
+      </div>
 
-            {{#unless @batchMode}}
-              <div class="doc-category-index-editor__section-actions">
-                <DComboButton class="--has-menu">
-                  <:default as |combo|>
-                    <combo.Button
-                      @action={{this.showTopicChooser}}
-                      @icon="plus"
-                      @label="doc_categories.category_settings.index_editor.add_topic"
-                      class="btn-default btn-small"
-                    />
-                    <combo.Menu
-                      @identifier="section-add-menu"
-                      @onRegisterApi={{this.registerAddMenuApi}}
-                      class="btn-default btn-small"
-                    >
-                      <DropdownMenu as |dropdown|>
-                        <dropdown.item>
-                          <DButton
-                            @icon="link"
-                            @label="doc_categories.category_settings.index_editor.add_link"
-                            @action={{this.addManualLink}}
-                            class="btn-transparent"
-                          />
-                        </dropdown.item>
-                        <dropdown.divider />
-                        <dropdown.item>
-                          <DButton
-                            @icon="list-check"
-                            @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
-                            @action={{this.addMissingTopicsToSection}}
-                            class="btn-transparent"
-                          />
-                        </dropdown.item>
-                        <dropdown.item>
-                          <label
-                            class="doc-category-index-editor__subcategory-toggle"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={{this.includeSubcategories}}
-                              {{on "change" this.toggleIncludeSubcategories}}
-                            />
-                            {{i18n
-                              "doc_categories.category_settings.index_editor.include_subcategories"
-                            }}
-                          </label>
-                        </dropdown.item>
-                      </DropdownMenu>
-                    </combo.Menu>
-                  </:default>
-                </DComboButton>
-              </div>
-            {{/unless}}
-          {{/unless}}
+      {{#if (or this.titleValidationError this.missingTitleError)}}
+        <div class="doc-category-index-editor__validation-error">
+          {{icon "triangle-exclamation"}}
+          {{or this.titleValidationError this.missingTitleError}}
         </div>
+      {{/if}}
+
+      {{! A batch selection lands in the section as a whole; a single link
+            aims at a row, or at the links list itself when there are none.
+            Fixed to `before` rather than left to resolve, so the whole body
+            reads as the target while the line stays where the links will go. }}
+      <div
+        {{dDragAndDropTarget
+          accepts=LINK_DRAG_TYPE
+          position="before"
+          canDrop=this.canDropBatchLinks
+          onDrop=this.onBatchLinkDrop
+        }}
+        class={{concatClass
+          "doc-category-index-editor__section-body"
+          (if this.collapsed "--collapsed")
+        }}
+        aria-hidden={{if this.collapsed "true"}}
+      >
+        {{! Rendered even while collapsed, so the section stays a registered
+              member of the group and keeps standing as a destination in every
+              other section's move menu. The body is what hides it. }}
+        <div class="doc-category-index-editor__links">
+          <DReorderableList
+            @group={{@group}}
+            @listId={{@sectionUid}}
+            @listLabel={{this.displayTitle}}
+            @spill={{true}}
+            @items={{@section.links}}
+            @label={{this.linkLabel}}
+            @onRemove={{this.removeLink}}
+            @removeIcon="trash-can"
+            @disabled={{@batchMode}}
+            @controls="manual"
+            @tag="div"
+            @itemTag="div"
+            @rowClass={{this.linkRowClass}}
+            class="doc-category-index-editor__link-list"
+          >
+            <:row as |link controls|>
+              <IndexEditorLink
+                @link={{link}}
+                @section={{@section}}
+                @controls={{controls}}
+                @searchFilters={{@searchFilters}}
+                @duplicateHrefs={{@duplicateHrefs}}
+                @favoriteIcons={{@favoriteIcons}}
+                @batchMode={{@batchMode}}
+                @isBatchDraggingItems={{and
+                  @isBatchDragging
+                  (eq @batchDragType "items")
+                }}
+                @isSelected={{@isItemSelected link}}
+                @onToggleSelection={{fn @toggleItemSelection link}}
+                @onBatchItemDrop={{@onBatchItemDrop}}
+                @onChange={{@onChange}}
+              />
+            </:row>
+          </DReorderableList>
+
+          {{#if @section.autoIndex}}
+            <div class="doc-category-index-editor__link --ghost">
+              {{! The handle renders on every viewport now, so the placeholder
+                  standing in its column does too. }}
+              <span
+                class="doc-category-index-editor__drag-handle-spacer"
+              ></span>
+              <div class="doc-category-index-editor__link-card --ghost">
+                <div class="doc-category-index-editor__link-card-header">
+                  <span class="doc-category-index-editor__link-icon">
+                    {{icon "far-file"}}
+                  </span>
+                  <span class="doc-category-index-editor__link-label">
+                    {{i18n
+                      "doc_categories.category_settings.index_editor.auto_index_placeholder"
+                    }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {{/if}}
+        </div>
+
+        {{#unless this.collapsed}}
+          {{#if (and this.showingTopicChooser (not @batchMode))}}
+            <div class="doc-category-index-editor__inline-topic-chooser">
+              <div class="doc-category-index-editor__link-card --adding">
+                <TopicChooser
+                  @value={{null}}
+                  @content={{this.topicChooserContent}}
+                  @onChange={{this.onAddTopic}}
+                  @options={{hash
+                    additionalFilters=@searchFilters
+                    none="doc_categories.category_settings.index_editor.select_topic"
+                  }}
+                />
+                <DButton
+                  @icon="xmark"
+                  @action={{this.cancelTopicChooser}}
+                  class="btn-flat btn-small"
+                />
+              </div>
+            </div>
+          {{/if}}
+
+          {{#unless @batchMode}}
+            <div class="doc-category-index-editor__section-actions">
+              <DComboButton @hasMenu={{true}}>
+                <:default as |combo|>
+                  <combo.Button
+                    @action={{this.showTopicChooser}}
+                    @icon="plus"
+                    @label="doc_categories.category_settings.index_editor.add_topic"
+                    class="btn-default btn-small"
+                  />
+                  <combo.Menu
+                    @identifier="section-add-menu"
+                    @onRegisterApi={{this.registerAddMenuApi}}
+                    class="btn-default btn-small"
+                  >
+                    <DropdownMenu as |dropdown|>
+                      <dropdown.item>
+                        <DButton
+                          @icon="link"
+                          @label="doc_categories.category_settings.index_editor.add_link"
+                          @action={{this.addManualLink}}
+                          class="btn-transparent"
+                        />
+                      </dropdown.item>
+                      <dropdown.divider />
+                      <dropdown.item>
+                        <DButton
+                          @icon="list-check"
+                          @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
+                          @action={{this.addMissingTopicsToSection}}
+                          class="btn-transparent"
+                        />
+                      </dropdown.item>
+                      <dropdown.item>
+                        <label
+                          class="doc-category-index-editor__subcategory-toggle"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={{this.includeSubcategories}}
+                            {{on "change" this.toggleIncludeSubcategories}}
+                          />
+                          {{i18n
+                            "doc_categories.category_settings.index_editor.include_subcategories"
+                          }}
+                        </label>
+                      </dropdown.item>
+                    </DropdownMenu>
+                  </combo.Menu>
+                </:default>
+              </DComboButton>
+            </div>
+          {{/unless}}
+        {{/unless}}
       </div>
     </div>
   </template>

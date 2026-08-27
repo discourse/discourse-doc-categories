@@ -23,6 +23,8 @@ import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
 import { not } from "discourse/truth-helpers";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
+import DReorderableList from "discourse/ui-kit/d-reorderable-list";
+import DReorderableListGroup from "discourse/ui-kit/d-reorderable-list-group";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
@@ -30,12 +32,29 @@ import validateDocIndexSections from "../../lib/doc-index-validation";
 import { LINK_DRAG_TYPE } from "./link";
 import { IndexEditorSection, SECTION_DRAG_TYPE } from "./section";
 
-/** Everything this editor drags, for the auto-scroll to engage on and nothing else. */
-const DRAGGABLE_TYPES = [SECTION_DRAG_TYPE, LINK_DRAG_TYPE];
+/**
+ * A stable string identity per section, for the reorderable group to address
+ * its members by.
+ *
+ * Sections carry a server `id` only once saved, so a new one has none and two
+ * new ones would collide on `null`. Held outside the section rather than as a
+ * field on it, so it never reaches the serializer or the transient-data
+ * round-trip.
+ */
+const SECTION_UIDS = new WeakMap();
+let nextSectionUid = 0;
+
+function sectionUid(section) {
+  let uid = SECTION_UIDS.get(section);
+  if (!uid) {
+    uid = `doc-index-section-${nextSectionUid++}`;
+    SECTION_UIDS.set(section, uid);
+  }
+  return uid;
+}
 
 /* Main index editor */
 export default class DocCategoryIndexEditor extends Component {
-  @service a11y;
   @service dialog;
 
   @tracked sections = trackedArray(this.#initSections());
@@ -45,25 +64,13 @@ export default class DocCategoryIndexEditor extends Component {
   autoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   @tracked pendingResync = false;
-  @tracked isDraggingSection = false;
   @tracked batchMode = false;
   @tracked isBatchDragging = false;
   @tracked batchDragType = null;
 
-  /**
-   * Which link should take the focus its row lost, and in which direction.
-   * Written from the press that moves the row, never from a render, so tracking
-   * it costs nothing and an untracked one would simply never reach the row: the
-   * child's argument would keep the value it was last rendered with.
-   */
-  @tracked pendingArrowFocus = null;
-
   selectedItems = trackedSet();
   selectedSections = trackedSet();
 
-  #draggedLink = null;
-  #draggedLinkSourceSection = null;
-  #draggedSection = null;
   #originalAutoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   #saveStateTimer = null;
@@ -187,10 +194,6 @@ export default class DocCategoryIndexEditor extends Component {
     return [...icons];
   }
 
-  get isEmpty() {
-    return this.sections.length === 0;
-  }
-
   get hasAutoIndexSection() {
     return this.sections.some((s) => s.autoIndex);
   }
@@ -295,6 +298,11 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
   }
 
+  /**
+   * Returns the confirmation rather than firing and forgetting it: the list
+   * waits on it before announcing the removal and re-placing focus, so a
+   * cancelled dialog is not spoken as a removal that happened.
+   */
   @bind
   removeSection(section) {
     const message = section.autoIndex
@@ -305,7 +313,7 @@ export default class DocCategoryIndexEditor extends Component {
           "doc_categories.category_settings.index_editor.confirm_remove_section"
         );
 
-    this.dialog.yesNoConfirm({
+    return this.dialog.yesNoConfirm({
       message,
       didConfirm: () => {
         const idx = this.sections.indexOf(section);
@@ -317,143 +325,56 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
+  /**
+   * A section reorder, as the list proposes it.
+   *
+   * @param move - The normalized move; only the proposed order is read, since
+   *   the list has already resolved which row went where.
+   */
   @bind
-  setDraggedSection(section) {
-    this.#draggedSection = section;
-    this.isDraggingSection = true;
+  applySectionMove({ proposedFromItems }) {
+    this.sections.splice(0, this.sections.length, ...proposedFromItems);
+    this._saveToTransientData();
   }
 
+  /**
+   * A link reorder, within one section or across two of them.
+   *
+   * Both halves are addressed by the group's list id rather than by the link,
+   * because a cross-section move rewrites two sections and the link itself says
+   * nothing about which pair.
+   *
+   * @param move - The normalized move.
+   */
   @bind
-  clearDraggedSection() {
-    this.#draggedSection = null;
-    this.isDraggingSection = false;
-  }
+  applyLinkMove({ fromList, toList, proposedFromItems, proposedToItems }) {
+    const from = this.#sectionFor(fromList);
+    if (!from) {
+      return;
+    }
+    from.links.splice(0, from.links.length, ...proposedFromItems);
 
-  @bind
-  reorderSection(targetSection, isAbove) {
-    // Handle link dropped on section body (not on a specific link)
-    if (this.#draggedLink) {
-      const sourceLinks = this.#draggedLinkSourceSection.links;
-      const draggedIdx = sourceLinks.indexOf(this.#draggedLink);
-      if (draggedIdx !== -1) {
-        sourceLinks.splice(draggedIdx, 1);
+    if (toList !== fromList) {
+      const to = this.#sectionFor(toList);
+      if (to) {
+        to.links.splice(0, to.links.length, ...proposedToItems);
+        // A link landing in a collapsed section would otherwise disappear. A
+        // drag opens one by dwelling over it; a keyboard move has no dwell.
+        to.collapsed = false;
       }
-      targetSection.links.push(this.#draggedLink);
-      this.#draggedLink = null;
-      this.#draggedLinkSourceSection = null;
-      this._saveToTransientData();
-      return;
     }
-
-    if (!this.#draggedSection || this.#draggedSection === targetSection) {
-      return;
-    }
-    const draggedIdx = this.sections.indexOf(this.#draggedSection);
-    if (draggedIdx === -1) {
-      return;
-    }
-    this.sections.splice(draggedIdx, 1);
-    let targetIdx = this.sections.indexOf(targetSection);
-    if (!isAbove) {
-      targetIdx++;
-    }
-    this.sections.splice(targetIdx, 0, this.#draggedSection);
-    this.#draggedSection = null;
-    this.isDraggingSection = false;
     this._saveToTransientData();
   }
 
-  /**
-   * Moves a section one place, for the keyboard path beside the drag.
-   *
-   * @param section - The section being moved.
-   * @param delta - `-1` for earlier, `1` for later.
-   * @param label - What to call the section when announcing the move, which the
-   *   section itself already resolves for its own heading.
-   */
-  @action
-  moveSection(section, delta, label) {
-    const from = this.sections.indexOf(section);
-    const to = from + delta;
-    if (from === -1 || to < 0 || to >= this.sections.length) {
-      return;
-    }
-
-    this.sections.splice(from, 1);
-    this.sections.splice(to, 0, section);
-    this.a11y.announce(
-      i18n("reorder_announcement", {
-        label,
-        position: to + 1,
-        total: this.sections.length,
-      })
-    );
-    this._saveToTransientData();
+  /** What to call a section, for its handle, menu entry and announcements. */
+  @bind
+  sectionLabel(section) {
+    return this.#sectionLabel(section);
   }
 
-  /**
-   * Moves a link one place, carrying it into the neighbouring section when it
-   * steps past either end of its own, so the arrows reach everywhere the drag
-   * does and nothing here is pointer-only.
-   *
-   * @param link - The link being moved.
-   * @param section - The section it currently sits in.
-   * @param delta - `-1` for earlier, `1` for later.
-   */
-  @action
-  moveLink(link, section, delta) {
-    const links = section.links;
-    const from = links.indexOf(link);
-    if (from === -1) {
-      return;
-    }
-
-    const to = from + delta;
-    if (to >= 0 && to < links.length) {
-      links.splice(from, 1);
-      links.splice(to, 0, link);
-      this.a11y.announce(
-        i18n("reorder_announcement", {
-          label: link.title,
-          position: to + 1,
-          total: links.length,
-        })
-      );
-      this._saveToTransientData();
-      return;
-    }
-
-    const neighbor = this.sections[this.sections.indexOf(section) + delta];
-    if (!neighbor) {
-      return;
-    }
-
-    // The row is about to be destroyed and rebuilt under the other section, so
-    // the pair cannot take its own focus back the way it does within a list.
-    this.pendingArrowFocus = { link, direction: delta > 0 ? "down" : "up" };
-
-    links.splice(from, 1);
-    // Entering from above lands first and entering from below lands last, so
-    // the link keeps travelling the way it was pushed.
-    const insertAt = delta > 0 ? 0 : neighbor.links.length;
-    neighbor.links.splice(insertAt, 0, link);
-    // Names the section it landed in: crossing that boundary is the one part of
-    // the move a listener has no way to infer.
-    this.a11y.announce(
-      i18n("doc_categories.category_settings.index_editor.moved_to_section", {
-        label: link.title,
-        section: this.#sectionLabel(neighbor),
-        position: insertAt + 1,
-        total: neighbor.links.length,
-      })
-    );
-    this._saveToTransientData();
-  }
-
-  /** The row took the focus it was owed, so the debt is settled. */
-  @action
-  clearArrowFocus() {
-    this.pendingArrowFocus = null;
+  /** The section a group list id names. */
+  #sectionFor(listId) {
+    return this.sections.find((section) => sectionUid(section) === listId);
   }
 
   /** What to call a section a link has just landed in. */
@@ -464,38 +385,6 @@ export default class DocCategoryIndexEditor extends Component {
         "doc_categories.category_settings.index_editor.first_section_no_title"
       )
     );
-  }
-
-  @bind
-  onLinkDragStart(link, sourceSection) {
-    this.#draggedLink = link;
-    this.#draggedLinkSourceSection = sourceSection;
-  }
-
-  @bind
-  onLinkDrop(targetLink, targetSection, isAbove) {
-    if (!this.#draggedLink || this.#draggedLink === targetLink) {
-      this.#draggedLink = null;
-      this.#draggedLinkSourceSection = null;
-      return;
-    }
-
-    const sourceLinks = this.#draggedLinkSourceSection.links;
-    const draggedIdx = sourceLinks.indexOf(this.#draggedLink);
-    if (draggedIdx !== -1) {
-      sourceLinks.splice(draggedIdx, 1);
-    }
-
-    const targetLinks = targetSection.links;
-    let targetIdx = targetLinks.indexOf(targetLink);
-    if (!isAbove) {
-      targetIdx++;
-    }
-    targetLinks.splice(targetIdx, 0, this.#draggedLink);
-
-    this.#draggedLink = null;
-    this.#draggedLinkSourceSection = null;
-    this._saveToTransientData();
   }
 
   @bind
@@ -1114,7 +1003,9 @@ export default class DocCategoryIndexEditor extends Component {
         so a row dragged toward the viewport edge has to move the window or a
         long index cannot be reordered end to end without dropping halfway. }}
     <div
-      {{dDragAndDropAutoScroll target="window" types=DRAGGABLE_TYPES}}
+      {{! Untyped: the reorderable lists keep their drag tokens to themselves,
+          and this page has no drag it would be wrong to scroll for. }}
+      {{dDragAndDropAutoScroll target="window"}}
       class={{concatClass
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")
@@ -1242,58 +1133,65 @@ export default class DocCategoryIndexEditor extends Component {
         </div>
       {{/if}}
 
-      {{#if this.isEmpty}}
-        <p class="doc-category-index-editor__empty">
-          {{i18n "doc_categories.category_settings.index_editor.empty"}}
-        </p>
-      {{/if}}
-
-      <div class="doc-category-index-editor__sections">
-        {{#each this.sections as |section index|}}
-          <IndexEditorSection
-            @section={{section}}
-            @isFirstSection={{this.isFirstSection}}
-            @sectionIndex={{index}}
-            @sectionCount={{this.sections.length}}
-            @moveSection={{this.moveSection}}
-            @moveLink={{this.moveLink}}
-            @pendingArrowFocus={{this.pendingArrowFocus}}
-            @onArrowFocusClaimed={{this.clearArrowFocus}}
-            @categoryId={{@categoryId}}
-            @searchFilters={{this.searchFilters}}
-            @duplicateHrefs={{this.duplicateHrefs}}
-            @duplicateTitles={{this.duplicateTitles}}
-            @favoriteIcons={{this.favoriteIcons}}
-            @isDraggingSection={{this.isDraggingSection}}
-            @isBatchDragging={{this.isBatchDragging}}
-            @batchDragType={{this.batchDragType}}
-            @batchMode={{this.batchMode}}
-            @isSectionSelected={{this.isSectionSelected}}
-            @isItemSelected={{this.isItemSelected}}
-            @toggleSectionSelection={{this.toggleSectionSelection}}
-            @toggleItemSelection={{this.toggleItemSelection}}
-            @selectAllInSection={{this.selectAllInSection}}
-            @clearAllInSection={{this.clearAllInSection}}
-            @invertSelectionInSection={{this.invertSelectionInSection}}
-            @onRemove={{this.removeSection}}
-            @onCancelNew={{this.cancelNewSection}}
-            @onSectionDragStart={{this.setDraggedSection}}
-            @onSectionDragEnd={{this.clearDraggedSection}}
-            @onSectionDrop={{this.reorderSection}}
-            @onBatchSectionDrop={{this.batchReorderSections}}
-            @onLinkDragStart={{this.onLinkDragStart}}
-            @onLinkDrop={{this.onLinkDrop}}
-            @onBatchItemDrop={{this.batchReorderItems}}
-            @fetchTopics={{this.fetchTopics}}
-            @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
-            @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
-            @pendingResync={{this.pendingResync}}
-            @hideResyncToggle={{this.subcategorySettingChanged}}
-            @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
-            @onChange={{this._saveToTransientData}}
-          />
-        {{/each}}
-      </div>
+      {{! One group over every section's links, so a link travels between
+          sections the same way it travels within one. The sections themselves
+          are an ordinary standalone list nested inside it; the two never see
+          each other's drags, since a standalone list carries a private token
+          and a member carries the group's. }}
+      <DReorderableListGroup @onMove={{this.applyLinkMove}} as |group|>
+        <DReorderableList
+          @items={{this.sections}}
+          @label={{this.sectionLabel}}
+          @onMove={{this.applySectionMove}}
+          @onRemove={{this.removeSection}}
+          @disabled={{this.batchMode}}
+          @controls="manual"
+          @tag="div"
+          @itemTag="div"
+          @rowClass="doc-category-index-editor__section-row"
+          class="doc-category-index-editor__sections"
+        >
+          <:empty>
+            <p class="doc-category-index-editor__empty">
+              {{i18n "doc_categories.category_settings.index_editor.empty"}}
+            </p>
+          </:empty>
+          <:row as |section controls|>
+            <IndexEditorSection
+              @section={{section}}
+              @sectionUid={{sectionUid section}}
+              @group={{group}}
+              @controls={{controls}}
+              @isFirstSection={{this.isFirstSection}}
+              @categoryId={{@categoryId}}
+              @searchFilters={{this.searchFilters}}
+              @duplicateHrefs={{this.duplicateHrefs}}
+              @duplicateTitles={{this.duplicateTitles}}
+              @favoriteIcons={{this.favoriteIcons}}
+              @isBatchDragging={{this.isBatchDragging}}
+              @batchDragType={{this.batchDragType}}
+              @batchMode={{this.batchMode}}
+              @isSectionSelected={{this.isSectionSelected}}
+              @isItemSelected={{this.isItemSelected}}
+              @toggleSectionSelection={{this.toggleSectionSelection}}
+              @toggleItemSelection={{this.toggleItemSelection}}
+              @selectAllInSection={{this.selectAllInSection}}
+              @clearAllInSection={{this.clearAllInSection}}
+              @invertSelectionInSection={{this.invertSelectionInSection}}
+              @onCancelNew={{this.cancelNewSection}}
+              @onBatchSectionDrop={{this.batchReorderSections}}
+              @onBatchItemDrop={{this.batchReorderItems}}
+              @fetchTopics={{this.fetchTopics}}
+              @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
+              @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
+              @pendingResync={{this.pendingResync}}
+              @hideResyncToggle={{this.subcategorySettingChanged}}
+              @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
+              @onChange={{this._saveToTransientData}}
+            />
+          </:row>
+        </DReorderableList>
+      </DReorderableListGroup>
 
       <ConditionalInElement
         @element={{@footerElement}}
@@ -1302,11 +1200,7 @@ export default class DocCategoryIndexEditor extends Component {
       >
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__footer">
-            <DComboButton
-              class={{concatClass
-                (unless this.hasAutoIndexSection "--has-menu")
-              }}
-            >
+            <DComboButton @hasMenu={{not this.hasAutoIndexSection}}>
               <:default as |combo|>
                 <combo.Button
                   @action={{this.addSection}}
@@ -1314,23 +1208,23 @@ export default class DocCategoryIndexEditor extends Component {
                   @label="doc_categories.category_settings.index_editor.add_section"
                   class="btn-default btn-small"
                 />
-                {{#unless this.hasAutoIndexSection}}
-                  <combo.Menu
-                    @identifier="add-section-menu"
-                    class="btn-default btn-small"
-                  >
-                    <DropdownMenu as |dropdown|>
-                      <dropdown.item>
-                        <DButton
-                          @icon="bolt"
-                          @label="doc_categories.category_settings.index_editor.add_auto_index_section"
-                          @action={{this.addAutoIndexSection}}
-                          class="btn-transparent"
-                        />
-                      </dropdown.item>
-                    </DropdownMenu>
-                  </combo.Menu>
-                {{/unless}}
+                {{! The menu is gated by @hasMenu, so guarding it here as well
+                    would be the same condition written twice. }}
+                <combo.Menu
+                  @identifier="add-section-menu"
+                  class="btn-default btn-small"
+                >
+                  <DropdownMenu as |dropdown|>
+                    <dropdown.item>
+                      <DButton
+                        @icon="bolt"
+                        @label="doc_categories.category_settings.index_editor.add_auto_index_section"
+                        @action={{this.addAutoIndexSection}}
+                        class="btn-transparent"
+                      />
+                    </dropdown.item>
+                  </DropdownMenu>
+                </combo.Menu>
               </:default>
             </DComboButton>
           </div>

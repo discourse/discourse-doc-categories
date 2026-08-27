@@ -1,11 +1,9 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
-import { fn, hash } from "@ember/helper";
+import { hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { next } from "@ember/runloop";
-import { service } from "@ember/service";
-import { modifier as createModifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DIconGridPicker from "discourse/components/d-icon-grid-picker";
 import concatClass from "discourse/helpers/concat-class";
@@ -13,13 +11,10 @@ import icon from "discourse/helpers/d-icon";
 import autoFocus from "discourse/modifiers/auto-focus";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
-import DDragHandle from "discourse/ui-kit/d-drag-handle";
-import DReorderButtons from "discourse/ui-kit/d-reorder-buttons";
-import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
 
-/** What a dragged link publishes, and what a row or a section accepts. */
+/** What a dragged batch selection of links publishes. */
 export const LINK_DRAG_TYPE = "doc-index-link";
 
 // Selectors for floating/overlay elements that steal focus from the card.
@@ -28,51 +23,9 @@ const FLOATING_ELEMENT_SELECTOR =
   ".fk-d-menu__content, .select-kit-body, .d-modal";
 
 export class IndexEditorLink extends Component {
-  @service site;
-
   @tracked swapping = false;
   @tracked swapTopicContent = [];
   @tracked validationError = null;
-
-  /**
-   * The grip, so the drag can be scoped to it while the whole row is what
-   * moves. Captured through a modifier because the row renders before it.
-   */
-  @tracked gripElement;
-
-  captureGrip = createModifier((element) => {
-    this.gripElement = element;
-    return () => (this.gripElement = undefined);
-  });
-
-  /**
-   * Takes back the focus a cross-section move dropped.
-   *
-   * The pair restores its own focus after a move within one list, but a move
-   * across sections destroys this row and builds a new one under the other
-   * section, so the pair that was pressed is gone before it can. The editor
-   * names the link it owes focus to and this claims it on the way in.
-   *
-   * Matched on the button's accessible name rather than its position, since
-   * that name is this row's own and the order of the pair is not ours.
-   */
-  claimArrowFocus = createModifier((element) => {
-    const pending = this.args.pendingArrowFocus;
-    if (pending?.link !== this.args.link) {
-      return;
-    }
-
-    const label =
-      pending.direction === "up" ? this.moveUpLabel : this.moveDownLabel;
-    [...element.querySelectorAll("button")]
-      .find((button) => button.title === label)
-      ?.focus();
-
-    // Cleared after the render that consumed it, never during: the editor holds
-    // this in tracked state and writing it here would be a mutation inside the
-    // render that just read it.
-    next(() => this.args.onArrowFocusClaimed?.());
-  });
 
   #isNew = false;
 
@@ -111,14 +64,6 @@ export class IndexEditorLink extends Component {
     return this.args.duplicateHrefs?.has(this.args.link.href);
   }
 
-  get linkClasses() {
-    const classes = ["doc-category-index-editor__link"];
-    if (this.isDuplicate) {
-      classes.push("--duplicate");
-    }
-    return classes.join(" ");
-  }
-
   get displayTitle() {
     return (
       this.args.link.title ||
@@ -126,19 +71,6 @@ export class IndexEditorLink extends Component {
         "doc_categories.category_settings.index_editor.link_title_placeholder"
       )
     );
-  }
-
-  get moveDownLabel() {
-    return i18n(
-      "doc_categories.category_settings.index_editor.move_link_down",
-      { label: this.displayTitle }
-    );
-  }
-
-  get moveUpLabel() {
-    return i18n("doc_categories.category_settings.index_editor.move_link_up", {
-      label: this.displayTitle,
-    });
   }
 
   get canConfirm() {
@@ -236,26 +168,23 @@ export class IndexEditorLink extends Component {
     });
   }
 
-  @action
-  onDragStart() {
-    this.args.onDragStart(this.args.link, this.args.section);
-  }
-
   /**
-   * Where the drop landed, translated back to the flag the editor's model
-   * expects. The primitives resolve the pointer against the row's midpoint, so
-   * the depth counting and the manual above/below classes this used to keep are
-   * gone; only the decision of what to do with the answer is left here.
+   * Where a batch selection landed. Only the batch path asks: an ordinary
+   * reorder is the list's, and this row never sees it.
    */
   @action
-  onRowDrop({ position }) {
-    const above = position === "before";
+  onBatchRowDrop({ position }) {
+    this.args.onBatchItemDrop(
+      this.args.link,
+      this.args.section,
+      position === "before"
+    );
+  }
 
-    if (this.args.isBatchDraggingItems) {
-      this.args.onBatchItemDrop(this.args.link, this.args.section, above);
-    } else {
-      this.args.onDrop(this.args.link, this.args.section, above);
-    }
+  /** Whether a batch selection of links may land on this row. */
+  @action
+  canDropBatchLinks() {
+    return !!this.args.isBatchDraggingItems;
   }
 
   @action
@@ -354,241 +283,208 @@ export class IndexEditorLink extends Component {
   }
 
   <template>
-    {{! template-lint-disable no-invalid-interactive }}
-
-    <div
-      {{dDragAndDropSource
-        type=LINK_DRAG_TYPE
-        data=(hash link=@link section=@section)
-        dragHandle=this.gripElement
-        disabled=(not this.site.desktopView)
-        onDragStart=this.onDragStart
-      }}
-      {{! A section drag carries its own type, so a row no longer has to check
-          whether one is in flight before offering itself. }}
-      {{dDragAndDropTarget
-        accepts=LINK_DRAG_TYPE
-        acceptsSelf=false
-        onDrop=this.onRowDrop
-      }}
-      {{on "keydown" this.onKeydown}}
-      class={{this.linkClasses}}
-    >
-      {{#if @batchMode}}
-        <label class="doc-category-index-editor__batch-checkbox">
-          <input
-            type="checkbox"
-            checked={{@isSelected}}
-            {{on "click" @onToggleSelection}}
-          />
-        </label>
-      {{else if this.site.desktopView}}
-        <DDragHandle
-          {{this.captureGrip}}
-          @label={{i18n
-            "doc_categories.category_settings.index_editor.drag_link"
-          }}
-          class="doc-category-index-editor__drag-handle"
+    {{! The row element belongs to the list: it carries the drag registration,
+        the class and the keyed identity, and this fills it. }}
+    {{#if @batchMode}}
+      <label class="doc-category-index-editor__batch-checkbox">
+        <input
+          type="checkbox"
+          checked={{@isSelected}}
+          {{on "click" @onToggleSelection}}
         />
-      {{/if}}
+      </label>
+    {{else if @controls.handle}}
+      {{! On every viewport, unlike the grip it replaces: it is the menu
+          trigger and the keyboard path as well as the drag. }}
+      <@controls.handle class="doc-category-index-editor__drag-handle" />
+    {{/if}}
 
-      {{#unless @batchMode}}
-        {{! The arrows are the only keyboard path to reorder, so they render on
-            every viewport. The drag beside them on desktop is an alternative to
-            them rather than a replacement. }}
-        <span
-          class="doc-category-index-editor__arrows-slot --link"
-          {{this.claimArrowFocus}}
-        >
-          <DReorderButtons
-            @onMoveUp={{@onMoveUp}}
-            @onMoveDown={{@onMoveDown}}
-            @disableUp={{@disableUp}}
-            @disableDown={{@disableDown}}
-            @upLabel={{this.moveUpLabel}}
-            @downLabel={{this.moveDownLabel}}
+    {{#if this.isDuplicate}}
+      <span
+        class="doc-category-index-editor__duplicate-icon"
+        title={{i18n
+          "doc_categories.category_settings.index_editor.duplicate_warning"
+        }}
+      >
+        {{icon "triangle-exclamation"}}
+      </span>
+    {{/if}}
+
+    {{#if this.editing}}
+      {{! Edit mode: expanded card with all fields }}
+      <div
+        class={{concatClass
+          "doc-category-index-editor__link-card --editing"
+          (if this.validationError "--error")
+        }}
+        {{on "focusout" this.onCardFocusOut}}
+        {{on "keydown" this.onKeydown}}
+      >
+        <div class="doc-category-index-editor__link-edit-row">
+          <DIconGridPicker
+            @value={{this._editIcon}}
+            @onChange={{this.updateIcon}}
+            @favorites={{@favoriteIcons}}
+            @showSelectedName={{true}}
           />
-        </span>
-      {{/unless}}
+          <input
+            type="text"
+            value={{this._editTitle}}
+            placeholder={{or
+              this._topicOriginalTitle
+              (i18n
+                "doc_categories.category_settings.index_editor.link_title_placeholder"
+              )
+            }}
+            class="doc-category-index-editor__link-title"
+            {{autoFocus selectText=true}}
+            {{on "input" this.updateTitle}}
+          />
+        </div>
 
-      {{#if this.isDuplicate}}
-        <span
-          class="doc-category-index-editor__duplicate-icon"
-          title={{i18n
-            "doc_categories.category_settings.index_editor.duplicate_warning"
-          }}
-        >
-          {{icon "triangle-exclamation"}}
-        </span>
-      {{/if}}
-
-      {{#if this.editing}}
-        {{! Edit mode: expanded card with all fields }}
-        <div
-          class={{concatClass
-            "doc-category-index-editor__link-card --editing"
-            (if this.validationError "--error")
-          }}
-          {{on "focusout" this.onCardFocusOut}}
-        >
-          <div class="doc-category-index-editor__link-edit-row">
-            <DIconGridPicker
-              @value={{this._editIcon}}
-              @onChange={{this.updateIcon}}
-              @favorites={{@favoriteIcons}}
-              @showSelectedName={{true}}
-            />
-            <input
-              type="text"
-              value={{this._editTitle}}
-              placeholder={{or
-                this._topicOriginalTitle
-                (i18n
-                  "doc_categories.category_settings.index_editor.link_title_placeholder"
-                )
-              }}
-              class="doc-category-index-editor__link-title"
-              {{autoFocus selectText=true}}
-              {{on "input" this.updateTitle}}
-            />
+        {{#if this.validationError}}
+          <div class="doc-category-index-editor__validation-error">
+            {{icon "triangle-exclamation"}}
+            {{this.validationError}}
           </div>
+        {{/if}}
 
-          {{#if this.validationError}}
-            <div class="doc-category-index-editor__validation-error">
-              {{icon "triangle-exclamation"}}
-              {{this.validationError}}
-            </div>
-          {{/if}}
-
-          <div class="doc-category-index-editor__link-edit-row">
-            {{#if this.isTopicLink}}
-              {{#if this.swapping}}
-                <div class="doc-category-index-editor__swap-chooser">
-                  <TopicChooser
-                    @value={{null}}
-                    @content={{this.swapTopicContent}}
-                    @onChange={{this.onSwapTopic}}
-                    @options={{hash
-                      additionalFilters=@searchFilters
-                      none="doc_categories.category_settings.index_editor.select_topic"
-                    }}
-                  />
-                  <DButton
-                    @icon="xmark"
-                    @action={{this.cancelSwap}}
-                    class="btn-flat btn-small"
-                  />
-                </div>
-              {{else}}
-                <span
-                  class="doc-category-index-editor__link-topic-href --readonly"
-                >
-                  {{this._editHref}}
-                </span>
+        <div class="doc-category-index-editor__link-edit-row">
+          {{#if this.isTopicLink}}
+            {{#if this.swapping}}
+              <div class="doc-category-index-editor__swap-chooser">
+                <TopicChooser
+                  @value={{null}}
+                  @content={{this.swapTopicContent}}
+                  @onChange={{this.onSwapTopic}}
+                  @options={{hash
+                    additionalFilters=@searchFilters
+                    none="doc_categories.category_settings.index_editor.select_topic"
+                  }}
+                />
                 <DButton
-                  @icon="arrows-rotate"
-                  @action={{this.startSwap}}
-                  @label="doc_categories.category_settings.index_editor.replace_topic"
+                  @icon="xmark"
+                  @action={{this.cancelSwap}}
                   class="btn-flat btn-small"
                 />
-              {{/if}}
+              </div>
             {{else}}
-              <input
-                type="text"
-                value={{this._editHref}}
-                placeholder={{i18n
-                  "doc_categories.category_settings.index_editor.link_url_placeholder"
-                }}
-                class="doc-category-index-editor__link-url"
-                {{on "input" this.updateHref}}
-              />
-            {{/if}}
-          </div>
-
-          <div class="doc-category-index-editor__link-edit-actions">
-            {{#if this.isTopicLink}}
+              <span
+                class="doc-category-index-editor__link-topic-href --readonly"
+              >
+                {{this._editHref}}
+              </span>
               <DButton
-                @icon="link"
-                @action={{this.switchToManualLink}}
-                @label="doc_categories.category_settings.index_editor.switch_to_url"
-                class="btn-flat btn-small"
-              />
-            {{else}}
-              <DButton
-                @icon="file"
-                @action={{this.switchToTopicLink}}
-                @label="doc_categories.category_settings.index_editor.switch_to_topic"
+                @icon="arrows-rotate"
+                @action={{this.startSwap}}
+                @label="doc_categories.category_settings.index_editor.replace_topic"
                 class="btn-flat btn-small"
               />
             {{/if}}
-            <DButton
-              @icon="check"
-              @action={{this.confirmEdit}}
-              @disabled={{not this.canConfirm}}
-              @title="doc_categories.category_settings.index_editor.confirm_edit"
-              class="btn-flat btn-small doc-category-index-editor__confirm-edit-btn"
-            />
-            <DButton
-              @icon="xmark"
-              @action={{this.cancelEdit}}
-              @title="cancel"
-              class="btn-flat btn-small doc-category-index-editor__cancel-edit-btn"
-            />
-          </div>
-        </div>
-      {{else}}
-        {{! View mode: card/pill with text labels }}
-        {{! template-lint-disable no-invalid-interactive }}
-        <div
-          class={{concatClass
-            "doc-category-index-editor__link-card"
-            (if @isSelected "--selected")
-          }}
-          {{on "dblclick" this.enterEdit}}
-        >
-          <div class="doc-category-index-editor__link-card-header">
-            <span class="doc-category-index-editor__link-icon">
-              {{icon (or @link.icon "far-file")}}
-            </span>
-            <span
-              class={{concatClass
-                "doc-category-index-editor__link-label"
-                (unless @link.title "--placeholder")
+          {{else}}
+            <input
+              type="text"
+              value={{this._editHref}}
+              placeholder={{i18n
+                "doc_categories.category_settings.index_editor.link_url_placeholder"
               }}
-            >
-              {{this.displayTitle}}
-            </span>
-            {{#if @link.autoIndexed}}
-              <span class="doc-category-index-editor__item-badge">{{i18n
-                  "doc_categories.category_settings.index_editor.auto_indexed"
-                }}</span>
-            {{else if @link.autoTitle}}
-              <span class="doc-category-index-editor__item-badge">{{i18n
-                  "doc_categories.category_settings.index_editor.auto_title"
-                }}</span>
-            {{/if}}
-            {{#unless @batchMode}}
-              <DButton
-                @icon="pencil"
-                @action={{this.enterEdit}}
-                @title="doc_categories.category_settings.index_editor.edit_link"
-                class="btn-flat btn-small doc-category-index-editor__edit-btn"
-              />
-              <DButton
-                @icon="trash-can"
-                @action={{fn @onRemove @link}}
-                @title="doc_categories.category_settings.index_editor.remove_link"
-                class="btn-flat btn-small doc-category-index-editor__remove-btn"
-              />
-            {{/unless}}
-          </div>
-          {{#if @link.href}}
-            <span class="doc-category-index-editor__link-href-preview">
-              {{@link.href}}
-            </span>
+              class="doc-category-index-editor__link-url"
+              {{on "input" this.updateHref}}
+            />
           {{/if}}
         </div>
-      {{/if}}
-    </div>
+
+        <div class="doc-category-index-editor__link-edit-actions">
+          {{#if this.isTopicLink}}
+            <DButton
+              @icon="link"
+              @action={{this.switchToManualLink}}
+              @label="doc_categories.category_settings.index_editor.switch_to_url"
+              class="btn-flat btn-small"
+            />
+          {{else}}
+            <DButton
+              @icon="file"
+              @action={{this.switchToTopicLink}}
+              @label="doc_categories.category_settings.index_editor.switch_to_topic"
+              class="btn-flat btn-small"
+            />
+          {{/if}}
+          <DButton
+            @icon="check"
+            @action={{this.confirmEdit}}
+            @disabled={{not this.canConfirm}}
+            @title="doc_categories.category_settings.index_editor.confirm_edit"
+            class="btn-flat btn-small doc-category-index-editor__confirm-edit-btn"
+          />
+          <DButton
+            @icon="xmark"
+            @action={{this.cancelEdit}}
+            @title="cancel"
+            class="btn-flat btn-small doc-category-index-editor__cancel-edit-btn"
+          />
+        </div>
+      </div>
+    {{else}}
+      {{! View mode: card/pill with text labels }}
+      {{! template-lint-disable no-invalid-interactive }}
+      {{! Batch mode switches the list off, so its row registers no drop target
+          and this carries one instead. Gated rather than conditional, since a
+          re-curried modifier would re-register mid-drag. }}
+      <div
+        class={{concatClass
+          "doc-category-index-editor__link-card"
+          (if @isSelected "--selected")
+        }}
+        {{dDragAndDropTarget
+          accepts=LINK_DRAG_TYPE
+          acceptsSelf=false
+          canDrop=this.canDropBatchLinks
+          onDrop=this.onBatchRowDrop
+        }}
+        {{on "dblclick" this.enterEdit}}
+      >
+        <div class="doc-category-index-editor__link-card-header">
+          <span class="doc-category-index-editor__link-icon">
+            {{icon (or @link.icon "far-file")}}
+          </span>
+          <span
+            class={{concatClass
+              "doc-category-index-editor__link-label"
+              (unless @link.title "--placeholder")
+            }}
+          >
+            {{this.displayTitle}}
+          </span>
+          {{#if @link.autoIndexed}}
+            <span class="doc-category-index-editor__item-badge">{{i18n
+                "doc_categories.category_settings.index_editor.auto_indexed"
+              }}</span>
+          {{else if @link.autoTitle}}
+            <span class="doc-category-index-editor__item-badge">{{i18n
+                "doc_categories.category_settings.index_editor.auto_title"
+              }}</span>
+          {{/if}}
+          {{#unless @batchMode}}
+            <DButton
+              @icon="pencil"
+              @action={{this.enterEdit}}
+              @title="doc_categories.category_settings.index_editor.edit_link"
+              class="btn-flat btn-small doc-category-index-editor__edit-btn"
+            />
+            {{#if @controls.remove}}
+              <@controls.remove
+                class="btn-flat btn-small doc-category-index-editor__remove-btn"
+              />
+            {{/if}}
+          {{/unless}}
+        </div>
+        {{#if @link.href}}
+          <span class="doc-category-index-editor__link-href-preview">
+            {{@link.href}}
+          </span>
+        {{/if}}
+      </div>
+    {{/if}}
   </template>
 }

@@ -28,16 +28,18 @@ describe "Doc Category Index Editor | dragging" do
   let(:first_link) { ".doc-category-index-editor__link:has-text('First')" }
   let(:second_link) { ".doc-category-index-editor__link:has-text('Second')" }
 
-  # A row is the drop target, but only its grip is draggable, so a drag has to
+  # A row is the drop target, but only its handle is draggable, so a drag has to
   # be pressed there. Pressing the row instead starts nothing, and the drag then
   # fails silently: the order simply does not change, which any assertion that
   # the order stayed put would happily accept.
   let(:second_link_grip) { "#{second_link} .doc-category-index-editor__drag-handle" }
   let(:first_link_grip) { "#{first_link} .doc-category-index-editor__drag-handle" }
 
+  # The links list itself, not the whole body: a section with no rows is the one
+  # case where the list's own root is the drop target, and it marks that state.
   let(:spare_section_body) do
     ".doc-category-index-editor__section:has-text('Spare') " \
-      ".doc-category-index-editor__section-body"
+      ".doc-category-index-editor__link-list"
   end
 
   before do
@@ -105,11 +107,11 @@ describe "Doc Category Index Editor | dragging" do
     it "reorders the sections themselves" do
       expect(editor.section_labels).to eq(%w[Guides Reference])
 
-      # A section's own grip is a direct child of its ROW, a sibling of the
+      # A section's own handle is a direct child of its ROW, a sibling of the
       # `__section` element rather than inside it. Descending from `__section`
-      # therefore reaches only the grips of the links nested within, and drags a
-      # link while looking like it drags a section, which fails as silently as a
-      # drag that never started.
+      # therefore reaches only the handles of the links nested within, and drags
+      # a link while looking like it drags a section, which fails as silently as
+      # a drag that never started.
       drag_and_drop(
         source:
           ".doc-category-index-editor__section-row:has-text('Reference') > .doc-category-index-editor__drag-handle",

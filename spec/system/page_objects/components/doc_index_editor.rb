@@ -68,10 +68,9 @@ module PageObjects
           has_css?(
             ".doc-category-index-editor__section-title, .doc-category-index-editor__edit-btn",
           )
-          find(".doc-category-index-editor__edit-btn").click if has_css?(
-            ".doc-category-index-editor__edit-btn",
-            wait: 0,
-          )
+          if has_css?(".doc-category-index-editor__edit-btn", wait: 0)
+            find(".doc-category-index-editor__edit-btn").click
+          end
           find(".doc-category-index-editor__section-title").fill_in(with: title)
           find(".doc-category-index-editor__confirm-title-btn").click
         end
@@ -304,46 +303,66 @@ module PageObjects
         self
       end
 
-      # The arrows are the keyboard path beside the drag. Found by their
-      # accessible name rather than by position, since that name is the contract
-      # a screen reader user navigates by, and an index is what a reorder moves.
+      # A move is the shared list's two-step interaction: open the row's handle
+      # menu, then choose a destination. Rows are addressed by the accessible
+      # name of their handle, which is what a screen reader user navigates by
+      # and, unlike a position, is not what a reorder changes.
       def move_link(title, direction)
-        find("button[title='#{move_link_label(title, direction)}']").click
+        link_row(title).move(direction)
         self
       end
 
       def move_section(title, direction)
-        find("button[title='#{move_section_label(title, direction)}']").click
+        section_row(title).move(direction)
         self
       end
 
+      # Sends a link to another section by name, which is the deliberate
+      # cross-section move beside the step that spills into the adjacent one.
+      def move_link_to_section(title, section_title)
+        link_row(title).open_menu
+        find(
+          ".d-reorderable-list__move-item.--list",
+          text: I18n.t("js.reorder.move_to_list", list: section_title),
+        ).click
+        self
+      end
+
+      # A destination a row cannot reach is not rendered at all, so the set the
+      # menu publishes to assistive software is the set it can act on.
       def has_link_move_disabled?(title, direction)
-        has_css?("button[title='#{move_link_label(title, direction)}'][aria-disabled='true']")
+        link_row(title).has_no_destination?(direction)
       end
 
       def has_link_move_available?(title, direction)
-        has_no_css?("button[title='#{move_link_label(title, direction)}'][aria-disabled='true']")
+        link_row(title).has_destination?(direction)
       end
 
       # A move that crosses a section boundary destroys the row and builds a new
-      # one, so keeping focus on the pressed arrow is the editor's job rather
-      # than the button pair's.
-      def has_focused_move_button?(title, direction)
-        has_css?("button[title='#{move_link_label(title, direction)}']:focus")
+      # one under the other section, so only the destination can put focus back.
+      def has_focused_move_button?(title, _direction)
+        has_css?("#{link_selector(title)} .d-reorderable-list__handle:focus")
       end
 
-      def move_link_label(title, direction)
-        I18n.t(
-          "js.doc_categories.category_settings.index_editor.move_link_#{direction}",
-          label: title,
+      def link_row(title)
+        PageObjects::Components::ReorderableList.new(link_selector(title))
+      end
+
+      # A section row contains its links' rows, and their handles carry the same
+      # class, so the section's own handle has to be named as its direct child.
+      def section_row(title)
+        PageObjects::Components::ReorderableList.new(
+          section_selector(title),
+          handle: "> .d-reorderable-list__handle",
         )
       end
 
-      def move_section_label(title, direction)
-        I18n.t(
-          "js.doc_categories.category_settings.index_editor.move_section_#{direction}",
-          label: title,
-        )
+      def link_selector(title)
+        ".doc-category-index-editor__link:has-text('#{title}')"
+      end
+
+      def section_selector(title)
+        ".doc-category-index-editor__section-row:has-text('#{title}')"
       end
 
       # Link titles in render order, which is the only thing a reorder changes
