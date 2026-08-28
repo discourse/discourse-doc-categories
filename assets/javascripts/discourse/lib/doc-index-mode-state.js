@@ -176,6 +176,8 @@ export default class DocIndexModeState {
   #applyNoneMode() {
     this.mode = MODE_NONE;
     this.#form.set("doc_index_topic_id", null);
+    // An empty array rather than null: the backend skips a blank value and
+    // saves an empty one, so this is what actually clears the stored index.
     this.#form.set("doc_index_sections", "[]");
   }
 
@@ -222,6 +224,8 @@ export default class DocIndexModeState {
   #applyTopicMode() {
     this.mode = MODE_TOPIC;
     this.#form.set("doc_index_topic_id", null);
+    // Null rather than an empty array: the topic owns the index from here, and
+    // sending sections would be refused as not topic managed.
     this.#form.set("doc_index_sections", null);
   }
 
