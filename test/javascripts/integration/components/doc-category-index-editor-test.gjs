@@ -352,3 +352,176 @@ module(
     });
   }
 );
+
+module(
+  "Integration | Component | doc-category-index-editor | validation",
+  function (hooks) {
+    setupRenderingTest(hooks);
+
+    test("it finds links sharing an href across sections", async function (assert) {
+      const editor = await renderEditor([
+        { text: "One", links: [{ text: "A", href: "/t/same/1" }] },
+        { text: "Two", links: [{ text: "B", href: "/t/same/1" }] },
+      ]);
+
+      assert.deepEqual(
+        [...editor.duplicateHrefs],
+        ["/t/same/1"],
+        "a duplicate counts across sections, not only within one"
+      );
+    });
+
+    test("it ignores links with no href", async function (assert) {
+      const editor = await renderEditor([
+        {
+          text: "One",
+          links: [
+            { text: "A", href: "" },
+            { text: "B", href: "" },
+          ],
+        },
+      ]);
+
+      assert.strictEqual(
+        editor.duplicateHrefs.size,
+        0,
+        "two unfinished rows are not duplicates of each other"
+      );
+    });
+
+    test("duplicate section titles are matched case insensitively", async function (assert) {
+      const editor = await renderEditor([
+        { text: "Reference", links: [{ text: "A", href: "/a" }] },
+        { text: "reference", links: [{ text: "B", href: "/b" }] },
+      ]);
+
+      assert.deepEqual(
+        [...editor.duplicateTitles],
+        ["reference"],
+        "casing does not make two sections distinct to a reader"
+      );
+    });
+
+    test("duplicate hrefs are matched exactly", async function (assert) {
+      const editor = await renderEditor([
+        { text: "One", links: [{ text: "A", href: "/t/Same/1" }] },
+        { text: "Two", links: [{ text: "B", href: "/t/same/1" }] },
+      ]);
+
+      assert.strictEqual(
+        editor.duplicateHrefs.size,
+        0,
+        "unlike titles, a URL that differs in case is a different URL"
+      );
+    });
+
+    test("a row left open counts as a validation error", async function (assert) {
+      const editor = await renderEditor();
+
+      assert.deepEqual(editor.validationErrors, [], "nothing is wrong yet");
+
+      editor.sections[0].links[0].isEditing = true;
+      await settled();
+
+      assert.strictEqual(
+        editor.validationErrors.length,
+        1,
+        "an unfinished row blocks the save rather than being silently dropped"
+      );
+    });
+
+    test("Apply stays disabled until something has actually changed", async function (assert) {
+      const editor = await renderEditor();
+
+      assert.true(
+        editor.applyDisabled,
+        "there is nothing to apply on a freshly opened editor"
+      );
+    });
+
+    test("Apply is disabled while a validation error stands", async function (assert) {
+      const editor = await renderEditor();
+
+      editor._hasLocalChanges = true;
+      await settled();
+      assert.false(editor.applyDisabled, "a pending change enables it");
+
+      editor.sections[0].links[0].isEditing = true;
+      await settled();
+
+      assert.true(
+        editor.applyDisabled,
+        "and an open row disables it again, even with changes to save"
+      );
+    });
+
+    test("Apply is disabled while a save is in flight", async function (assert) {
+      const editor = await renderEditor();
+
+      editor._hasLocalChanges = true;
+      editor.saveState = "saving";
+      await settled();
+
+      assert.true(editor.applyDisabled, "so a double click cannot save twice");
+      assert.strictEqual(
+        editor.applyLabel,
+        "doc_categories.category_settings.index_editor.applying",
+        "and the label says so"
+      );
+    });
+
+    test("an untitled section past the first opens for naming", async function (assert) {
+      await renderEditor([
+        { text: "", links: [{ text: "A", href: "/a" }] },
+        { text: "", links: [{ text: "B", href: "/b" }] },
+      ]);
+
+      assert
+        .dom(".doc-category-index-editor__section-title")
+        .exists(
+          { count: 1 },
+          "only the second opens: the first is allowed to stay untitled"
+        );
+      assert
+        .dom(".doc-category-index-editor__validation-error")
+        .doesNotExist("and a section still being named is not yet an error");
+    });
+
+    test("an untitled section becomes an error once naming is dismissed", async function (assert) {
+      const editor = await renderEditor([
+        { text: "", links: [{ text: "A", href: "/a" }] },
+        { text: "", links: [{ text: "B", href: "/b" }] },
+      ]);
+
+      editor.sections[1].isEditingTitle = false;
+      await settled();
+
+      assert
+        .dom(".doc-category-index-editor__validation-error")
+        .exists(
+          { count: 1 },
+          "leaving it blank is what makes it wrong, not opening it"
+        );
+    });
+
+    test("the first section stays untitled without complaint", async function (assert) {
+      const editor = await renderEditor([
+        { text: "", links: [{ text: "A", href: "/a" }] },
+      ]);
+
+      assert
+        .dom(".doc-category-index-editor__section-title")
+        .doesNotExist("it does not open for naming");
+      assert
+        .dom(".doc-category-index-editor__validation-error")
+        .doesNotExist(
+          "and never complains: a leading section needs no heading"
+        );
+      assert.deepEqual(
+        editor.validationErrors,
+        [],
+        "so nothing blocks the save"
+      );
+    });
+  }
+);
