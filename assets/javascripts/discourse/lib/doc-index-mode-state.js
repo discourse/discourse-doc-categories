@@ -70,6 +70,28 @@ export default class DocIndexModeState {
     return this.mode === MODE_DIRECT;
   }
 
+  /**
+   * The nearest ancestor whose index this category displays, or null when the
+   * category has an index of its own or no ancestor supplies one. The sidebar
+   * resolves an index the same way, so a category with none of its own is not
+   * necessarily showing nothing.
+   */
+  get inheritedIndexCategory() {
+    if (!this.isNoneMode) {
+      return null;
+    }
+
+    let category = this.#category?.parentCategory;
+    while (category) {
+      if (category.doc_category_index) {
+        return category;
+      }
+      category = category.parentCategory;
+    }
+
+    return null;
+  }
+
   get indexData() {
     return this.#category.doc_category_index;
   }

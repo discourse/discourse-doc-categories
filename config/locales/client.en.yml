@@ -34,6 +34,7 @@ en:
           mode_none: "Disabled"
           mode_none_description: "No sidebar index for this category"
           none_mode_help: "The sidebar index is disabled. Select a mode above to create one."
+          inherited_mode_help: "The sidebar index is inherited from %{category_name}. Select a mode above to create one for this category."
           disable_confirm: "This will permanently remove the current sidebar index. Are you sure?"
           mode_direct: "Editor"
           mode_direct_description: "Build the sidebar index with a visual editor"

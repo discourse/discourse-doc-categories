@@ -91,9 +91,16 @@ export default class DocCategoryIndexTab extends Component {
 
       {{#if this.modeState.isNoneMode}}
         <p class="doc-category-index-tab__none-help">
-          {{i18n
-            "doc_categories.category_settings.index_editor.none_mode_help"
-          }}
+          {{#if this.modeState.inheritedIndexCategory}}
+            {{i18n
+              "doc_categories.category_settings.index_editor.inherited_mode_help"
+              category_name=this.modeState.inheritedIndexCategory.name
+            }}
+          {{else}}
+            {{i18n
+              "doc_categories.category_settings.index_editor.none_mode_help"
+            }}
+          {{/if}}
         </p>
       {{else if this.modeState.isTopicMode}}
         <div class="doc-category-index-tab__topic-mode">
