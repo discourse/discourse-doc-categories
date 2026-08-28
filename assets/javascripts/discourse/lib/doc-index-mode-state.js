@@ -8,9 +8,8 @@ const MODE_TOPIC = "topic";
 const MODE_DIRECT = "direct";
 
 /**
- * Shared state manager for the doc index mode selector, used by both the
- * new-flow tab (DocCategoryIndexTab) and the legacy-flow settings
- * (DocCategorySettings). Encapsulates mode tracking, mode switching with
+ * State manager for the doc index mode selector, used by the category edit tab
+ * (DocCategoryIndexTab). Encapsulates mode tracking, mode switching with
  * confirmation dialogs, topic loading, and topic validation.
  */
 export default class DocIndexModeState {

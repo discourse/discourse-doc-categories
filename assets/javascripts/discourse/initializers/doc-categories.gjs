@@ -1,7 +1,6 @@
 import { schedule } from "@ember/runloop";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DiscourseURL from "discourse/lib/url";
-import DocCategorySettings from "../components/doc-category-settings";
 import DocSimpleModeToggle from "../components/doc-simple-mode-toggle";
 import DocUpdatedHeaderCell from "../components/doc-updated-header-cell";
 import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel";
@@ -21,10 +20,6 @@ export default {
     withPluginApi((api) => {
       api.registerCategorySaveProperty("doc_index_topic_id");
       api.registerCategorySaveProperty("doc_index_sections");
-      if (!siteSettings.enable_simplified_category_creation) {
-        // Legacy category edit flow uses the outlet; the new flow uses a registered tab.
-        api.renderInOutlet("category-custom-settings", DocCategorySettings);
-      }
       api.addSidebarPanel(DocCategorySidebarPanel);
 
       api.registerBehaviorTransformer(

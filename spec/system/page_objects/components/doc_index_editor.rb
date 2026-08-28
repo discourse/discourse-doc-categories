@@ -253,56 +253,6 @@ module PageObjects
         self
       end
 
-      # Legacy flow helpers
-
-      def visit_category_settings(category)
-        page.visit("/c/#{category.slug}/edit/settings")
-        has_css?(".doc-categories-settings")
-        self
-      end
-
-      def has_legacy_mode_dropdown?
-        has_css?(".doc-categories-settings__mode-selector .fk-d-menu__trigger")
-      end
-
-      def switch_legacy_mode(mode_key)
-        find(".doc-categories-settings__mode-selector .fk-d-menu__trigger").click
-        find(
-          ".doc-category-index-tab__mode-option-label",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
-        ).click
-        self
-      end
-
-      def click_open_editor
-        find(
-          "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.open_editor"),
-        ).click
-        self
-      end
-
-      def has_editor_validation_errors?
-        has_css?(".doc-categories-settings__editor-errors")
-      end
-
-      def has_no_editor_validation_errors?
-        has_no_css?(".doc-categories-settings__editor-errors")
-      end
-
-      def has_legacy_topic_mode?
-        has_css?(".doc-categories-settings__index-topic")
-      end
-
-      def has_legacy_editor_trigger?
-        has_css?(".doc-categories-settings__editor-trigger")
-      end
-
-      def save_legacy_category
-        find("#save-category").click
-        self
-      end
-
       # A move is the shared list's two-step interaction: open the row's handle
       # menu, then choose a destination. Rows are addressed by the accessible
       # name of their handle, which is what a screen reader user navigates by
