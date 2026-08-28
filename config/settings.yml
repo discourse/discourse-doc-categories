@@ -12,6 +12,14 @@ doc_categories:
       status: "experimental"
       impact: "other,all_members"
       learn_more_url: "https://meta.discourse.org/t/-/403366"
+  doc_categories_index_editor:
+    default: false
+    hidden: true
+    client: true
+    upcoming_change:
+      status: "experimental"
+      impact: "feature,admins"
+      disallow_enabled_for_groups: true
   doc_categories_homepage:
     default: ""
     client: true

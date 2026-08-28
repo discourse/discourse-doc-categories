@@ -10,7 +10,10 @@ module ::DocCategories
                Category.reflect_on_association(:doc_categories_index)
             query =
               query.includes(
-                doc_categories_index: [:index_topic, { sidebar_sections: :sidebar_links }],
+                doc_categories_index: [
+                  :index_topic,
+                  { sidebar_sections: { sidebar_links: :topic } },
+                ],
               )
           end
 

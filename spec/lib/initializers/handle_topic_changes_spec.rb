@@ -22,13 +22,8 @@ describe DocCategories::Initializers::HandleTopicChanges do
     Jobs::DocCategoriesRefreshIndex.jobs.clear
   end
 
-  it "assigns and refreshes when the index topic is trashed" do
-    expect_enqueued_with(
-      job: :doc_categories_refresh_index,
-      args: {
-        category_id: documentation_category.id,
-      },
-    ) { index_topic.trash! }
+  it "destroys the index when the index topic is trashed" do
+    index_topic.trash!
 
     expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
   end

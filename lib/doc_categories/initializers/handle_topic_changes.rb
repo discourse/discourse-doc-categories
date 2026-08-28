@@ -4,8 +4,6 @@ module ::DocCategories
   module Initializers
     class HandleTopicChanges < Initializer
       def apply
-        plugin.add_class_method(:topic, :clear_doc_categories_cache) { Site.clear_cache }
-
         plugin.on(:topic_trashed) { |topic| handle_topic_trashed(topic) }
       end
 
@@ -18,7 +16,12 @@ module ::DocCategories
         category = index.category
         return if !category
 
-        DocCategories::CategoryIndexManager.new(category).assign!(nil)
+        DocCategories::CategoryIndexManager.call(
+          params: {
+            category_id: category.id,
+            topic_id: nil,
+          },
+        )
       end
     end
   end
