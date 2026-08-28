@@ -311,7 +311,11 @@ export class IndexEditorLink extends Component {
     {{/if}}
 
     {{#if this.editing}}
-      {{! Edit mode: expanded card with all fields }}
+      {{! template-lint-disable no-invalid-interactive }}
+      {{! Edit mode: expanded card with all fields. The card is not itself a
+          control. It catches keydown and focusout on their way up from the
+          fields inside it, so Escape and leaving the card are handled in one
+          place rather than on every field. }}
       <div
         class={{dConcatClass
           "doc-category-index-editor__link-card --editing"
@@ -425,6 +429,7 @@ export class IndexEditorLink extends Component {
           />
         </div>
       </div>
+      {{! template-lint-enable no-invalid-interactive }}
     {{else}}
       {{! View mode: card/pill with text labels }}
       {{! template-lint-disable no-invalid-interactive }}
