@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
+  fab!(:admin)
   fab!(:category, :category_with_definition)
   fab!(:documentation_category, :category_with_definition)
   fab!(:documentation_subcategory) do
@@ -61,7 +62,7 @@ RSpec.describe ::DocCategories::Reports::MissingTopicsReport do
 
   describe "doc_categories_missing_topics" do
     def report(opts = {})
-      Report.find("doc_categories_missing_topics", opts)
+      Report.find("doc_categories_missing_topics", guardian: admin.guardian, **opts)
     end
 
     before do
