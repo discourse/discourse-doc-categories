@@ -77,15 +77,15 @@ describe BasicCategorySerializer do
   describe "#doc_category_index" do
     it "isn't serialized if the category is not a doc category" do
       data = described_class.new(category, root: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
     it "isn't serialized if the index topic doesn't exist" do
-      documentation_index.update_columns(index_topic_id: 0)
+      documentation_index.update_columns(index_topic_id: 999_999_999)
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
     it "isn't serialized if the index topic doesn't belong to the category" do
@@ -93,7 +93,7 @@ describe BasicCategorySerializer do
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
     it "isn't serialized if the index topic doesn't belongs to a subcategory" do
@@ -101,17 +101,17 @@ describe BasicCategorySerializer do
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
-    it "isn't serialized if the index topic doesn't contain a first post" do
+    it "isn't serialized if the index has no sidebar sections" do
       empty_topic = Fabricate(:topic, category: documentation_category)
 
       documentation_index.update!(index_topic: empty_topic)
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
     it "isn't serialized if the topic index has no sections" do
@@ -119,7 +119,7 @@ describe BasicCategorySerializer do
       documentation_category.reload
 
       data = described_class.new(category, documentation_category: false).as_json
-      expect(data.has_key?(:doc_category_index)).to eq(false)
+      expect(data[:doc_category_index]).to be_nil
     end
 
     it "is serialized as expected if the index topic can be parsed" do

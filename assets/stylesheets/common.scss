@@ -11,15 +11,6 @@
   }
 }
 
-.doc-categories-settings {
-  .validation-error {
-    padding-top: 3px;
-    font-size: var(--font-down-1);
-    line-height: var(--line-height-large);
-    color: var(--danger);
-  }
-}
-
 // Simple mode
 //
 // NOTE: selectors below (.post__topic-map, .topic-meta-data, .post-menu-area,
@@ -102,4 +93,795 @@ body.doc-simple-mode {
 .doc-simple-mode-toggle {
   margin-top: 1em;
   margin-bottom: 1em;
+}
+
+/* Doc category index tab */
+.doc-category-index-tab {
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  &__mode-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+  }
+
+  &__mode-option {
+    display: flex;
+    flex: 1 0 auto;
+    align-items: center;
+  }
+
+  &__mode-option-texts {
+    line-height: var(--line-height-medium);
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  &__mode-option-label {
+    font-weight: bold;
+    font-size: var(--font-0);
+    color: var(--primary);
+  }
+
+  &__mode-option-description {
+    font-size: var(--font-down-1);
+    color: var(--primary-medium);
+    white-space: normal;
+    text-align: left;
+  }
+
+  &__topic-mode {
+    margin-top: 1em;
+
+    > label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.25em;
+    }
+
+    .select-kit {
+      width: 100%;
+    }
+  }
+
+  &__none-help {
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+    font-style: italic;
+    margin: 0;
+  }
+
+  &__topic-help {
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+    margin: 0 0 0.75em;
+  }
+
+  &__error {
+    color: var(--danger);
+    font-size: var(--font-down-1);
+    margin-top: 0.25em;
+  }
+}
+
+/* Doc category index editor */
+.doc-category-index-editor {
+  --doc-index-section-gap: 0.75em;
+
+  /* The grip's box: its icon plus the padding around it. */
+  --doc-index-grip-size: calc(1em + 0.5em);
+
+  &__toolbar-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5em;
+    margin-left: auto;
+  }
+
+  &__options-trigger {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  &__empty {
+    color: var(--primary-medium);
+    font-style: italic;
+    margin: 1em 0;
+  }
+
+  &__sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--doc-index-section-gap);
+  }
+
+  /* The dragging and insertion-line treatments come from the shared drag
+     primitives now, keyed off the attributes their registrations stamp. */
+
+  &__section-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35em;
+    position: relative;
+
+    /* Sections are spaced apart rather than adjacent, so a line sitting against
+       a row edge lands nearer one section than the other and the same slot
+       draws in two places depending on which row answered. Centred in the gap,
+       "after this one" and "before the next" share a position. */
+
+    &[data-drop-target].--drag-above::before {
+      top: calc(var(--doc-index-section-gap) / -2 - 1px);
+    }
+
+    &[data-drop-target].--drag-below::after {
+      bottom: calc(var(--doc-index-section-gap) / -2 - 1px);
+    }
+  }
+
+  &__section {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 0.75em;
+    background: var(--secondary);
+    transition: border-color 0.15s;
+    position: relative;
+
+    &:has(> .doc-category-index-editor__auto-index-badge) {
+      padding-top: 1.25em;
+    }
+
+    &.--error {
+      border-color: var(--danger);
+    }
+  }
+
+  &__validation-error {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    color: var(--danger);
+    font-size: var(--font-down-1);
+    margin-top: 0.25em;
+
+    /* Align with the input next to the collapse button */
+    .doc-category-index-editor__section > & {
+      margin-left: calc(1em + 0.5em + 0.25em);
+    }
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+
+    > .btn {
+      flex-shrink: 0;
+    }
+  }
+
+  &__collapse-btn {
+    flex-shrink: 0;
+    padding: 0.25em;
+  }
+
+  input.doc-category-index-editor__section-title {
+    flex: 1;
+    font-weight: bold;
+    font-size: var(--font-up-1);
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  &__section-title-label {
+    flex: 1;
+    font-weight: bold;
+    font-size: var(--font-up-1);
+    min-width: 0;
+    cursor: pointer;
+    padding: 0.15em 0.35em;
+    border-radius: var(--d-border-radius);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--primary-very-low);
+    }
+
+    &:focus-visible {
+      background: var(--primary-very-low);
+      outline: 2px solid var(--tertiary);
+      outline-offset: -2px;
+    }
+
+    &.--placeholder {
+      color: var(--primary-medium);
+      font-style: italic;
+      font-weight: normal;
+    }
+  }
+
+  &__link-count {
+    background: var(--primary-low);
+    color: var(--primary-high);
+    border-radius: 10px; /* pill shape */
+    padding: 0.1em 0.5em;
+    font-size: var(--font-down-1);
+    flex-shrink: 0;
+  }
+
+  /* No reserved border: the into-this-section mark is an outline from the drag
+     primitives, which costs no layout, where the old one was a top border this
+     had to keep space for. */
+
+  &__section-body {
+    margin-top: 0.5em;
+    transition: opacity 0.15s ease-out;
+
+    &.--collapsed {
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    }
+  }
+
+  &__links {
+    display: flex;
+    flex-direction: column;
+    margin-left: 2em;
+    margin-right: -0.5em;
+    padding-left: 0.5em;
+  }
+
+  /* The reorderable list itself, inside the indented wrapper that also holds
+     the auto-index placeholder. */
+
+  &__link-list {
+    display: flex;
+    flex-direction: column;
+
+    /* A section with no links is a live drop target with no height to drop
+       onto, and the list marks that state itself. Toned down from the default
+       so it reads as a slot inside a section rather than a second section. */
+
+    &.--empty-drop-target {
+      min-height: 2.5em;
+      padding: 0.25em;
+      margin-bottom: 0.25em;
+      font-size: var(--font-down-1);
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    padding: 0.15em 0;
+    min-height: 2em;
+    position: relative;
+
+    &:last-child {
+      padding-bottom: 0.75em;
+      margin-bottom: -0.6em;
+
+      /* The last row's own padding sits between it and the section edge, so the
+         shared below-the-row line would otherwise be drawn adrift in it. */
+
+      &.--drag-below::after {
+        bottom: calc(0.75em - 0.15em - 1px);
+      }
+    }
+
+    &.--duplicate {
+      .doc-category-index-editor__link-card {
+        border-left: 3px solid var(--highlight);
+      }
+    }
+
+    input {
+      margin: 0;
+    }
+  }
+
+  &__link-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    flex: 1;
+    min-width: 0;
+    background: var(--secondary);
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 0.35em 0.5em;
+    box-shadow: 0 1px 3px var(--shadow-color, rgb(0 0 0 / 0.06));
+    cursor: default;
+    transition:
+      box-shadow 0.15s,
+      border-color 0.15s;
+
+    &:hover {
+      border-color: var(--primary-low-mid);
+    }
+
+    &.--editing {
+      padding: 0.5em;
+      gap: 0.5em;
+      border-color: var(--tertiary);
+      box-shadow: 0 2px 6px var(--shadow-color, rgb(0 0 0 / 0.1));
+
+      .d-icon-grid-picker__trigger {
+        border: 1px solid var(--primary-low-mid);
+        border-radius: var(--d-border-radius);
+        align-self: stretch;
+        padding-inline: 0.75em;
+      }
+    }
+
+    &.--error {
+      border-color: var(--danger);
+    }
+
+    &.--adding {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5em;
+      padding: 0.5em;
+      border-color: var(--tertiary);
+
+      .select-kit {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+  }
+
+  &__link-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    min-width: 0;
+  }
+
+  &__link-icon {
+    flex-shrink: 0;
+    color: var(--primary-medium);
+  }
+
+  &__link-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.--placeholder {
+      color: var(--primary-medium);
+      font-style: italic;
+    }
+  }
+
+  &__item-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05em 0.4em;
+    border-radius: var(--d-border-radius);
+    background: var(--tertiary-low);
+    color: var(--tertiary-hover);
+    font-size: var(--font-down-2);
+    font-weight: 700;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  &__link.--ghost {
+    pointer-events: none;
+  }
+
+  &__drag-handle-spacer {
+    flex-shrink: 0;
+    width: var(--doc-index-grip-size);
+  }
+
+  &__link-card.--ghost {
+    border-style: dashed;
+    border-color: var(--primary-low-mid);
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.6;
+
+    .doc-category-index-editor__link-icon,
+    .doc-category-index-editor__link-label {
+      color: var(--primary-medium);
+    }
+  }
+
+  &__auto-index-badge.btn {
+    position: absolute;
+    top: -0.65em;
+    right: 0.75em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.1em 0.5em;
+    border: 1px solid var(--tertiary-low);
+    border-radius: var(--d-border-radius);
+    background: var(--tertiary-low);
+    color: var(--tertiary-hover);
+    font-size: var(--font-down-2);
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 1;
+
+    .d-icon {
+      color: inherit;
+    }
+
+    &:hover,
+    &:focus {
+      background: var(--tertiary-very-low, var(--secondary));
+      color: var(--tertiary-hover);
+      box-shadow: 0 0 0 1px var(--tertiary-low);
+
+      .d-icon {
+        color: inherit;
+      }
+    }
+  }
+
+  &__auto-index-subcategories {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.25em var(--d-sidebar-row-horizontal-padding);
+    font-size: var(--font-down-1);
+    font-weight: normal;
+    cursor: pointer;
+  }
+
+  &__link-href-preview {
+    color: var(--primary-medium);
+    font-size: var(--font-down-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 1.75em;
+  }
+
+  &__link-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+    }
+  }
+
+  &__link-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    margin-top: 0.25em;
+    border-top: 1px solid var(--primary-very-low);
+    padding-top: 0.35em;
+  }
+
+  &__confirm-edit-btn {
+    margin-left: auto;
+  }
+
+  &__edit-btn {
+    flex-shrink: 0;
+  }
+
+  &__duplicate-icon {
+    color: var(--highlight);
+    flex-shrink: 0;
+  }
+
+  &__link-title,
+  &__link-url {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__link-topic-href {
+    flex: 1;
+    min-width: 0;
+    color: var(--tertiary);
+    font-size: var(--font-down-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:not(.--readonly) {
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+
+      &:hover {
+        color: var(--tertiary-hover);
+      }
+
+      &:focus-visible {
+        color: var(--tertiary-hover);
+        outline: 2px solid var(--tertiary);
+        outline-offset: 1px;
+        border-radius: var(--d-border-radius);
+      }
+    }
+
+    &.--readonly {
+      color: var(--primary-medium);
+      cursor: default;
+    }
+  }
+
+  &__swap-chooser {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+
+    .select-kit {
+      flex: 1;
+    }
+  }
+
+  &__drag-handle {
+    cursor: grab;
+    color: var(--primary-medium);
+    padding: 0.25em;
+    flex-shrink: 0;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    /* Align with section header icons (section padding + border + header button padding) */
+    .doc-category-index-editor__section-row > & {
+      margin-top: calc(0.75em + 0.25em);
+    }
+
+    /* Align with link card icons (link padding + card border + card padding) */
+    .doc-category-index-editor__link > & {
+      margin-top: calc(0.15em + 0.35em);
+    }
+  }
+
+  &__remove-btn {
+    flex-shrink: 0;
+  }
+
+  &__remove-btn,
+  &__cancel-edit-btn,
+  &__cancel-title-btn {
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--danger);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__confirm-edit-btn,
+  &__confirm-title-btn {
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--success);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__inline-topic-chooser {
+    margin: 0.35em 0 0.35em 2em;
+    padding-left: 0.5em;
+  }
+
+  &__section-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 0.5em;
+    margin-left: 2em;
+    padding-left: 0.5em;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 1em;
+  }
+
+  &__apply-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 2.5em;
+    padding-top: 1.5em;
+    border-top: 1px solid var(--primary-low);
+  }
+
+  &__batch-delete-btn {
+    margin-right: 1.5em;
+  }
+
+  &__batch-delete-btn,
+  &__clear-index-btn {
+    color: var(--danger);
+
+    .d-icon {
+      color: var(--danger);
+    }
+
+    .discourse-no-touch & {
+      &:hover,
+      &:focus {
+        background: var(--danger);
+        color: var(--secondary);
+
+        .d-icon {
+          color: var(--secondary);
+        }
+      }
+    }
+  }
+
+  &__batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+    margin-left: auto;
+  }
+
+  &__batch-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0.25em;
+    flex-shrink: 0;
+
+    /* Match the width of the drag handle so checkboxes align in the same column */
+    min-width: calc(1em + 0.5em);
+
+    /* Align section checkbox with section drag handle */
+    .doc-category-index-editor__section-row > & {
+      margin-top: calc(0.75em + 0.25em);
+    }
+
+    /* Align link checkbox with link card icons */
+    .doc-category-index-editor__link > & {
+      margin-top: calc(0.15em + 0.35em);
+    }
+
+    input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+
+  &__batch-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.5em 0.75em;
+    margin-bottom: 0.75em;
+    background: var(--tertiary-very-low);
+    border: 1px solid var(--tertiary-low);
+    border-radius: var(--d-border-radius);
+    position: sticky;
+    top: var(--header-offset, 60px);
+    z-index: 1;
+  }
+
+  &__batch-drag-handle {
+    cursor: grab;
+    color: var(--primary-medium);
+    padding: 0.25em;
+    flex-shrink: 0;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--tertiary);
+      outline-offset: -2px;
+      border-radius: var(--d-border-radius);
+    }
+
+    &.--disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+  }
+
+  &__batch-count {
+    flex: 1;
+    font-weight: bold;
+    font-size: var(--font-down-1);
+  }
+
+  &__section.--selected,
+  &__link-card.--selected {
+    border-color: var(--tertiary);
+    background: var(--tertiary-very-low);
+  }
+}
+
+/*
+  Rendered in a floating portal, outside .doc-category-index-editor.
+  The class is doubled to raise specificity above the DMenu dropdown's
+  own label styles (`.fk-d-menu__content label`).
+*/
+
+/* The only menu row that is not a button, so it borrows the metrics the others
+   get from the shared menu-item treatment: same gutter, same row height, and a
+   checkbox occupying the column their icons do. It also keeps the ordinary text
+   colour, since a dimmed row beside them reads as unavailable. */
+
+label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--d-sidebar-section-link-prefix-margin-right);
+  height: var(--d-sidebar-row-height);
+  padding-inline: var(--d-sidebar-row-horizontal-padding);
+  cursor: pointer;
+  font-weight: normal;
+
+  input[type="checkbox"] {
+    width: var(--d-sidebar-section-link-prefix-width);
+    margin: 0;
+  }
+}
+
+/*
+  DMenu / DComboButton dropdowns from the editor portal to #d-menu-portals,
+  which sits below the modal in z-order. Raise them above the modal overlay
+  the same way the icon grid picker does (z("modal", "dialog")).
+*/
+
+.fk-d-menu.index-options-menu-content,
+.fk-d-menu.add-section-menu-content,
+.fk-d-menu.section-add-menu-content,
+.fk-d-menu.auto-index-badge-menu-content,
+.fk-d-menu.d-icon-grid-picker-content {
+  z-index: z("modal", "dialog");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-category-index-editor {
+    &__section,
+    &__section-body,
+    &__link-card {
+      transition: none;
+    }
+  }
 }

@@ -18,7 +18,52 @@ module ::DocCategories
 
         plugin.register_category_update_param_with_callback(
           :doc_index_topic_id,
-        ) { |category, value| DocCategories::CategoryIndexManager.new(category).assign!(value) }
+        ) do |category, value|
+          DocCategories::CategoryIndexManager.call(
+            params: {
+              category_id: category.id,
+              topic_id: value,
+            },
+          )
+        end
+
+        plugin.register_category_update_param_with_callback(
+          :doc_index_sections,
+        ) do |category, value|
+          begin
+            sections = value.present? ? JSON.parse(value) : nil
+          rescue JSON::ParserError
+            raise Discourse::InvalidParameters.new(:doc_index_sections)
+          end
+
+          # When the value is blank, there's nothing to save or clear. This
+          # happens in topic mode where the frontend sends a null value for
+          # doc_index_sections. Calling IndexSaver here would fail with the
+          # not_topic_managed policy since the index was just switched to topic
+          # mode by the doc_index_topic_id callback.
+          next if sections.nil?
+
+          if sections.present? && !sections.is_a?(::Array)
+            raise Discourse::InvalidParameters.new(:doc_index_sections)
+          end
+
+          # Gate: require the index editor setting unless the category is already in direct mode
+          if !SiteSetting.doc_categories_index_editor && sections.present?
+            index = DocCategories::Index.find_by(category_id: category.id)
+            raise Discourse::InvalidAccess if index.nil? || !index.mode_direct?
+          end
+
+          result =
+            DocCategories::IndexSaver.call(params: { category_id: category.id, sections: sections })
+
+          if result.failure?
+            if result["result.policy.not_topic_managed"]&.failure?
+              raise Discourse::InvalidAccess
+            elsif result["result.step.parse_and_validate_sections"]&.failure?
+              raise Discourse::InvalidParameters.new(:doc_index_sections)
+            end
+          end
+        end
       end
     end
   end
