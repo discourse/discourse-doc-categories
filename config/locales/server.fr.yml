@@ -5,3 +5,22 @@
 # https://translate.discourse.org/
 
 fr:
+  reports:
+    doc_categories_missing_topics:
+      title: "Docs - Sujets non indexés"
+      description: "Liste des sujets des catégories de documentation qui ne figurent pas dans l'index de la barre latérale"
+      labels:
+        index_category: "Catégorie de l'index"
+        topic: "Sujet"
+    doc_categories_extraneous_items:
+      title: "Docs - Éléments superflus"
+      description: "Liste des éléments indexés dans les catégories de documentation qui ne correspondent à aucun sujet de leur catégorie"
+      labels:
+        index_category: "Catégorie de l'index"
+        item: "Élément"
+        reason: "Motif"
+  site_settings:
+    doc_categories_enabled: "Activer l'extension Discourse Doc Categories"
+    doc_categories_simple_mode: "Activer le mode simplifié pour les catégories de documentation. Ce mode simplifie les listes de sujets et masque les commentaires derrière un bouton permettant de les afficher."
+    doc_categories_docs_legacy_enabled: "Activer les redirections des anciennes URL de l'extension Docs. Ce paramètre est sans effet si l'extension Docs est installée et activée"
+    doc_categories_homepage: "Lorsque `doc_categories_docs_legacy_enabled` est activé, l'ancienne page d'accueil de la documentation redirigera vers cette adresse."

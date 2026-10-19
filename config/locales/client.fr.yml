@@ -5,7 +5,34 @@
 # https://translate.discourse.org/
 
 fr:
+  admin_js:
+    admin:
+      dashboard:
+        reports:
+          filters:
+            doc_category:
+              label: "Catégorie"
+            include_topic_from_subcategories:
+              label: "Inclure les sujets des sous-catégories"
+      site_settings:
+        categories:
+          doc_categories: "Catégories de documentation"
   js:
     doc_categories:
       simple_mode:
-        updated: "Modification"
+        show_comments:
+          one: "Afficher %{count} commentaire"
+          other: "Afficher %{count} commentaires"
+        hide_comments: "Masquer les commentaires"
+        updated: "Mise à jour"
+      category_settings:
+        title: "Mode documentation"
+        index_topic:
+          label: "Sujet d'index"
+          errors:
+            topic_not_found: "Sujet introuvable ! L'index ne sera pas affiché"
+            mismatched-category: "L'index ne sera pas affiché, car le sujet appartient à une autre catégorie : %{category_name}"
+      sidebar:
+        filter:
+          no_results:
+            description: 'Aucun résultat ne correspond à « %{filter} ».<br><br>Voulez-vous plutôt effectuer une <a class="docs-sidebar-suggested-category-search" href="%{content_search_url}">recherche dans cette catégorie</a> ou une <a class="docs-sidebar-suggested-site-search" href="%{site_search_url}">recherche sur tout le site</a> ?'
