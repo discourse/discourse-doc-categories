@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
+  fab!(:admin)
   fab!(:category, :category_with_definition)
   fab!(:documentation_category, :category_with_definition)
   fab!(:documentation_subcategory) do
@@ -71,7 +72,7 @@ RSpec.describe ::DocCategories::Reports::ExtraneousItemsReport do
 
   describe "doc_categories_extraneous_items" do
     def report(opts = {})
-      Report.find("doc_categories_extraneous_items", opts)
+      Report.find("doc_categories_extraneous_items", guardian: admin.guardian, **opts)
     end
 
     before do
