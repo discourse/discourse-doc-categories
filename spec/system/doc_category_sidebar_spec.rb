@@ -243,10 +243,12 @@ describe "Doc Category Sidebar" do
       expect_docs_sidebar_to_be_correct
 
       category_page = PageObjects::Pages::Category.new
-      category_page.visit_settings(documentation_category)
+      index_editor = PageObjects::Components::DocIndexEditor.new
+      index_editor.visit_doc_index_tab(documentation_category)
+      expect(index_editor).to have_topic_mode
 
       topic_chooser =
-        PageObjects::Components::SelectKit.new("#control-doc_index_topic_id .topic-chooser")
+        PageObjects::Components::SelectKit.new(".doc-category-index-tab__topic-mode .topic-chooser")
       topic_chooser.expand
       topic_chooser.search(new_index_topic.id)
       topic_chooser.select_row_by_index(0)
@@ -255,7 +257,7 @@ describe "Doc Category Sidebar" do
       expect(topic_chooser).to have_selected_name(new_index_topic.title)
 
       page.refresh
-      scroll_to(find("#control-doc_index_topic_id .topic-chooser"))
+      scroll_to(find(".doc-category-index-tab__topic-mode .topic-chooser"))
 
       wait_for(timeout: Capybara.default_max_wait_time * 2) do
         expect(topic_chooser).to have_selected_name(new_index_topic.title)
