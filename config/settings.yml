@@ -19,7 +19,8 @@ doc_categories:
     upcoming_change:
       status: "experimental"
       impact: "feature,admins"
-      disallow_enabled_for_groups: true
+      allow_enabled_for:
+        - everyone
   doc_categories_homepage:
     default: ""
     client: true
