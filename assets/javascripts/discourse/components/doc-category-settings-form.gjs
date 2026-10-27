@@ -46,14 +46,6 @@ export default class DocCategorySettingsForm extends Component {
     }
   }
 
-  @bind
-  calculateIndexTopicContent() {
-    if (!this.indexTopicId || this.loadingIndexTopic || !this.indexTopic) {
-      return [];
-    }
-    return [this.indexTopic];
-  }
-
   get searchFilters() {
     if (!this.category?.id) {
       return "in:title include:unlisted";
@@ -67,6 +59,14 @@ export default class DocCategorySettingsForm extends Component {
 
   get shouldDisplayErrorMessage() {
     return !this.loadingIndexTopic && this.errorMessage;
+  }
+
+  @bind
+  calculateIndexTopicContent() {
+    if (!this.indexTopicId || this.loadingIndexTopic || !this.indexTopic) {
+      return [];
+    }
+    return [this.indexTopic];
   }
 
   @bind
@@ -104,18 +104,18 @@ export default class DocCategorySettingsForm extends Component {
       {{i18n "doc_categories.category_settings.title"}}
     </h3>
     <@outletArgs.form.Field
+      @format="large"
       @name="doc_index_topic_id"
       @title={{i18n "doc_categories.category_settings.index_topic.label"}}
-      @format="large"
       @type="custom"
       as |field|
     >
       <field.Control>
         <TopicChooser
-          @value={{this.indexTopicId}}
           @content={{this.indexTopicContent}}
           @onChange={{fn this.onChangeFormIndexTopic field}}
           @options={{hash additionalFilters=this.searchFilters}}
+          @value={{this.indexTopicId}}
         />
       </field.Control>
     </@outletArgs.form.Field>

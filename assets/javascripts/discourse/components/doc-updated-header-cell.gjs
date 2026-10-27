@@ -3,13 +3,13 @@ import { i18n } from "discourse-i18n";
 
 const DocUpdatedHeaderCell = <template>
   <SortableColumn
-    @sortable={{@sortable}}
+    @activeOrder={{@activeOrder}}
+    @ascending={{@ascending}}
+    @changeSort={{@changeSort}}
+    @forceName={{i18n "doc_categories.simple_mode.updated"}}
     @number="true"
     @order="activity"
-    @activeOrder={{@activeOrder}}
-    @changeSort={{@changeSort}}
-    @ascending={{@ascending}}
-    @forceName={{i18n "doc_categories.simple_mode.updated"}}
+    @sortable={{@sortable}}
   />
 </template>;
 
