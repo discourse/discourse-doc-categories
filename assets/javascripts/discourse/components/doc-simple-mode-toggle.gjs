@@ -1,16 +1,16 @@
 import Component from "@glimmer/component";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import DButton from "discourse/components/d-button";
 import bodyClass from "discourse/helpers/body-class";
 import { and } from "discourse/truth-helpers";
+import DButton from "discourse/ui-kit/d-button";
 import { i18n } from "discourse-i18n";
 import {
   collapseStream,
   expandStream,
   getState,
   inDocSimpleMode,
-} from "../lib/simple-mode";
+} from "../lib/simple-mode.js";
 
 export default class DocSimpleModeToggle extends Component {
   @service siteSettings;
@@ -86,9 +86,9 @@ export default class DocSimpleModeToggle extends Component {
       {{#if this.hasReplies}}
         <div class="doc-simple-mode-toggle">
           <DButton
+            class="btn-default doc-simple-mode-toggle__button"
             @action={{this.toggleComments}}
             @translatedLabel={{this.toggleLabel}}
-            class="btn-default doc-simple-mode-toggle__button"
           />
         </div>
       {{/if}}

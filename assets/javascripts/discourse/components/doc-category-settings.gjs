@@ -3,10 +3,10 @@ import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
-import icon from "discourse/helpers/d-icon";
 import { resettableTracked } from "discourse/lib/tracked-tools";
 import Topic from "discourse/models/topic";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
+import dIcon from "discourse/ui-kit/helpers/d-icon";
 import { i18n } from "discourse-i18n";
 
 export default class DocCategorySettings extends Component {
@@ -108,14 +108,14 @@ export default class DocCategorySettings extends Component {
       </label>
       <div class="controls">
         <TopicChooser
-          @value={{this.indexTopicId}}
           @content={{this.indexTopicContent}}
           @onChange={{this.onChangeIndexTopic}}
           @options={{hash additionalFilters=this.searchFilters}}
+          @value={{this.indexTopicId}}
         />
         {{#if this.shouldDisplayErrorMessage}}
           <div class="validation-error">
-            {{icon "xmark"}}
+            {{dIcon "xmark"}}
             {{this.errorMessage}}
           </div>
         {{/if}}
