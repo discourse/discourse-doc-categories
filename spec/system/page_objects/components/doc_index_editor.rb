@@ -77,6 +77,31 @@ module PageObjects
         self
       end
 
+      # Adds a section and scopes strictly to the one the click created.
+      # `add_section` reaches for `.last` straight away, and `all` does not
+      # retry, so it can resolve before the new section has rendered and drive
+      # the previous one instead. That is tolerable where the section is built
+      # before anything else exists, and not where one is added to an index
+      # that already has sections.
+      def add_trailing_section(title:)
+        expected = section_count + 1
+
+        find(
+          "button",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.add_section"),
+        ).click
+        has_css?(".doc-category-index-editor__section", count: expected)
+
+        within all(".doc-category-index-editor__section").last do
+          # A section added below an existing one auto-enters title edit mode,
+          # so the input is the state to wait for. The header's edit button is
+          # rendered alongside it, which is why the button is not what decides.
+          find("input.doc-category-index-editor__section-title").fill_in(with: title)
+          find(".doc-category-index-editor__confirm-title-btn").click
+        end
+        self
+      end
+
       def add_section_without_title
         find(
           "button",
@@ -178,6 +203,72 @@ module PageObjects
 
       def has_selected_topic?(topic)
         has_css?(".topic-chooser .select-kit-header .selected-name .name", text: topic.title)
+      end
+
+      # Batch mode replaces each row's drag handle with a checkbox, so a
+      # selection is made through the row itself rather than a separate list.
+
+      def toggle_batch_mode
+        find(
+          "button",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.batch_edit"),
+        ).click
+        self
+      end
+
+      def has_batch_bar?
+        has_css?(".doc-category-index-editor__batch-bar")
+      end
+
+      def select_link(title)
+        find("#{link_selector(title)} .doc-category-index-editor__batch-checkbox input").click
+        self
+      end
+
+      def select_section(title)
+        find("#{section_selector(title)} > .doc-category-index-editor__batch-checkbox input").click
+        self
+      end
+
+      # The bar reports the selection in words, which is the same thing the
+      # rows' checkboxes report visually. Asserting on it is what catches the
+      # two disagreeing.
+      def has_batch_selection_count?(count)
+        has_css?(
+          ".doc-category-index-editor__batch-count",
+          text:
+            I18n.t(
+              "js.doc_categories.category_settings.index_editor.batch_selected_items",
+              count: count,
+            ),
+        )
+      end
+
+      def has_no_batch_selection?
+        has_css?(
+          ".doc-category-index-editor__batch-count",
+          text: I18n.t("js.doc_categories.category_settings.index_editor.batch_select_hint"),
+        )
+      end
+
+      def has_checked_link?(title)
+        has_css?("#{link_selector(title)} .doc-category-index-editor__batch-checkbox input:checked")
+      end
+
+      def has_unchecked_link?(title)
+        has_no_css?(
+          "#{link_selector(title)} .doc-category-index-editor__batch-checkbox input:checked",
+        )
+      end
+
+      def batch_drag_handle
+        ".doc-category-index-editor__batch-drag-handle"
+      end
+
+      # A section with no links has nothing to aim at but the section's own
+      # body, which is the drop target the batch path relies on.
+      def section_body_selector(title)
+        "#{section_selector(title)} .doc-category-index-editor__section-body"
       end
 
       def has_section_title?(title)

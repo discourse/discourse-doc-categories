@@ -930,6 +930,10 @@ export default class DocCategoryIndexEditor extends Component {
   #refreshFromServerData(indexStructure) {
     const newSections = this.#buildSectionsFrom(indexStructure);
     this.sections.splice(0, this.sections.length, ...newSections);
+    // The selection holds the objects that were just replaced, so left alone
+    // it survives as a count with no rows behind it.
+    this.selectedItems.clear();
+    this.selectedSections.clear();
   }
 
   #serializeSections() {

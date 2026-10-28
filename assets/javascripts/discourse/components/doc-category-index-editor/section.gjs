@@ -75,6 +75,21 @@ export class IndexEditorSection extends Component {
     return this.args.section.links.length;
   }
 
+  /**
+   * Whether the section's body has to show a drop slot of its own. A section
+   * with no links has no row to aim at, so the body is what a batch lands on,
+   * and in batch mode the links list that would otherwise mark itself as an
+   * empty drop target is switched off. Without a slot the body has no height,
+   * leaving a live target nothing can be dropped onto.
+   */
+  get showsBatchDropSlot() {
+    return (
+      this.args.batchMode &&
+      this.linkCount === 0 &&
+      !this.args.section.autoIndex
+    );
+  }
+
   get hasDuplicateLinks() {
     return this.args.section.links.some((link) =>
       this.args.duplicateHrefs?.has(link.href)
@@ -598,6 +613,7 @@ export class IndexEditorSection extends Component {
         class={{dConcatClass
           "doc-category-index-editor__section-body"
           (if this.collapsed "--collapsed")
+          (if this.showsBatchDropSlot "--batch-drop-slot")
         }}
         aria-hidden={{if this.collapsed "true"}}
       >

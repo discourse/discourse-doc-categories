@@ -334,6 +334,16 @@ body.doc-simple-mode {
       overflow: hidden;
       visibility: hidden;
     }
+
+    /* A batch lands on the body, which an empty section has nothing to give
+       height to. Indented to the links' column so the slot sits where they will. */
+
+    &.--batch-drop-slot {
+      min-height: 2.5em;
+      margin-left: 2em;
+      border: 1px dashed var(--primary-low);
+      border-radius: var(--d-border-radius);
+    }
   }
 
   &__links {

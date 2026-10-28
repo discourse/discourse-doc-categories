@@ -2,6 +2,7 @@ import { render, settled } from "@ember/test-helpers";
 import { module, test } from "qunit";
 import sinon from "sinon";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
+import pretender, { response } from "discourse/tests/helpers/create-pretender";
 import DocCategoryIndexEditor from "discourse/plugins/discourse-doc-categories/discourse/components/doc-category-index-editor";
 
 /**
@@ -348,6 +349,51 @@ module(
         editor.selectionCount,
         0,
         "so the next delete cannot act on rows that are already gone"
+      );
+    });
+
+    test("applying empties the selection it has rebuilt the rows under", async function (assert) {
+      // The server's answer renames a link, so the rebuild is observable and
+      // the cleared selection cannot be mistaken for a refresh that never ran.
+      pretender.put("/doc-categories/indexes/1", () =>
+        response({
+          index_structure: [
+            {
+              text: "Getting started",
+              links: [
+                { text: "Installation", href: "/t/install/1" },
+                { text: "Configure", href: "/t/configure/2" },
+              ],
+            },
+            { text: "Reference", links: [{ text: "API", href: "/t/api/3" }] },
+          ],
+        })
+      );
+
+      const editor = await renderEditor();
+      editor.toggleBatchMode();
+      await settled();
+      editor.selectedItems.add(allLinks(editor)[0]);
+      editor._hasLocalChanges = true;
+      await settled();
+      assert.strictEqual(editor.selectionCount, 1, "a link is selected");
+
+      await editor.apply();
+      await settled();
+
+      assert.deepEqual(
+        allLinks(editor).map((link) => link.title),
+        ["Installation", "Configure", "API"],
+        "the rows are the ones the server sent back, not the selected objects"
+      );
+      assert.strictEqual(
+        editor.selectionCount,
+        0,
+        "so the bar cannot report a selection none of the rows show"
+      );
+      assert.true(
+        editor.batchMode,
+        "and the reader is left in batch mode, just with nothing selected"
       );
     });
   }
