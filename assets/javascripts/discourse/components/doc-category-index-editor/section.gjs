@@ -6,7 +6,6 @@ import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
 import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
-import { popupAjaxError } from "discourse/lib/ajax-error";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
@@ -28,8 +27,6 @@ export class IndexEditorSection extends Component {
   @service dialog;
 
   @tracked titleValidationError = null;
-
-  @tracked includeSubcategories = false;
 
   @tracked showingTopicChooser = false;
 
@@ -277,68 +274,9 @@ export class IndexEditorSection extends Component {
   }
 
   @action
-  toggleIncludeSubcategories() {
-    this.includeSubcategories = !this.includeSubcategories;
-  }
-
-  @action
-  async addMissingTopicsToSection() {
+  reviewUnindexedTopics() {
     this.#addMenuApi?.close();
-    const includeSubcategories = this.includeSubcategories;
-    try {
-      const result = await this.args.fetchTopics(includeSubcategories);
-      if (this.isDestroying || this.isDestroyed) {
-        return;
-      }
-      if (result.topics.length === 0) {
-        this.dialog.alert(
-          i18n("doc_categories.category_settings.index_editor.no_topics_found")
-        );
-        return;
-      }
-      const existingHrefs = new Set(
-        this.args.section.links.map((link) => link.href).filter(Boolean)
-      );
-      const missing = result.topics.filter(
-        (t) => !existingHrefs.has(`/t/${t.slug}/${t.id}`)
-      );
-      if (missing.length === 0) {
-        this.dialog.alert(
-          i18n(
-            "doc_categories.category_settings.index_editor.no_missing_topics"
-          )
-        );
-        return;
-      }
-      for (const topic of missing) {
-        this.args.section.links.push(
-          trackedObject({
-            title: topic.title || topic.fancy_title,
-            href: `/t/${topic.slug}/${topic.id}`,
-            type: "topic",
-            icon: "far-file",
-            topic_id: topic.id,
-            topicTitle: topic.title || topic.fancy_title,
-            autoTitle: true,
-          })
-        );
-      }
-      this.collapsed = false;
-      this.args.onChange?.();
-      if (result.truncated) {
-        this.dialog.alert(
-          i18n(
-            "doc_categories.category_settings.index_editor.topics_truncated",
-            {
-              loaded: result.topics.length,
-              total: result.totalCount,
-            }
-          )
-        );
-      }
-    } catch (e) {
-      popupAjaxError(e);
-    }
+    this.args.onReviewUnindexedTopics?.(this.args.section);
   }
 
   /**
@@ -727,29 +665,19 @@ export class IndexEditorSection extends Component {
                           class="btn-transparent"
                         />
                       </dropdown.item>
-                      <dropdown.divider />
-                      <dropdown.item>
-                        <DButton
-                          @icon="list-check"
-                          @label="doc_categories.category_settings.index_editor.add_missing_topics_to_section"
-                          @action={{this.addMissingTopicsToSection}}
-                          class="btn-transparent"
-                        />
-                      </dropdown.item>
-                      <dropdown.item>
-                        <label
-                          class="doc-category-index-editor__subcategory-toggle"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={{this.includeSubcategories}}
-                            {{on "change" this.toggleIncludeSubcategories}}
+                      {{! Auto-index already gathers what the index leaves out
+                          into its own section. }}
+                      {{#unless @section.autoIndex}}
+                        <dropdown.divider />
+                        <dropdown.item>
+                          <DButton
+                            @icon="list-check"
+                            @label="doc_categories.category_settings.index_editor.add_missing_topics"
+                            @action={{this.reviewUnindexedTopics}}
+                            class="btn-transparent doc-category-index-editor__review-section-topics"
                           />
-                          {{i18n
-                            "doc_categories.category_settings.index_editor.include_subcategories"
-                          }}
-                        </label>
-                      </dropdown.item>
+                        </dropdown.item>
+                      {{/unless}}
                     </DDropdownMenu>
                   </combo.Menu>
                 </:default>

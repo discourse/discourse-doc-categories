@@ -8,7 +8,7 @@ import {
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
-import { cancel } from "@ember/runloop";
+import { cancel, next } from "@ember/runloop";
 import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
 import { ajax } from "discourse/lib/ajax";
@@ -28,9 +28,20 @@ import icon from "discourse/ui-kit/helpers/d-icon";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
+import {
+  draftTopicIds,
+  draftTopicReferences,
+  MAX_LINKS_PER_SECTION,
+  MAX_SECTIONS,
+  UnindexedTopicsCounter,
+} from "../../lib/doc-index-unindexed-topics";
 import validateDocIndexSections from "../../lib/doc-index-validation";
 import { LINK_DRAG_TYPE } from "./link";
 import { IndexEditorSection, SECTION_DRAG_TYPE } from "./section";
+import UnindexedTopicsModal from "./unindexed-topics-modal";
+
+/** The destination that creates a section rather than naming one. */
+const NEW_SECTION = "new";
 
 /**
  * A stable string identity per section, for the reorderable group to address
@@ -55,7 +66,9 @@ function sectionUid(section) {
 
 /* Main index editor */
 export default class DocCategoryIndexEditor extends Component {
+  @service a11y;
   @service dialog;
+  @service modal;
 
   @tracked sections = trackedArray(this.#initSections());
   @tracked saveState = null;
@@ -68,12 +81,17 @@ export default class DocCategoryIndexEditor extends Component {
   @tracked isBatchDragging = false;
   @tracked batchDragType = null;
 
+  /** The objects the last review added, which Undo takes back exactly. */
+  @tracked lastAddition = null;
+
   selectedItems = trackedSet();
   selectedSections = trackedSet();
 
   #originalAutoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   #saveStateTimer = null;
+  #unindexedCounter = new UnindexedTopicsCounter(this.args.categoryId);
+  #lastDestination = null;
   @tracked _hasLocalChanges = false;
 
   constructor() {
@@ -84,11 +102,19 @@ export default class DocCategoryIndexEditor extends Component {
       this.batchMode = false;
       this.selectedItems.clear();
       this.selectedSections.clear();
+      this.lastAddition = null;
+      this.autoIndexIncludeSubcategories =
+        this.#originalAutoIndexIncludeSubcategories;
+      this.pendingResync = false;
+      this._hasLocalChanges = false;
+      this.#refreshUnindexedCount({ force: true, immediate: true });
     });
+    this.#refreshUnindexedCount({ immediate: true });
   }
 
   willDestroy() {
     super.willDestroy();
+    this.#unindexedCounter.teardown();
     if (this.#saveStateTimer) {
       cancel(this.#saveStateTimer);
       this.#saveStateTimer = null;
@@ -99,6 +125,20 @@ export default class DocCategoryIndexEditor extends Component {
     if (Number(this.args.transientData?.doc_index_topic_id) === -1) {
       this._saveToTransientData();
     }
+  }
+
+  get allSectionsExpanded() {
+    return this.sections.every((section) => !section.collapsed);
+  }
+
+  get toggleAllSectionsIcon() {
+    return this.allSectionsExpanded ? "angles-up" : "angles-down";
+  }
+
+  get toggleAllSectionsTitle() {
+    return this.allSectionsExpanded
+      ? "sidebar.collapse_all_sections"
+      : "sidebar.expand_all_sections";
   }
 
   get serializedSections() {
@@ -203,6 +243,72 @@ export default class DocCategoryIndexEditor extends Component {
       this.autoIndexIncludeSubcategories !==
       this.#originalAutoIndexIncludeSubcategories
     );
+  }
+
+  /** The auto-index's scope when there is one, so counts match what it collects. */
+  get unindexedIncludesSubcategories() {
+    return this.hasAutoIndexSection && this.autoIndexIncludeSubcategories;
+  }
+
+  /** Mirrors when the server's IndexSaver runs auto-index on Apply. */
+  get autoIndexSyncPending() {
+    const section = this.sections.find((s) => s.autoIndex);
+    return (
+      !!section &&
+      (!section.id || this.pendingResync || this.subcategorySettingChanged)
+    );
+  }
+
+  get showUnindexedTopics() {
+    return !this.batchMode && this.#unindexedCounter.count > 0;
+  }
+
+  get unindexedTopicsMessage() {
+    if (this.#unindexedCounter.isLoading) {
+      return i18n(
+        "doc_categories.category_settings.index_editor.unindexed_topics.checking"
+      );
+    }
+    if (this.autoIndexSyncPending) {
+      const section = this.sections.find((candidate) => candidate.autoIndex);
+      const available = Math.max(
+        0,
+        MAX_LINKS_PER_SECTION - section.links.length
+      );
+      return available === 0
+        ? i18n(
+            "doc_categories.category_settings.index_editor.unindexed_topics.auto_index_full"
+          )
+        : i18n(
+            "doc_categories.category_settings.index_editor.unindexed_topics.auto_index_pending",
+            { count: Math.min(available, this.#unindexedCounter.count) }
+          );
+    }
+
+    const count = this.#unindexedCounter.count;
+    return this.unindexedIncludesSubcategories
+      ? i18n(
+          "doc_categories.category_settings.index_editor.unindexed_topics.count_with_subcategories",
+          { count }
+        )
+      : i18n(
+          "doc_categories.category_settings.index_editor.unindexed_topics.count",
+          { count }
+        );
+  }
+
+  /** Null once none of the added links is left to undo. */
+  get lastAdditionSummary() {
+    const addition = this.lastAddition;
+    if (!addition || this.batchMode) {
+      return null;
+    }
+
+    const present = new Set(this.sections.flatMap((section) => section.links));
+    if (!addition.links.some((link) => present.has(link))) {
+      return null;
+    }
+    return this.#additionSummary(addition);
   }
 
   get hasPendingChanges() {
@@ -566,6 +672,150 @@ export default class DocCategoryIndexEditor extends Component {
     if (serialized) {
       this.args.form?.set("doc_index_topic_id", -1);
     }
+    this.#refreshUnindexedCount();
+  }
+
+  @action
+  reviewUnindexedTopics(section) {
+    const preferred =
+      [section, this.#lastDestination].find(
+        (candidate) =>
+          candidate && !candidate.autoIndex && this.sections.includes(candidate)
+      ) ?? this.sections.findLast((candidate) => !candidate.autoIndex);
+
+    this.modal.show(UnindexedTopicsModal, {
+      model: {
+        categoryId: this.args.categoryId,
+        destinations: this.#unindexedDestinations(),
+        initialDestination: preferred
+          ? this.#destinationValue(preferred)
+          : NEW_SECTION,
+        includeSubcategories: this.unindexedIncludesSubcategories,
+        canIncludeSubcategories:
+          !!this.args.category?.has_children ||
+          this.unindexedIncludesSubcategories,
+        getReferences: () => draftTopicReferences(this.sections),
+        addTopics: this.addUnindexedTopics,
+      },
+    });
+  }
+
+  /** Skips topics the draft already holds; returns `{ added }` or `{ error }`. */
+  @bind
+  addUnindexedTopics({ topics, destination }) {
+    let section = null;
+    if (destination === NEW_SECTION) {
+      if (this.sections.length >= MAX_SECTIONS) {
+        return {
+          error: i18n(
+            "doc_categories.category_settings.index_editor.unindexed_topics.too_many_sections"
+          ),
+        };
+      }
+    } else {
+      section = this.sections.find(
+        (candidate) =>
+          !candidate.autoIndex &&
+          this.#destinationValue(candidate) === destination
+      );
+      if (!section) {
+        return {
+          error: i18n(
+            "doc_categories.category_settings.index_editor.unindexed_topics.destination_missing"
+          ),
+        };
+      }
+    }
+
+    const indexed = draftTopicIds(this.sections);
+    const topicsToAdd = topics.filter((topic) => !indexed.has(topic.id));
+    const room = Math.max(
+      0,
+      MAX_LINKS_PER_SECTION - (section?.links.length ?? 0)
+    );
+    if (topicsToAdd.length > room) {
+      return {
+        error: i18n(
+          room === 0
+            ? "doc_categories.category_settings.index_editor.unindexed_topics.section_full"
+            : "doc_categories.category_settings.index_editor.unindexed_topics.section_room",
+          {
+            section: section
+              ? this.#sectionLabel(section)
+              : this.#newSectionTitle(),
+            count: room,
+          }
+        ),
+      };
+    }
+    if (topicsToAdd.length === 0) {
+      return { added: 0 };
+    }
+
+    let createdSection = null;
+    if (!section) {
+      section = createdSection = trackedObject({
+        title: this.#newSectionTitle(),
+        links: trackedArray([]),
+      });
+      this.sections.push(section);
+      this.#moveAboveAutoIndex(section);
+    }
+
+    const links = topicsToAdd.map((topic) => this.#topicToLink(topic));
+    section.links.push(...links);
+    section.collapsed = false;
+    this.#lastDestination = section;
+    this.lastAddition = { links, section, createdSection };
+    this._saveToTransientData();
+    this.a11y.announce(this.#additionSummary(this.lastAddition));
+
+    return { added: links.length };
+  }
+
+  /**
+   * Takes back exactly the added links, wherever they have moved since. A
+   * section the addition created goes too, unless something else joined it.
+   */
+  @action
+  undoLastAddition() {
+    const addition = this.lastAddition;
+    if (!addition) {
+      return;
+    }
+
+    const added = new Set(addition.links);
+    for (const section of this.sections) {
+      const kept = section.links.filter((link) => !added.has(link));
+      if (kept.length !== section.links.length) {
+        section.links.splice(0, section.links.length, ...kept);
+      }
+    }
+    for (const link of addition.links) {
+      this.selectedItems.delete(link);
+    }
+
+    const created = addition.createdSection;
+    if (created && created.links.length === 0) {
+      const position = this.sections.indexOf(created);
+      if (position !== -1) {
+        this.sections.splice(position, 1);
+      }
+      this.selectedSections.delete(created);
+    }
+
+    this.lastAddition = null;
+    this._saveToTransientData();
+    this.a11y.announce(
+      i18n(
+        "doc_categories.category_settings.index_editor.unindexed_topics.undone"
+      )
+    );
+  }
+
+  @action
+  dismissLastAddition() {
+    this.lastAddition = null;
   }
 
   @action
@@ -700,10 +950,13 @@ export default class DocCategoryIndexEditor extends Component {
       this.#originalAutoIndexIncludeSubcategories =
         this.autoIndexIncludeSubcategories;
       this.args.category?.set("doc_index_sections", null);
+      // Undo would reach into a draft that has just been saved.
+      this.lastAddition = null;
 
       if (response.index_structure) {
         this.#refreshFromServerData(response.index_structure);
       }
+      this.#refreshUnindexedCount({ force: true, immediate: true });
       this.#saveStateTimer = discourseLater(() => {
         if (!this.isDestroying && this.saveState === "saved") {
           this.saveState = null;
@@ -716,6 +969,12 @@ export default class DocCategoryIndexEditor extends Component {
       this.saveState = "error";
       popupAjaxError(e);
     }
+  }
+
+  @action
+  toggleAllSections() {
+    const collapse = this.allSectionsExpanded;
+    this.sections.forEach((section) => (section.collapsed = collapse));
   }
 
   @action
@@ -1002,6 +1261,92 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
+  #refreshUnindexedCount(options) {
+    this.#unindexedCounter.update(
+      {
+        references: draftTopicReferences(this.sections),
+        includeSubcategories: this.unindexedIncludesSubcategories,
+      },
+      options
+    );
+  }
+
+  #unindexedDestinations() {
+    const destinations = this.sections
+      .filter((section) => !section.autoIndex)
+      .map((section) => ({
+        value: this.#destinationValue(section),
+        label: this.#sectionLabel(section),
+        linkCount: section.links.length,
+      }));
+
+    if (this.sections.length < MAX_SECTIONS) {
+      destinations.push({
+        value: NEW_SECTION,
+        label: i18n(
+          "doc_categories.category_settings.index_editor.unindexed_topics.new_section",
+          { title: this.#newSectionTitle() }
+        ),
+        linkCount: 0,
+      });
+    }
+    return destinations;
+  }
+
+  #newSectionTitle() {
+    const base = i18n(
+      "doc_categories.category_settings.index_editor.all_topics_section"
+    );
+    const titles = new Set(
+      this.sections.map((section) => section.title?.trim().toLowerCase())
+    );
+    let title = base;
+    let count = 1;
+    while (titles.has(title.toLowerCase())) {
+      title = i18n(
+        "doc_categories.category_settings.index_editor.unindexed_topics.numbered_section",
+        { title: base, count: ++count }
+      );
+    }
+    return title;
+  }
+
+  /**
+   * Auto-index stays last, gathering what the sections above leave out. The
+   * move waits a tick: a section rendered ahead of an existing one in the same
+   * pass trips the reorderable group's backtracking assertion.
+   */
+  #moveAboveAutoIndex(section) {
+    next(() => {
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
+      const from = this.sections.indexOf(section);
+      const to = this.sections.findIndex((s) => s.autoIndex);
+      if (from === -1 || to === -1 || from < to) {
+        return;
+      }
+      this.sections.splice(from, 1);
+      this.sections.splice(to, 0, section);
+      this._saveToTransientData();
+    });
+  }
+
+  /** Unsaved sections have no id, so they borrow their reorder key. */
+  #destinationValue(section) {
+    return section.id ? String(section.id) : sectionUid(section);
+  }
+
+  #additionSummary(addition) {
+    return i18n(
+      "doc_categories.category_settings.index_editor.unindexed_topics.added",
+      {
+        count: addition.links.length,
+        section: this.#sectionLabel(addition.section),
+      }
+    );
+  }
+
   <template>
     {{! The page scrolls, not the editor: it has no scroll container of its own,
         so a row dragged toward the viewport edge has to move the window or a
@@ -1018,6 +1363,13 @@ export default class DocCategoryIndexEditor extends Component {
       <DConditionalInElement @element={{@toolbarElement}} @append={{true}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">
+            <DButton
+              class="btn-default doc-category-index-editor__toggle-all-sections"
+              @action={{this.toggleAllSections}}
+              @disabled={{not this.sections.length}}
+              @icon={{this.toggleAllSectionsIcon}}
+              @title={{this.toggleAllSectionsTitle}}
+            />
             <DButton
               @icon="list-check"
               @label="doc_categories.category_settings.index_editor.batch_edit"
@@ -1137,6 +1489,41 @@ export default class DocCategoryIndexEditor extends Component {
         </div>
       {{/if}}
 
+      {{#if this.lastAdditionSummary}}
+        <div class="doc-category-index-editor__added-topics">
+          {{icon "check"}}
+          <span class="doc-category-index-editor__added-topics-text">
+            {{this.lastAdditionSummary}}
+          </span>
+          <DButton
+            @action={{this.undoLastAddition}}
+            @icon="arrow-rotate-left"
+            @label="doc_categories.category_settings.index_editor.unindexed_topics.undo"
+            class="btn-flat btn-small doc-category-index-editor__undo-add"
+          />
+          <DButton
+            @action={{this.dismissLastAddition}}
+            @icon="xmark"
+            @title="doc_categories.category_settings.index_editor.unindexed_topics.dismiss"
+            class="btn-flat btn-small"
+          />
+        </div>
+      {{/if}}
+
+      {{#if this.showUnindexedTopics}}
+        <div class="doc-category-index-editor__missing-topics">
+          {{icon "circle-info"}}
+          <span class="doc-category-index-editor__missing-topics-text">
+            {{this.unindexedTopicsMessage}}
+          </span>
+          <DButton
+            @action={{this.reviewUnindexedTopics}}
+            @label="doc_categories.category_settings.index_editor.unindexed_topics.review"
+            class="btn-default btn-small doc-category-index-editor__review-topics"
+          />
+        </div>
+      {{/if}}
+
       {{! One group over every section's links, so a link travels between
           sections the same way it travels within one. The sections themselves
           are an ordinary standalone list nested inside it; the two never see
@@ -1185,7 +1572,7 @@ export default class DocCategoryIndexEditor extends Component {
               @onCancelNew={{this.cancelNewSection}}
               @onBatchSectionDrop={{this.batchReorderSections}}
               @onBatchItemDrop={{this.batchReorderItems}}
-              @fetchTopics={{this.fetchTopics}}
+              @onReviewUnindexedTopics={{this.reviewUnindexedTopics}}
               @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
               @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
               @pendingResync={{this.pendingResync}}

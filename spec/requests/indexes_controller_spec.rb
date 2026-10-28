@@ -116,6 +116,242 @@ RSpec.describe ::DocCategories::IndexesController do
     end
   end
 
+  describe "#unindexed_topics" do
+    fab!(:admin)
+    fab!(:category, :category_with_definition)
+    fab!(:topic) { Fabricate(:topic, category: category, title: "Orbit security guide") }
+    fab!(:other_topic) { Fabricate(:topic, category: category, title: "Orbit workspace guide") }
+
+    before { SiteSetting.doc_categories_index_editor = true }
+
+    it "requires an admin and an enabled editor" do
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+      expect(response.status).to eq(403)
+
+      sign_in(Fabricate(:user))
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+      expect(response.status).to eq(403)
+
+      sign_in(admin)
+      SiteSetting.doc_categories_index_editor = false
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+      expect(response.status).to eq(403)
+    end
+
+    it "allows an existing visual index when the editor setting is disabled" do
+      Fabricate(:doc_categories_index, category: category, index_topic_id: -1)
+      SiteSetting.doc_categories_index_editor = false
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["total_count"]).to eq(2)
+    end
+
+    it "returns 404 for a missing category" do
+      sign_in(admin)
+
+      post "/doc-categories/indexes/-1/unindexed_topics.json"
+
+      expect(response.status).to eq(404)
+    end
+
+    it "excludes draft topic IDs and category definitions before counting" do
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: { exclude_topic_ids: [topic.id] }.to_json,
+           headers: {
+             "CONTENT_TYPE" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["topics"]).to eq(
+        [
+          {
+            "id" => other_topic.id,
+            "title" => other_topic.title,
+            "slug" => other_topic.slug,
+            "category_id" => category.id,
+          },
+        ],
+      )
+      expect(response.parsed_body["total_count"]).to eq(1)
+    end
+
+    it "returns only a count when requested" do
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json", params: { limit: 0 }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["topics"]).to eq([])
+      expect(response.parsed_body["total_count"]).to eq(2)
+    end
+
+    it "resolves URL-only draft links using the same routes as Apply" do
+      sign_in(admin)
+
+      [topic.relative_url, topic.url, "/t/#{topic.id}", "/t/#{topic.id}/1"].each do |href|
+        post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+             params: { exclude_hrefs: [href] }.to_json,
+             headers: {
+               "CONTENT_TYPE" => "application/json",
+             }
+
+        expect(response.status).to eq(200)
+        expect(response.parsed_body["topics"].pluck("id")).to eq([other_topic.id])
+        expect(response.parsed_body["total_count"]).to eq(1)
+      end
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: {
+             exclude_hrefs: ["https://elsewhere.example/t/#{topic.id}"],
+           }
+
+      expect(response.parsed_body["total_count"]).to eq(2)
+    end
+
+    it "resolves URL-only draft links on a subfolder installation" do
+      set_subfolder "/forum"
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: { exclude_hrefs: ["#{Discourse.base_url}/t/#{topic.slug}/#{topic.id}"] }.to_json,
+           headers: {
+             "CONTENT_TYPE" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["topics"].pluck("id")).to eq([other_topic.id])
+      expect(response.parsed_body["total_count"]).to eq(1)
+    end
+
+    it "paginates the remaining candidates rather than the unfiltered category" do
+      sign_in(admin)
+      stub_const(described_class, :MAX_TOPICS, 1) do
+        post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+             params: {
+               exclude_topic_ids: [topic.id],
+             }
+
+        expect(response.parsed_body["topics"].pluck("id")).to eq([other_topic.id])
+        expect(response.parsed_body["total_count"]).to eq(1)
+        expect(response.parsed_body["page"]).to eq(0)
+        expect(response.parsed_body["per_page"]).to eq(1)
+
+        post "/doc-categories/indexes/#{category.id}/unindexed_topics.json", params: { page: 1 }
+
+        expect(response.parsed_body["topics"].pluck("id")).to eq([other_topic.id])
+        expect(response.parsed_body["total_count"]).to eq(2)
+      end
+    end
+
+    it "finds unindexed topics beyond the original first-page limit" do
+      indexed_topics =
+        50.times.map do |position|
+          Fabricate(
+            :topic,
+            category: category,
+            title: "Indexed guide #{position.to_s.rjust(3, "0")}",
+          )
+        end
+      missing_topic = Fabricate(:topic, category: category, title: "Zebra migration guide")
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: {
+             exclude_topic_ids: indexed_topics.map(&:id) + [topic.id, other_topic.id],
+           }.to_json,
+           headers: {
+             "CONTENT_TYPE" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["topics"].pluck("id")).to eq([missing_topic.id])
+      expect(response.parsed_body["total_count"]).to eq(1)
+    end
+
+    it "searches titles case-insensitively and treats wildcard characters literally" do
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: {
+             search: "SECURITY",
+           }
+
+      expect(response.parsed_body["topics"].pluck("id")).to eq([topic.id])
+      expect(response.parsed_body["total_count"]).to eq(1)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json", params: { search: "%" }
+
+      expect(response.parsed_body["topics"]).to eq([])
+      expect(response.parsed_body["total_count"]).to eq(0)
+    end
+
+    it "includes subcategories only when requested and excludes their category definitions" do
+      subcategory = Fabricate(:category_with_definition, parent_category: category)
+      subtopic = Fabricate(:topic, category: subcategory)
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+      expect(response.parsed_body["topics"].pluck("id")).to contain_exactly(
+        topic.id,
+        other_topic.id,
+      )
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+           params: {
+             include_subcategories: true,
+           }
+
+      expect(response.parsed_body["topics"].pluck("id")).to contain_exactly(
+        topic.id,
+        other_topic.id,
+        subtopic.id,
+      )
+      expect(response.parsed_body["total_count"]).to eq(3)
+    end
+
+    it "excludes deleted, unlisted, private-message, and other-category topics" do
+      topic.trash!
+      other_topic.update!(visible: false)
+      Fabricate(:private_message_topic, category: category)
+      Fabricate(:topic)
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{category.id}/unindexed_topics.json"
+
+      expect(response.parsed_body["topics"]).to eq([])
+      expect(response.parsed_body["total_count"]).to eq(0)
+    end
+
+    it "rejects malformed or unbounded parameters" do
+      sign_in(admin)
+      [
+        { exclude_topic_ids: "all" },
+        { exclude_topic_ids: ["bad-id"] },
+        { exclude_hrefs: "all" },
+        { exclude_hrefs: [123] },
+        { exclude_hrefs: ["x" * 2001] },
+        { limit: 1000 },
+        { exclude_topic_ids: [topic.id] * (described_class::MAX_EXCLUDED_TOPICS + 1) },
+        { page: -1 },
+        { page: "invalid" },
+        { search: "x" * 201 },
+      ].each do |invalid_params|
+        post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
+             params: invalid_params.to_json,
+             headers: {
+               "CONTENT_TYPE" => "application/json",
+             }
+
+        expect(response.status).to eq(400)
+      end
+    end
+  end
+
   describe "#update" do
     fab!(:admin)
     fab!(:user)

@@ -16,6 +16,74 @@ describe "Doc Category Index Editor" do
     sign_in(admin)
   end
 
+  context "with the advanced settings toggle" do
+    let(:category_page) { PageObjects::Pages::Category.new }
+
+    it "keeps an unconfigured doc index behind advanced settings" do
+      category_page.visit_general(category)
+
+      expect(page).to have_no_css(".edit-category-doc-index")
+
+      category_page.toggle_advanced_settings
+
+      expect(page).to have_css(".edit-category-doc-index")
+    end
+
+    it "keeps the selected tab visible after disabling its index" do
+      index = Fabricate(:doc_categories_index, category: category, index_topic_id: -1)
+      section = Fabricate(:doc_categories_sidebar_section, index: index)
+      Fabricate(
+        :doc_categories_sidebar_link,
+        sidebar_section: section,
+        href: "https://example.com/docs",
+      )
+      category_page.visit_general(category)
+      find(".edit-category-doc-index a").click
+      expect(page).to have_no_css(".edit-category-security")
+
+      editor.switch_to_mode("mode_none")
+      dialog.click_yes
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+
+      expect(page).to have_css(".edit-category-doc-index.active")
+      expect(page).to have_css(".edit-category-general")
+      expect(editor).to have_none_help
+    end
+
+    %i[direct topic].each do |index_mode|
+      it "shows a #{index_mode == :topic ? "topic-based" : "visual"} doc index without advanced settings" do
+        DocCategories::Index.create!(
+          category: category,
+          index_topic_id:
+            index_mode == :topic ? topic_1.id : DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+        )
+        category_page.visit_general(category)
+
+        expect(page).to have_no_css(".edit-category-security")
+        find(".edit-category-doc-index a").click
+
+        expect(page).to have_css(".doc-category-index-tab")
+        expect(page).to have_no_css(".edit-category-security")
+
+        category_page.toggle_advanced_settings
+        expect(page).to have_css(".edit-category-security")
+        expect(page).to have_css(".edit-category-doc-index", count: 1)
+
+        category_page.toggle_advanced_settings
+
+        expect(page).to have_current_path("/c/#{category.slug}/edit/doc-index")
+        expect(page).to have_css(".doc-category-index-tab")
+        expect(page).to have_no_css(".edit-category-security")
+
+        page.refresh
+
+        expect(page).to have_css(".doc-category-index-tab")
+        expect(page).to have_no_css(".edit-category-security")
+      end
+    end
+  end
+
   context "when the index editor setting is disabled" do
     before { SiteSetting.doc_categories_index_editor = false }
 

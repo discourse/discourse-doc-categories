@@ -11,6 +11,7 @@ DocCategories::Engine.routes.draw do
       :constraints => ::DocCategories::DocsLegacyConstraint.new
 
   get "/doc-categories/indexes/:category_id/topics" => "indexes#topics"
+  post "/doc-categories/indexes/:category_id/unindexed_topics" => "indexes#unindexed_topics"
   put "/doc-categories/indexes/:category_id" => "indexes#update"
 end
 

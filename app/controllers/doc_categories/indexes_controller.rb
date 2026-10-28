@@ -7,28 +7,49 @@ module ::DocCategories
     before_action :ensure_index_editor_enabled
 
     MAX_TOPICS = 50
+    MAX_EXCLUDED_TOPICS = Index::MAX_SECTIONS * Index::MAX_LINKS_PER_SECTION
 
     def topics
-      category = ::Category.find_by(id: params[:category_id])
-      raise Discourse::NotFound if category.blank?
+      scope = topic_candidates
+      render json: { topics: topic_rows(scope.limit(MAX_TOPICS)), total_count: scope.count }
+    end
 
-      include_subcategories = ActiveRecord::Type::Boolean.new.cast(params[:include_subcategories])
+    def unindexed_topics
+      excluded_ids = params[:exclude_topic_ids] || []
+      unless excluded_ids.is_a?(Array) && excluded_ids.size <= MAX_EXCLUDED_TOPICS &&
+               excluded_ids.all? { |id| id.to_s.match?(/\A[1-9]\d{0,18}\z/) }
+        raise Discourse::InvalidParameters.new(:exclude_topic_ids)
+      end
 
-      topic_query =
-        TopicQuery.new(current_user, { limit: false, no_subcategories: !include_subcategories })
+      excluded_hrefs = params[:exclude_hrefs] || []
+      unless excluded_hrefs.is_a?(Array) && excluded_hrefs.size <= MAX_EXCLUDED_TOPICS &&
+               excluded_hrefs.all? { |href| href.is_a?(String) && href.length <= 2000 }
+        raise Discourse::InvalidParameters.new(:exclude_hrefs)
+      end
+      excluded_ids =
+        excluded_ids.map(&:to_i) +
+          excluded_hrefs.filter_map { |href| DocCategories::Url.extract_topic_id_from_url(href) }
 
-      topic_ids = topic_query.list_category_topic_ids(category)
+      limit = params.fetch(:limit, MAX_TOPICS).to_s
+      raise Discourse::InvalidParameters.new(:limit) if ["0", MAX_TOPICS.to_s].exclude?(limit)
 
-      visible_scope = Topic.where(id: topic_ids, visible: true).order(:title)
-      total_count = visible_scope.count
+      page = params.fetch(:page, 0).to_s
+      raise Discourse::InvalidParameters.new(:page) unless page.match?(/\A\d{1,6}\z/)
 
-      topics =
-        visible_scope
-          .limit(MAX_TOPICS)
-          .pluck(:id, :title, :slug)
-          .map { |id, title, slug| { id:, title:, slug: } }
+      search = params[:search].to_s.strip
+      raise Discourse::InvalidParameters.new(:search) if search.length > 200
 
-      render json: { topics:, total_count: }
+      scope = topic_candidates.where.not(id: excluded_ids.uniq)
+      if search.present?
+        scope = scope.where("topics.title ILIKE ?", "%#{Topic.sanitize_sql_like(search)}%")
+      end
+
+      render json: {
+               topics: topic_rows(scope.offset(page.to_i * MAX_TOPICS).limit(limit.to_i)),
+               total_count: scope.count,
+               page: page.to_i,
+               per_page: MAX_TOPICS,
+             }
     end
 
     def update
@@ -52,6 +73,24 @@ module ::DocCategories
     end
 
     private
+
+    def topic_candidates
+      category = ::Category.find_by(id: params[:category_id])
+      raise Discourse::NotFound if category.blank?
+      guardian.ensure_can_see!(category)
+
+      TopicCandidatesQuery.new(
+        user: current_user,
+        category: category,
+        include_subcategories: ActiveRecord::Type::Boolean.new.cast(params[:include_subcategories]),
+      ).scope
+    end
+
+    def topic_rows(scope)
+      scope
+        .pluck(:id, :title, :slug, :category_id)
+        .map { |id, title, slug, category_id| { id:, title:, slug:, category_id: } }
+    end
 
     def ensure_index_editor_enabled
       return if SiteSetting.doc_categories_index_editor

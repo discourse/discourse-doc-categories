@@ -11,6 +11,7 @@ export default {
         id: "doc-index",
         name: i18n("doc_categories.category_settings.tab_title"),
         component: DocCategoryIndexTab,
+        primary: ({ category }) => !!category.doc_index_topic_id,
         condition: ({ category, siteSettings }) =>
           siteSettings.doc_categories_enabled && !!category.id,
       });

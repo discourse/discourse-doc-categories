@@ -197,6 +197,32 @@ body.doc-simple-mode {
     margin: 1em 0;
   }
 
+  &__added-topics,
+  &__missing-topics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.75em;
+    padding: 0.5em 0.75em;
+    border-radius: var(--d-border-radius);
+    font-size: var(--font-down-1);
+  }
+
+  &__added-topics {
+    background: var(--success-low);
+  }
+
+  &__missing-topics {
+    background: var(--primary-very-low);
+    color: var(--primary-high);
+  }
+
+  &__added-topics-text,
+  &__missing-topics-text {
+    flex: 1 1 12em;
+  }
+
   &__sections {
     display: flex;
     flex-direction: column;
@@ -843,6 +869,59 @@ body.doc-simple-mode {
   &__link-card.--selected {
     border-color: var(--tertiary);
     background: var(--tertiary-very-low);
+  }
+}
+
+.doc-category-unindexed-topics {
+  /* FormKit lays a checkbox group out in a row, which suits a few options but
+     not a list of topics. The group forwards no class, hence the descendant. */
+
+  .form-kit__checkbox-group {
+    flex-direction: column;
+    gap: 0.5em;
+    width: 100%;
+  }
+
+  /* The open-in-new-tab link sits beside the checkbox rather than inside its
+     label, where a click would also toggle the checkbox. */
+
+  &__topic.form-kit__field .form-kit__container-content {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5em;
+  }
+
+  &__topic .form-kit__control-checkbox-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__topic-link {
+    flex: 0 0 auto;
+    color: var(--primary-medium);
+  }
+
+  &__list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  &__counts {
+    flex: 1;
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
+  }
+
+  &__empty {
+    margin: 0;
+    color: var(--primary-medium);
+  }
+
+  &__capacity {
+    color: var(--danger);
+    font-size: var(--font-down-1);
   }
 }
 

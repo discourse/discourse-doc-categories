@@ -58,9 +58,6 @@ en:
           cancel_resync: "Cancel resync"
           index_all_topics: "Reindex all topics"
           add_missing_topics: "Add missing topics"
-          add_missing_topics_to_section: "Add missing topics"
-          no_topics_found: "No topics found in this category."
-          no_missing_topics: "All topics are already in this section."
           topics_truncated: "Only the first %{loaded} of %{total} topics were loaded. Some topics may not appear in the list."
           change_icon: "Change icon"
           edit_link: "Edit link"
@@ -112,6 +109,54 @@ en:
           auto_indexed: "auto-indexed"
           auto_index_placeholder: "Topics from this category will appear here automatically."
           confirm_remove_auto_index_section: "Removing this section will disable automatic topic indexing on this index. Are you sure?"
+          unindexed_topics:
+            count:
+              one: "%{count} topic in this category isn’t in the index."
+              other: "%{count} topics in this category aren’t in the index."
+            count_with_subcategories:
+              one: "%{count} topic in this category or its subcategories isn’t in the index."
+              other: "%{count} topics in this category or its subcategories aren’t in the index."
+            auto_index_pending:
+              one: "Auto-index will add up to %{count} topic when you apply."
+              other: "Auto-index will add up to %{count} topics when you apply."
+            auto_index_full: "The auto-index section is full. Move or remove links to make room, or add these topics to another section."
+            checking: "Checking for topics that aren’t in the index…"
+            review: "Review topics"
+            modal_title: "Add topics to the index"
+            modal_subtitle: "Topics are added once, as ordinary links. Only an auto-index section picks up new topics by itself."
+            section_field: "Add to section"
+            new_section: "New section: %{title}"
+            numbered_section: "%{title} (%{count})"
+            search_field: "Search"
+            search_placeholder: "Filter by title"
+            topics_title: "Topics not in the index"
+            open_topic: "Open ‘%{title}’ in a new tab"
+            shown: "Showing %{shown} of %{total}"
+            selected:
+              one: "%{count} selected"
+              other: "%{count} selected"
+            select_shown: "Select all shown"
+            clear_selection: "Clear selection"
+            load_more: "Load more"
+            retry: "Retry"
+            none_found: "Every topic here is already in the index."
+            none_match: "No topics match your search."
+            add_none: "Add topics"
+            add:
+              one: "Add %{count} topic"
+              other: "Add %{count} topics"
+            section_full: "“%{section}” is full. Choose another section."
+            section_room:
+              one: "“%{section}” has room for %{count} more topic."
+              other: "“%{section}” has room for %{count} more topics."
+            destination_missing: "That section no longer exists. Choose another."
+            too_many_sections: "The index already has as many sections as it can hold."
+            added:
+              one: "Added %{count} topic to “%{section}”. Apply to save."
+              other: "Added %{count} topics to “%{section}”. Apply to save."
+            undo: "Undo"
+            undone: "Removed the added topics."
+            dismiss: "Dismiss"
       sidebar:
         filter:
           no_results:
