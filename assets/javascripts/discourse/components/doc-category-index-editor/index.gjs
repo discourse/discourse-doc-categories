@@ -29,11 +29,10 @@ import icon from "discourse/ui-kit/helpers/d-icon";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
+import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "../../lib/constants";
 import {
   draftTopicIds,
   draftTopicReferences,
-  MAX_LINKS_PER_SECTION,
-  MAX_SECTIONS,
   UnindexedTopicsCounter,
 } from "../../lib/doc-index-unindexed-topics";
 import validateDocIndexSections from "../../lib/doc-index-validation";
@@ -145,6 +144,16 @@ export default class DocCategoryIndexEditor extends Component {
     return this.allSectionsExpanded
       ? "sidebar.collapse_all_sections"
       : "sidebar.expand_all_sections";
+  }
+
+  get sectionLimitReached() {
+    return this.sections.length >= MAX_SECTIONS;
+  }
+
+  get sectionLimitMessage() {
+    return i18n("doc_categories.category_settings.index_editor.section_limit", {
+      count: MAX_SECTIONS,
+    });
   }
 
   get serializedSections() {
@@ -457,6 +466,10 @@ export default class DocCategoryIndexEditor extends Component {
     if (!from) {
       return;
     }
+    if (toList !== fromList && proposedToItems.length > MAX_LINKS_PER_SECTION) {
+      this.#showLinkLimit();
+      return false;
+    }
     from.links.splice(0, from.links.length, ...proposedFromItems);
 
     if (toList !== fromList) {
@@ -601,6 +614,16 @@ export default class DocCategoryIndexEditor extends Component {
           ordered.push(link);
         }
       }
+    }
+
+    const incoming = ordered.filter(
+      (link) => !targetSection.links.includes(link)
+    ).length;
+    if (targetSection.links.length + incoming > MAX_LINKS_PER_SECTION) {
+      this.isBatchDragging = false;
+      this.batchDragType = null;
+      this.#showLinkLimit();
+      return false;
     }
 
     // Remove selected items from their source sections
@@ -842,6 +865,9 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   addSection() {
+    if (this.sectionLimitReached) {
+      return;
+    }
     // Non-first sections with empty titles auto-enter edit mode
     const willAutoEdit = this.sections.length > 0;
     this.sections.push(
@@ -856,7 +882,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   addAutoIndexSection() {
-    if (this.hasAutoIndexSection) {
+    if (this.hasAutoIndexSection || this.sectionLimitReached) {
       return;
     }
     this.sections.push(
@@ -1304,6 +1330,20 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
+  #showLinkLimit() {
+    this.toasts.error({
+      key: "doc-index-capacity",
+      data: {
+        message: i18n(
+          "doc_categories.category_settings.index_editor.link_limit",
+          {
+            count: MAX_LINKS_PER_SECTION,
+          }
+        ),
+      },
+    });
+  }
+
   #unindexedDestinations() {
     const destinations = this.sections
       .filter((section) => !section.autoIndex)
@@ -1609,6 +1649,7 @@ export default class DocCategoryIndexEditor extends Component {
             <DComboButton @hasMenu={{not this.hasAutoIndexSection}}>
               <:default as |combo|>
                 <combo.Button
+                  @disabled={{this.sectionLimitReached}}
                   @action={{this.addSection}}
                   @icon="plus"
                   @label="doc_categories.category_settings.index_editor.add_section"
@@ -1625,6 +1666,7 @@ export default class DocCategoryIndexEditor extends Component {
                       <DButton
                         @icon="bolt"
                         @label="doc_categories.category_settings.index_editor.add_auto_index_section"
+                        @disabled={{this.sectionLimitReached}}
                         @action={{this.addAutoIndexSection}}
                         class="btn-transparent"
                       />
@@ -1633,6 +1675,11 @@ export default class DocCategoryIndexEditor extends Component {
                 </combo.Menu>
               </:default>
             </DComboButton>
+            {{#if this.sectionLimitReached}}
+              <span class="doc-category-index-editor__capacity-message">
+                {{this.sectionLimitMessage}}
+              </span>
+            {{/if}}
           </div>
         {{/unless}}
 

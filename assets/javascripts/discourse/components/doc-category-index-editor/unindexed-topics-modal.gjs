@@ -16,10 +16,8 @@ import dCategoryBadge from "discourse/ui-kit/helpers/d-category-badge";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 import dLoadingSpinner from "discourse/ui-kit/helpers/d-loading-spinner";
 import { i18n } from "discourse-i18n";
-import {
-  fetchUnindexedTopics,
-  MAX_LINKS_PER_SECTION,
-} from "../../lib/doc-index-unindexed-topics";
+import { MAX_LINKS_PER_SECTION } from "../../lib/constants";
+import { fetchUnindexedTopics } from "../../lib/doc-index-unindexed-topics";
 
 const MAX_SEARCH_LENGTH = 200;
 const SEARCH_DELAY = 300;

@@ -99,6 +99,8 @@ en:
           clear_index: "Clear index"
           clear_index_confirm: "This will remove all sections and links. Are you sure?"
           validation_pending_changes: "Finish editing all items before saving."
+          section_limit: "The index can contain at most %{count} sections."
+          link_limit: "Sections can contain at most %{count} items."
           validation_empty_section: "Sections must contain at least one item."
           validation_empty_section_title: "Sections with a title are collapsible in the sidebar. All sections except the first must have a title."
           validation_empty_link_title: "All items must have a title."

@@ -1,7 +1,41 @@
 import { module, test } from "qunit";
+import { i18n } from "discourse-i18n";
+import {
+  MAX_LINKS_PER_SECTION,
+  MAX_SECTIONS,
+} from "discourse/plugins/discourse-doc-categories/discourse/lib/constants";
 import validateDocIndexSections from "discourse/plugins/discourse-doc-categories/discourse/lib/doc-index-validation";
 
 module("Unit | Lib | doc-index-validation", function () {
+  test("accepts the exact section and link limits, and rejects overflow", function (assert) {
+    const link = { title: "Link", href: "/a", type: "manual" };
+    const sections = Array.from({ length: MAX_SECTIONS }, (_, index) => ({
+      title: `Section ${index}`,
+      links: [link],
+    }));
+    sections[0].links = Array.from(
+      { length: MAX_LINKS_PER_SECTION },
+      () => link
+    );
+    assert.deepEqual(validateDocIndexSections(sections), []);
+
+    sections.push({ title: "Overflow", links: [link] });
+    sections[0].links.push(link);
+    sections[1].links = [...sections[0].links];
+    assert.deepEqual(
+      validateDocIndexSections(sections),
+      [
+        i18n("doc_categories.category_settings.index_editor.section_limit", {
+          count: MAX_SECTIONS,
+        }),
+        i18n("doc_categories.category_settings.index_editor.link_limit", {
+          count: MAX_LINKS_PER_SECTION,
+        }),
+      ],
+      "reports both limits and deduplicates overflowing sections"
+    );
+  });
+
   test("allows the first section to have an empty title", function (assert) {
     const sections = [
       { title: "", links: [{ title: "Link", href: "/a", type: "manual" }] },

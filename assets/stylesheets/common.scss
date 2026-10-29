@@ -740,6 +740,7 @@ body.doc-simple-mode {
 
   &__section-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5em;
     margin-top: 0.5em;
@@ -749,9 +750,15 @@ body.doc-simple-mode {
 
   &__footer {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5em;
     margin-top: 1em;
+  }
+
+  &__capacity-message {
+    color: var(--primary-medium);
+    font-size: var(--font-down-1);
   }
 
   &__apply-footer {

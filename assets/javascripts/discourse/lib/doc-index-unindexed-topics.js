@@ -5,9 +5,6 @@ import discourseDebounce from "discourse/lib/debounce";
 import { withoutPrefix } from "discourse/lib/get-url";
 import DiscourseURL from "discourse/lib/url";
 
-// Mirror DocCategories::Index limits, which Apply enforces.
-export const MAX_LINKS_PER_SECTION = 200;
-export const MAX_SECTIONS = 50;
 const MAX_HREF_LENGTH = 2000;
 
 const RECOUNT_DELAY = 500;

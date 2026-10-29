@@ -18,6 +18,7 @@ import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import dDragDwell from "discourse/ui-kit/modifiers/d-drag-dwell";
 import { i18n } from "discourse-i18n";
+import { MAX_LINKS_PER_SECTION } from "../../lib/constants";
 import { IndexEditorLink, LINK_DRAG_TYPE } from "./link";
 
 /** What a dragged batch selection of sections publishes. */
@@ -66,6 +67,16 @@ export class IndexEditorSection extends Component {
 
   set editingTitle(value) {
     this.args.section.isEditingTitle = value;
+  }
+
+  get linkLimitReached() {
+    return this.linkCount >= MAX_LINKS_PER_SECTION;
+  }
+
+  get linkLimitMessage() {
+    return i18n("doc_categories.category_settings.index_editor.link_limit", {
+      count: MAX_LINKS_PER_SECTION,
+    });
   }
 
   get linkCount() {
@@ -227,6 +238,9 @@ export class IndexEditorSection extends Component {
 
   @action
   addManualLink() {
+    if (this.linkLimitReached) {
+      return;
+    }
     this.args.section.links.push(
       trackedObject({
         title: "",
@@ -242,13 +256,16 @@ export class IndexEditorSection extends Component {
 
   @action
   showTopicChooser() {
+    if (this.linkLimitReached) {
+      return;
+    }
     this.showingTopicChooser = true;
     this.collapsed = false;
   }
 
   @action
   onAddTopic(topicId, topic) {
-    if (!topic) {
+    if (!topic || this.linkLimitReached) {
       return;
     }
     const topicTitle = topic.title || topic.fancy_title;
@@ -620,7 +637,13 @@ export class IndexEditorSection extends Component {
         </div>
 
         {{#unless this.collapsed}}
-          {{#if (and this.showingTopicChooser (not @batchMode))}}
+          {{#if
+            (and
+              this.showingTopicChooser
+              (not @batchMode)
+              (not this.linkLimitReached)
+            )
+          }}
             <div class="doc-category-index-editor__inline-topic-chooser">
               <div class="doc-category-index-editor__link-card --adding">
                 <TopicChooser
@@ -646,6 +669,7 @@ export class IndexEditorSection extends Component {
               <DComboButton @hasMenu={{true}}>
                 <:default as |combo|>
                   <combo.Button
+                    @disabled={{this.linkLimitReached}}
                     @action={{this.showTopicChooser}}
                     @icon="plus"
                     @label="doc_categories.category_settings.index_editor.add_topic"
@@ -661,6 +685,7 @@ export class IndexEditorSection extends Component {
                         <DButton
                           @icon="link"
                           @label="doc_categories.category_settings.index_editor.add_link"
+                          @disabled={{this.linkLimitReached}}
                           @action={{this.addManualLink}}
                           class="btn-transparent"
                         />
@@ -682,6 +707,11 @@ export class IndexEditorSection extends Component {
                   </combo.Menu>
                 </:default>
               </DComboButton>
+              {{#if this.linkLimitReached}}
+                <span class="doc-category-index-editor__capacity-message">
+                  {{this.linkLimitMessage}}
+                </span>
+              {{/if}}
             </div>
           {{/unless}}
         {{/unless}}
