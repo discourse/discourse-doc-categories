@@ -28,6 +28,9 @@ en:
             topic_not_found: "Topic not found! The index won't be displayed"
             mismatched_category: "The index won't be displayed because the topic belongs to a different category: %{category_name}"
         index_editor:
+          unsaved_navigation: "You have unsaved changes to the doc index. Discard them and leave this tab?"
+          discard_and_leave: "Discard and leave"
+          stay: "Stay"
           mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content as the sidebar index"
           topic_mode_help: 'Select a topic to use as the sidebar index. The index will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href="https://meta.discourse.org/t/322376" target="_blank" rel="noopener noreferrer">Learn more</a>.'

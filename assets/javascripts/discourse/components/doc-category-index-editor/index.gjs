@@ -101,6 +101,9 @@ export default class DocCategoryIndexEditor extends Component {
     super(...arguments);
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
+      if (this.isDestroying || this.isDestroyed) {
+        return;
+      }
       this.sections = trackedArray(this.#initSectionsFromModel());
       this.batchMode = false;
       this.selectedItems.clear();
@@ -122,12 +125,6 @@ export default class DocCategoryIndexEditor extends Component {
     if (this.#saveStateTimer) {
       cancel(this.#saveStateTimer);
       this.#saveStateTimer = null;
-    }
-    // Only persist editor state if the mode is still "direct" (topic_id === -1).
-    // When switching to "none" mode, #applyNoneMode() already set the correct
-    // form values -- overwriting them here would send stale data to the backend.
-    if (Number(this.args.transientData?.doc_index_topic_id) === -1) {
-      this._saveToTransientData();
     }
   }
 
@@ -974,6 +971,7 @@ export default class DocCategoryIndexEditor extends Component {
         this.#refreshFromServerData(response.index_structure);
       }
       this.#refreshUnindexedCount({ force: true, immediate: true });
+      this.args.onApplied?.(response.index_structure);
       this.#saveStateTimer = discourseLater(() => {
         if (!this.isDestroying && this.saveState === "saved") {
           this.saveState = null;

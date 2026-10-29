@@ -164,7 +164,7 @@ describe "Doc Category Index Editor" do
       expect(index.sidebar_sections.first.auto_index).to eq(true)
     end
 
-    it "preserves doc-index state across tab switches" do
+    it "preserves applied doc-index state across tab switches" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
 
@@ -172,6 +172,8 @@ describe "Doc Category Index Editor" do
         title: "Persistent Link",
         url: "https://example.com/persistent",
       )
+      editor.click_apply
+      expect(editor).to have_applied
 
       editor.switch_to_general_tab
       expect(editor).to have_no_editor

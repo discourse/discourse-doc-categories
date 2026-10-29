@@ -11,8 +11,16 @@ import DocIndexModeState from "../lib/doc-index-mode-state";
 import DocCategoryIndexEditor from "./doc-category-index-editor";
 import DocIndexModeSelector from "./doc-index-mode-selector";
 
+const INDEX_FIELDS = [
+  "doc_index_topic_id",
+  "doc_index_sections",
+  "_docIndexEditorState",
+  "_docIndexAutoIndexIncludeSubcategories",
+];
+
 export default class DocCategoryIndexTab extends Component {
   @service dialog;
+  @service router;
   @service siteSettings;
 
   @tracked toolbarElement = null;
@@ -24,11 +32,21 @@ export default class DocCategoryIndexTab extends Component {
     owner: this,
   });
   #editorInstance = null;
+  #savedFormValues;
+  #removeIndexError;
+  #discarding = false;
+  #confirmingNavigation = false;
 
   constructor() {
     super(...arguments);
+    this.captureSavedFormValues();
+    this.router.on("routeWillChange", this.checkUnsavedIndex);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
-      removeError?.("doc_index_sections");
+      if (this.isDestroying || this.isDestroyed || this.#discarding) {
+        return;
+      }
+      this.#removeIndexError = () => removeError?.("doc_index_sections");
+      this.#removeIndexError();
 
       if (!this.modeState.isDirectMode || !this.#editorInstance) {
         return;
@@ -47,7 +65,77 @@ export default class DocCategoryIndexTab extends Component {
       return errors.length > 0;
     });
     this.args.registerAfterReset(() => {
-      this.modeState.reset();
+      if (!this.isDestroying && !this.isDestroyed) {
+        this.modeState.reset();
+      }
+    });
+  }
+
+  willDestroy() {
+    super.willDestroy();
+    this.router.off("routeWillChange", this.checkUnsavedIndex);
+  }
+
+  @action
+  captureSavedFormValues(indexStructure) {
+    if (indexStructure !== undefined) {
+      this.args.category.set("doc_category_index", indexStructure);
+    }
+    this.#savedFormValues = Object.fromEntries(
+      INDEX_FIELDS.map((name) => [name, this.args.transientData?.[name]])
+    );
+  }
+
+  @action
+  checkUnsavedIndex(transition) {
+    if (this.#discarding || transition.isAborted) {
+      return;
+    }
+    const from = transition.from;
+    const to = transition.to;
+    if (
+      !from?.name?.startsWith("editCategory.tabs") ||
+      from.params.tab !== "doc-index" ||
+      (to?.name === from.name &&
+        to.params.tab === "doc-index" &&
+        JSON.stringify(to.parent?.params) ===
+          JSON.stringify(from.parent?.params))
+    ) {
+      return;
+    }
+    const changed = INDEX_FIELDS.some(
+      (name) =>
+        JSON.stringify(this.args.transientData?.[name]) !==
+        JSON.stringify(this.#savedFormValues[name])
+    );
+    if (!changed && !this.#editorInstance?.editingCount) {
+      return;
+    }
+
+    transition.abort();
+    if (this.#confirmingNavigation) {
+      return;
+    }
+    this.#confirmingNavigation = true;
+    this.dialog.confirm({
+      message: i18n(
+        "doc_categories.category_settings.index_editor.unsaved_navigation"
+      ),
+      confirmButtonLabel:
+        "doc_categories.category_settings.index_editor.discard_and_leave",
+      cancelButtonLabel: "doc_categories.category_settings.index_editor.stay",
+      didCancel: () => {
+        this.#confirmingNavigation = false;
+      },
+      didConfirm: () => {
+        this.#discarding = true;
+        for (const name of INDEX_FIELDS) {
+          this.args.form.set(name, this.#savedFormValues[name]);
+          this.args.form.commitField(name);
+        }
+        this.#removeIndexError?.();
+        transition.retry();
+      },
     });
   }
 
@@ -134,6 +222,7 @@ export default class DocCategoryIndexTab extends Component {
           @form={{@form}}
           @transientData={{@transientData}}
           @onRegisterEditor={{this.registerEditor}}
+          @onApplied={{this.captureSavedFormValues}}
           @registerAfterReset={{@registerAfterReset}}
         />
       {{/if}}
