@@ -6,7 +6,7 @@ RSpec.describe DocCategories::IndexStructureRefresher do
   end
 
   describe ".call" do
-    subject(:result) { described_class.call(params:) }
+    subject(:result) { described_class.call(params:, **dependencies) }
 
     fab!(:documentation_category, :category_with_definition)
     fab!(:other_category, :category_with_definition)
@@ -39,6 +39,9 @@ RSpec.describe DocCategories::IndexStructureRefresher do
     end
 
     let(:params) { { category_id: documentation_category.id } }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
+
+    let(:dependencies) { {} }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -48,6 +51,12 @@ RSpec.describe DocCategories::IndexStructureRefresher do
         .where(doc_categories_indexes: { category_id: documentation_category.id })
         .includes(:sidebar_links)
         .order(:position)
+    end
+
+    context "when the contract is invalid" do
+      let(:params) { { category_id: nil } }
+
+      it { is_expected.to fail_a_contract }
     end
 
     context "when the index does not exist" do
@@ -62,13 +71,22 @@ RSpec.describe DocCategories::IndexStructureRefresher do
       it { is_expected.to fail_a_policy(:is_topic_mode) }
     end
 
+    context "when the first post has no cooked content" do
+      before { index_topic.first_post.update_columns(cooked: "") }
+
+      it { is_expected.to fail_a_step(:parse_first_post) }
+    end
+
     it "rebuilds the sidebar structure from the index topic" do
-      doc_index
-        .sidebar_sections
-        .create!(position: 9, title: "Stale")
-        .tap do |section|
-          section.sidebar_links.create!(position: 4, title: "Old", href: "/outdated")
-        end
+      section =
+        Fabricate(:doc_categories_sidebar_section, index: doc_index, position: 9, title: "Stale")
+      Fabricate(
+        :doc_categories_sidebar_link,
+        sidebar_section: section,
+        position: 4,
+        title: "Old",
+        href: "/outdated",
+      )
 
       result
 
@@ -133,12 +151,15 @@ RSpec.describe DocCategories::IndexStructureRefresher do
     end
 
     it "removes existing sidebar data when no valid links remain" do
-      doc_index
-        .sidebar_sections
-        .create!(position: 0, title: "Old")
-        .tap do |section|
-          section.sidebar_links.create!(position: 0, title: "Old link", href: "/old")
-        end
+      section =
+        Fabricate(:doc_categories_sidebar_section, index: doc_index, position: 0, title: "Old")
+      Fabricate(
+        :doc_categories_sidebar_link,
+        sidebar_section: section,
+        position: 0,
+        title: "Old link",
+        href: "/old",
+      )
 
       index_topic.first_post.update!(raw: <<~MD)
           ## Empty Section
@@ -146,28 +167,26 @@ RSpec.describe DocCategories::IndexStructureRefresher do
         MD
       index_topic.first_post.rebake!
 
-      allow(Site).to receive(:clear_cache)
-
-      messages = MessageBus.track_publish("/categories") { result }
+      messages
 
       expect(sidebar_sections).to be_empty
-      expect(Site).to have_received(:clear_cache)
       category_ids =
-        messages.flat_map { |message| Array(message.data[:categories]).map { |c| c[:id] } }
+        messages.flat_map do |message|
+          Array(message.data[:categories]).map { |category| category[:id] }
+        end
       expect(category_ids).to include(documentation_category.id)
     end
 
     it "destroys the index and publishes changes when the topic leaves the category" do
-      allow(Site).to receive(:clear_cache)
-
       index_topic.update!(category: other_category)
 
-      messages = MessageBus.track_publish("/categories") { result }
+      messages
 
       expect(DocCategories::Index.exists?(category_id: documentation_category.id)).to eq(false)
-      expect(Site).to have_received(:clear_cache)
       category_ids =
-        messages.flat_map { |message| Array(message.data[:categories]).map { |c| c[:id] } }
+        messages.flat_map do |message|
+          Array(message.data[:categories]).map { |category| category[:id] }
+        end
       expect(category_ids).to include(documentation_category.id)
     end
 
@@ -181,10 +200,8 @@ RSpec.describe DocCategories::IndexStructureRefresher do
 
     it "fails without side effects when no index exists" do
       doc_index.destroy!
-      allow(Site).to receive(:clear_cache)
-
-      expect { result }.not_to change { DocCategories::SidebarSection.count }
-      expect(Site).not_to have_received(:clear_cache)
+      expect { messages }.not_to change { DocCategories::SidebarSection.count }
+      expect(messages).to be_empty
     end
   end
 end

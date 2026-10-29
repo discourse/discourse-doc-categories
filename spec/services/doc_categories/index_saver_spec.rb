@@ -6,12 +6,14 @@ RSpec.describe DocCategories::IndexSaver do
   end
 
   describe ".call" do
-    subject(:result) { described_class.call(params:) }
+    subject(:result) { described_class.call(params:, **dependencies) }
 
     fab!(:category, :category_with_definition)
 
     let(:params) { { category_id: category.id, sections: sections_data } }
     let(:sections_data) { [{ title: "Intro", links: [{ title: "Link 1", href: "/t/slug/1" }] }] }
+
+    let(:dependencies) { {} }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -57,6 +59,76 @@ RSpec.describe DocCategories::IndexSaver do
         index = DocCategories::Index.find_by(category_id: category.id)
         expect(index.mode_direct?).to eq(true)
         expect(index.sidebar_sections.count).to eq(1)
+      end
+    end
+
+    context "when force_direct is requested with invalid sections" do
+      fab!(:index_topic) { Fabricate(:topic_with_op, category: category) }
+      fab!(:index) do
+        Fabricate(:doc_categories_index, category: category, index_topic: index_topic)
+      end
+
+      let(:params) { { category_id: category.id, sections: { invalid: true }, force_direct: true } }
+
+      it "rejects the save without changing the topic-managed index" do
+        expect(result).to fail_a_step(:parse_and_validate_sections)
+        expect(index.reload.index_topic_id).to eq(index_topic.id)
+      end
+    end
+
+    context "when multiple auto-index sections are submitted" do
+      let(:sections_data) do
+        [
+          { title: "First", auto_index: true, links: [] },
+          { title: "Second", auto_index: true, links: [] },
+        ]
+      end
+
+      it "rejects the sections without creating an index" do
+        expect(result).to fail_a_step(:parse_and_validate_sections)
+        expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
+      end
+    end
+
+    context "when a replacement link cannot be persisted" do
+      fab!(:index_topic) { Fabricate(:topic_with_op, category: category) }
+      fab!(:index) do
+        Fabricate(:doc_categories_index, category: category, index_topic: index_topic)
+      end
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index: index, position: 0) }
+      fab!(:link) do
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: section,
+          title: "Existing",
+          href: "/existing",
+          position: 0,
+        )
+      end
+      fab!(:deleted_topic) { Fabricate(:topic, category: category) }
+
+      let(:params) do
+        {
+          category_id: category.id,
+          force_direct: true,
+          auto_index_include_subcategories: true,
+          sections: [
+            {
+              title: "New",
+              links: [{ title: "Deleted", href: "/deleted", topic_id: deleted_topic.id }],
+            },
+          ],
+        }
+      end
+
+      before { deleted_topic.trash! }
+
+      it "rolls back the mode, setting, and replaced sidebar data" do
+        expect { result }.to raise_error(ActiveRecord::RecordInvalid)
+        expect(index.reload.index_topic_id).to eq(index_topic.id)
+        expect(index.auto_index_include_subcategories).to eq(false)
+        expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
+        expect(section.sidebar_links.pluck(:id)).to eq([link.id])
       end
     end
 
@@ -137,7 +209,7 @@ RSpec.describe DocCategories::IndexSaver do
     context "with limits" do
       it "fails when sections exceed MAX_SECTIONS" do
         sections =
-          (DocCategories::IndexSaver::MAX_SECTIONS + 1).times.map do |i|
+          (DocCategories::Index::MAX_SECTIONS + 1).times.map do |i|
             { title: "Section #{i}", links: [{ title: "Link", href: "/t/s/#{i}" }] }
           end
 
@@ -148,7 +220,7 @@ RSpec.describe DocCategories::IndexSaver do
 
       it "fails when links in a section exceed MAX_LINKS_PER_SECTION" do
         links =
-          (DocCategories::IndexSaver::MAX_LINKS_PER_SECTION + 1).times.map do |i|
+          (DocCategories::Index::MAX_LINKS_PER_SECTION + 1).times.map do |i|
             { title: "Link #{i}", href: "/t/s/#{i}" }
           end
 
@@ -165,7 +237,7 @@ RSpec.describe DocCategories::IndexSaver do
 
       it "allows exactly MAX_SECTIONS sections" do
         sections =
-          DocCategories::IndexSaver::MAX_SECTIONS.times.map do |i|
+          DocCategories::Index::MAX_SECTIONS.times.map do |i|
             { title: "Section #{i}", links: [{ title: "Link", href: "/t/s/#{i}" }] }
           end
 
@@ -173,7 +245,7 @@ RSpec.describe DocCategories::IndexSaver do
         expect(result).to run_successfully
 
         index = DocCategories::Index.find_by(category_id: category.id)
-        expect(index.sidebar_sections.count).to eq(DocCategories::IndexSaver::MAX_SECTIONS)
+        expect(index.sidebar_sections.count).to eq(DocCategories::Index::MAX_SECTIONS)
       end
     end
 
@@ -454,14 +526,16 @@ RSpec.describe DocCategories::IndexSaver do
       fab!(:topic) { Fabricate(:topic, category: category) }
       fab!(:post) { Fabricate(:post, topic: topic) }
 
-      let!(:index) do
-        DocCategories::Index.create!(
+      fab!(:index) do
+        Fabricate(
+          :doc_categories_index,
           category: category,
           index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
         )
       end
-      let!(:auto_section) do
-        DocCategories::SidebarSection.create!(
+      fab!(:auto_section) do
+        Fabricate(
+          :doc_categories_sidebar_section,
           index: index,
           title: "Topics",
           position: 0,

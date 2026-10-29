@@ -5,8 +5,6 @@ module DocCategories
     class AddTopic
       include Service::Base
 
-      MAX_LINKS_PER_SECTION = DocCategories::Index::MAX_LINKS_PER_SECTION
-
       params do
         attribute :topic_id, :integer
 
@@ -15,11 +13,11 @@ module DocCategories
 
       model :topic
       policy :topic_qualifies
-      step :find_matching_indexes
+      model :matching_indexes, optional: true
 
-      transaction { step :create_links }
+      transaction { model :affected_indexes, :create_links, optional: true }
 
-      step :publish_changes
+      only_if(:indexes_changed) { step :publish_changes }
 
       private
 
@@ -31,8 +29,8 @@ module DocCategories
         !topic.trashed? && topic.visible? && topic.archetype == Archetype.default
       end
 
-      def find_matching_indexes(topic:)
-        context[:matching_indexes] = DocCategories::Index
+      def fetch_matching_indexes(topic:)
+        DocCategories::Index
           .joins(:sidebar_sections)
           .where(sidebar_sections: { auto_index: true })
           .where(index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT)
@@ -41,13 +39,11 @@ module DocCategories
       end
 
       def create_links(matching_indexes:, topic:)
-        context[:affected_indexes] = []
-
-        matching_indexes.each do |index|
+        matching_indexes.filter_map do |index|
           section = index.auto_index_section
           next if section.nil?
-          next if topic_already_linked?(index, topic)
-          next if section.sidebar_links.count >= MAX_LINKS_PER_SECTION
+          next if index.sidebar_topic_linked?(topic)
+          next if section.sidebar_links.count >= DocCategories::Index::MAX_LINKS_PER_SECTION
 
           next_position = (section.sidebar_links.maximum(:position) || -1) + 1
           section.sidebar_links.create!(
@@ -56,22 +52,17 @@ module DocCategories
             position: next_position,
             auto_indexed: true,
           )
-          context[:affected_indexes] << index
+          index
         end
       end
 
       def publish_changes(affected_indexes:)
-        return if affected_indexes.blank?
-
         Site.clear_cache
         affected_indexes.each { |index| index.category.publish_category }
       end
 
-      def topic_already_linked?(index, topic)
-        DocCategories::SidebarLink
-          .joins(:sidebar_section)
-          .where(sidebar_section: { index_id: index.id })
-          .exists?(topic_id: topic.id)
+      def indexes_changed(affected_indexes:)
+        affected_indexes.present?
       end
     end
   end

@@ -6,7 +6,7 @@ RSpec.describe DocCategories::AutoIndexer::RemoveTopic do
   end
 
   describe ".call" do
-    subject(:result) { described_class.call(params:) }
+    subject(:result) { described_class.call(params:, **dependencies) }
 
     fab!(:category, :category_with_definition)
     fab!(:index) do
@@ -28,6 +28,9 @@ RSpec.describe DocCategories::AutoIndexer::RemoveTopic do
     fab!(:topic) { Fabricate(:topic, category: category) }
 
     let(:params) { { topic_id: topic.id } }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
+
+    let(:dependencies) { {} }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -42,6 +45,10 @@ RSpec.describe DocCategories::AutoIndexer::RemoveTopic do
 
       it "does not destroy any links" do
         expect { result }.not_to change { DocCategories::SidebarLink.count }
+      end
+
+      it "leaves categories unpublished" do
+        expect(messages).to be_empty
       end
     end
 

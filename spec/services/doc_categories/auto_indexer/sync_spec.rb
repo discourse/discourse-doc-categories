@@ -6,7 +6,7 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
   end
 
   describe ".call" do
-    subject(:result) { described_class.call(params:) }
+    subject(:result) { described_class.call(params:, **dependencies) }
 
     fab!(:category)
     fab!(:index) do
@@ -27,6 +27,9 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
     end
 
     let(:params) { { index_id: index.id } }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
+
+    let(:dependencies) { {} }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -45,7 +48,14 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
     context "when the index has no auto-index section" do
       before { auto_section.update!(auto_index: false) }
 
-      it { is_expected.to fail_a_policy(:has_auto_index_section) }
+      it { is_expected.to fail_to_find_a_model(:auto_index_section) }
+    end
+
+    context "when there are no eligible topics or stale links" do
+      it "leaves the category unpublished" do
+        expect(messages).to be_empty
+        expect(result).to run_successfully
+      end
     end
 
     context "when the index has an auto-index section" do
@@ -133,32 +143,81 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
         expect(DocCategories::SidebarLink.exists?(id: manual_link.id)).to eq(true)
       end
 
-      context "with subcategories" do
+      context "when subcategory indexing is enabled" do
         fab!(:subcategory) { Fabricate(:category, parent_category: category) }
         fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
 
-        context "when auto_index_include_subcategories is true" do
-          before { index.update!(auto_index_include_subcategories: true) }
+        before { index.update!(auto_index_include_subcategories: true) }
 
-          it "includes topics from subcategories" do
-            result
-            linked_topic_ids = auto_section.sidebar_links.auto_indexed.pluck(:topic_id)
-            expect(linked_topic_ids).to include(sub_topic.id)
-          end
+        it "includes topics from subcategories" do
+          result
+          expect(auto_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(sub_topic.id)
+        end
+      end
+
+      context "when subcategory indexing is disabled" do
+        fab!(:subcategory) { Fabricate(:category, parent_category: category) }
+        fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
+
+        it "leaves subcategory topics unindexed" do
+          result
+          expect(auto_section.sidebar_links.auto_indexed.pluck(:topic_id)).not_to include(
+            sub_topic.id,
+          )
+        end
+      end
+
+      context "when a full section contains a stale link" do
+        fab!(:stale_topic) { Fabricate(:topic, category: category) }
+        fab!(:stale_link) do
+          Fabricate(
+            :doc_categories_sidebar_link,
+            sidebar_section: auto_section,
+            topic: stale_topic,
+            href: stale_topic.relative_url,
+            position: 0,
+            auto_indexed: true,
+          )
         end
 
-        context "when auto_index_include_subcategories is false" do
-          it "does not include topics from subcategories" do
-            result
-            linked_topic_ids = auto_section.sidebar_links.auto_indexed.pluck(:topic_id)
-            expect(linked_topic_ids).not_to include(sub_topic.id)
+        before { stale_topic.trash! }
+
+        it "reclaims capacity before adding a qualifying topic" do
+          stale_link_id = stale_link.id
+          stub_const(DocCategories::Index, :MAX_LINKS_PER_SECTION, 1) do
+            expect(result).to run_successfully
+            expect(DocCategories::SidebarLink.exists?(id: stale_link_id)).to eq(false)
+            expect(auto_section.sidebar_links.auto_indexed.count).to eq(1)
+            expect(auto_section.sidebar_links.auto_indexed.first.topic_id).to be_in(
+              [topic_1.id, topic_2.id],
+            )
+          end
+        end
+      end
+
+      context "when the section is full with valid links" do
+        fab!(:existing_link) do
+          Fabricate(
+            :doc_categories_sidebar_link,
+            sidebar_section: auto_section,
+            topic: topic_1,
+            href: topic_1.relative_url,
+            position: 0,
+            auto_indexed: true,
+          )
+        end
+
+        it "leaves the category unpublished when candidates cannot be added" do
+          stub_const(DocCategories::Index, :MAX_LINKS_PER_SECTION, 1) do
+            expect(messages).to be_empty
+            expect(result).to run_successfully
           end
         end
       end
 
       context "with section capacity limits" do
         it "respects the max links per section limit" do
-          stub_const(described_class, "MAX_LINKS_PER_SECTION", 1) do
+          stub_const(DocCategories::Index, :MAX_LINKS_PER_SECTION, 1) do
             result
             expect(auto_section.sidebar_links.auto_indexed.count).to eq(1)
           end

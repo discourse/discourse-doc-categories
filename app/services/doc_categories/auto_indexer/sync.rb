@@ -5,8 +5,6 @@ module DocCategories
     class Sync
       include Service::Base
 
-      MAX_LINKS_PER_SECTION = DocCategories::Index::MAX_LINKS_PER_SECTION
-
       params do
         attribute :index_id, :integer
 
@@ -14,16 +12,16 @@ module DocCategories
       end
 
       model :index
-      policy :has_auto_index_section
-      step :compute_topics_to_add
-      step :find_stale_links
+      model :auto_index_section
+      model :topics_to_add, optional: true
+      model :stale_links, optional: true
 
       transaction do
-        step :add_missing_topics
         step :remove_stale_links
+        model :added_links, :add_missing_topics, optional: true
       end
 
-      step :publish_changes
+      only_if(:index_changed) { step :publish_changes }
 
       private
 
@@ -31,12 +29,11 @@ module DocCategories
         DocCategories::Index.find_by(id: params.index_id)
       end
 
-      def has_auto_index_section(index:)
-        context[:auto_index_section] = index.auto_index_section
-        context[:auto_index_section].present?
+      def fetch_auto_index_section(index:)
+        index.auto_index_section
       end
 
-      def compute_topics_to_add(index:)
+      def fetch_topics_to_add(index:)
         existing_topic_ids =
           DocCategories::SidebarLink
             .joins(:sidebar_section)
@@ -44,17 +41,17 @@ module DocCategories
             .where.not(topic_id: nil)
             .select(:topic_id)
 
-        context[:topics_to_add] = ::Topic
+        ::Topic
           .where(category_id: index.matching_category_ids)
           .where(visible: true, archetype: Archetype.default, deleted_at: nil)
           .where.not(id: existing_topic_ids)
           .order(created_at: :desc)
-          .limit(MAX_LINKS_PER_SECTION)
-          .pluck(:id)
+          .limit(DocCategories::Index::MAX_LINKS_PER_SECTION)
+          .to_a
       end
 
-      def find_stale_links(index:)
-        context[:stale_link_ids] = DocCategories::SidebarLink
+      def fetch_stale_links(index:)
+        DocCategories::SidebarLink
           .auto_indexed
           .joins(:sidebar_section)
           .where(sidebar_section: { index_id: index.id })
@@ -66,36 +63,38 @@ module DocCategories
             OR topics.archetype != ?
             OR topics.category_id NOT IN (?)
           SQL
-          .pluck(:id)
+          .to_a
       end
 
       def add_missing_topics(auto_index_section:, topics_to_add:)
         current_max = auto_index_section.sidebar_links.maximum(:position) || -1
-        available_slots = MAX_LINKS_PER_SECTION - auto_index_section.sidebar_links.count
+        available_slots = [
+          DocCategories::Index::MAX_LINKS_PER_SECTION - auto_index_section.sidebar_links.count,
+          0,
+        ].max
 
-        topic_ids = topics_to_add.first(available_slots)
-        topics_by_id = ::Topic.where(id: topic_ids).index_by(&:id)
-
-        topic_ids.each_with_index do |topic_id, idx|
-          topic = topics_by_id[topic_id]
-          next if topic.nil?
-
-          auto_index_section.sidebar_links.create!(
-            topic_id: topic.id,
-            href: topic.relative_url,
-            position: current_max + idx + 1,
-            auto_indexed: true,
-          )
-        end
+        topics_to_add
+          .first(available_slots)
+          .each_with_index
+          .map do |topic, idx|
+            auto_index_section.sidebar_links.create!(
+              topic_id: topic.id,
+              href: topic.relative_url,
+              position: current_max + idx + 1,
+              auto_indexed: true,
+            )
+          end
       end
 
-      def remove_stale_links(stale_link_ids:)
-        DocCategories::SidebarLink.where(id: stale_link_ids).delete_all if stale_link_ids.present?
+      def remove_stale_links(stale_links:)
+        DocCategories::SidebarLink.where(id: stale_links.map(&:id)).delete_all
       end
 
-      def publish_changes(index:, topics_to_add:, stale_link_ids:)
-        return if topics_to_add.blank? && stale_link_ids.blank?
+      def index_changed(added_links:, stale_links:)
+        added_links.present? || stale_links.present?
+      end
 
+      def publish_changes(index:)
         Site.clear_cache
         index.category.publish_category
       end

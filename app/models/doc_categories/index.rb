@@ -12,7 +12,7 @@ module DocCategories
     MAX_LINKS_PER_SECTION = 200
 
     belongs_to :category, class_name: "::Category"
-    belongs_to :index_topic, class_name: "::Topic", optional: true
+    belongs_to :index_topic, -> { with_deleted }, class_name: "::Topic", optional: true
 
     has_many :sidebar_sections,
              -> { order(:position) },
@@ -94,6 +94,58 @@ module DocCategories
       return nil if topic.private_message?
       return nil if topic.trashed?
       return nil unless topic.visible?
+
+      topic
+    end
+
+    def sidebar_topic_linked?(topic)
+      DocCategories::SidebarLink
+        .joins(:sidebar_section)
+        .where(sidebar_section: { index_id: id })
+        .exists?(topic: topic)
+    end
+
+    def replace_sidebar_sections!(sections)
+      topic_ids =
+        sections.flat_map { |section| section[:links].filter_map { |link| link[:topic_id] } }.uniq
+      topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
+      auto_indexed_topic_ids =
+        DocCategories::SidebarLink
+          .auto_indexed
+          .joins(:sidebar_section)
+          .where(sidebar_section: { index_id: id })
+          .pluck(:topic_id)
+          .to_set
+
+      sidebar_sections.destroy_all
+      sections.each_with_index do |section, section_position|
+        section_record =
+          sidebar_sections.create!(
+            title: section[:title],
+            position: section_position,
+            auto_index: section[:auto_index] || false,
+          )
+        section[:links].each_with_index do |link, link_position|
+          title = link[:title]
+          title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
+          section_record.sidebar_links.create!(
+            **link.slice(:href, :icon, :topic_id),
+            title: title,
+            position: link_position,
+            auto_indexed:
+              link[:topic_id].present? && auto_indexed_topic_ids.include?(link[:topic_id]),
+          )
+        end
+      end
+
+      touch
+    end
+
+    def sidebar_visible_topic(topic)
+      topic = valid_topic(topic)
+      return if topic.nil?
+      return topic if topic.category_id == category_id
+      return if topic.category&.read_restricted?
 
       topic
     end

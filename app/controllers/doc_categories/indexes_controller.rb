@@ -7,7 +7,6 @@ module ::DocCategories
     before_action :ensure_index_editor_enabled
 
     MAX_TOPICS = 50
-    MAX_EXCLUDED_TOPICS = Index::MAX_SECTIONS * Index::MAX_LINKS_PER_SECTION
 
     def topics
       scope = topic_candidates
@@ -15,41 +14,27 @@ module ::DocCategories
     end
 
     def unindexed_topics
-      excluded_ids = params[:exclude_topic_ids] || []
-      unless excluded_ids.is_a?(Array) && excluded_ids.size <= MAX_EXCLUDED_TOPICS &&
-               excluded_ids.all? { |id| id.to_s.match?(/\A[1-9]\d{0,18}\z/) }
-        raise Discourse::InvalidParameters.new(:exclude_topic_ids)
+      DocCategories::UnindexedTopicsList.call(service_params) do
+        on_success do |topics:, total_count:, params:|
+          render json: {
+                   topics:
+                     ActiveModel::ArraySerializer.new(
+                       topics,
+                       each_serializer: DocCategories::UnindexedTopicSerializer,
+                       root: false,
+                     ).as_json,
+                   total_count: total_count,
+                   page: params.page.to_i,
+                   per_page: DocCategories::UnindexedTopicsList::PAGE_SIZE,
+                 }
+        end
+        on_failed_contract do |contract|
+          raise Discourse::InvalidParameters.new(contract.errors.attribute_names.first)
+        end
+        on_model_not_found(:category) { raise Discourse::NotFound }
+        on_failed_policy(:can_list_topics) { raise Discourse::InvalidAccess }
+        on_failure { render json: failed_json, status: :unprocessable_entity }
       end
-
-      excluded_hrefs = params[:exclude_hrefs] || []
-      unless excluded_hrefs.is_a?(Array) && excluded_hrefs.size <= MAX_EXCLUDED_TOPICS &&
-               excluded_hrefs.all? { |href| href.is_a?(String) && href.length <= 2000 }
-        raise Discourse::InvalidParameters.new(:exclude_hrefs)
-      end
-      excluded_ids =
-        excluded_ids.map(&:to_i) +
-          excluded_hrefs.filter_map { |href| DocCategories::Url.extract_topic_id_from_url(href) }
-
-      limit = params.fetch(:limit, MAX_TOPICS).to_s
-      raise Discourse::InvalidParameters.new(:limit) if ["0", MAX_TOPICS.to_s].exclude?(limit)
-
-      page = params.fetch(:page, 0).to_s
-      raise Discourse::InvalidParameters.new(:page) unless page.match?(/\A\d{1,6}\z/)
-
-      search = params[:search].to_s.strip
-      raise Discourse::InvalidParameters.new(:search) if search.length > 200
-
-      scope = topic_candidates.where.not(id: excluded_ids.uniq)
-      if search.present?
-        scope = scope.where("topics.title ILIKE ?", "%#{Topic.sanitize_sql_like(search)}%")
-      end
-
-      render json: {
-               topics: topic_rows(scope.offset(page.to_i * MAX_TOPICS).limit(limit.to_i)),
-               total_count: scope.count,
-               page: page.to_i,
-               per_page: MAX_TOPICS,
-             }
     end
 
     def update

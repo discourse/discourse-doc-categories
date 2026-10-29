@@ -12,12 +12,18 @@ module DocCategories
 
     model :index
     policy :is_topic_mode
-    step :ensure_valid_topic
+    only_if(:invalid_index_topic) do
+      transaction { step :remove_index }
+      step :publish_changes
+      step :ensure_valid_topic
+    end
+
+    model :topic
     step :parse_first_post
-    step :build_sections
+    model :linked_topics, optional: true
+    model :built_sections, :build_sections, optional: true
 
     transaction { step :replace_sections }
-
     step :publish_changes
 
     private
@@ -30,30 +36,31 @@ module DocCategories
       index.mode_topic?
     end
 
-    def ensure_valid_topic(index:)
+    def invalid_index_topic(index:)
       topic = index.index_topic
+      topic.nil? || topic.private_message? || topic.trashed? ||
+        topic.category_id != index.category_id
+    end
 
-      if topic.blank? || topic.private_message? || topic.trashed? ||
-           topic.category_id != index.category_id
-        # Topic is no longer valid — destroy the index and publish changes
-        category_id = index.category_id
-        index.destroy!
-        publish_changes_for(category_id)
-        return fail!("index topic is no longer valid")
-      end
+    def remove_index(index:)
+      index.destroy!
+    end
 
-      context[:topic] = topic
+    def ensure_valid_topic
+      fail!("index topic is no longer valid")
+    end
+
+    def fetch_topic(index:)
+      index.index_topic
     end
 
     def parse_first_post(topic:)
       first_post = topic.first_post
-      return fail!("first post has no content") if first_post&.cooked.blank?
+      fail!("first post has no content") if first_post&.cooked.blank?
 
-      context[:raw_sections] = DocCategories::DocIndexTopicParser.new(first_post.cooked).sections
-    end
-
-    def build_sections(index:, raw_sections:)
-      context[:built_sections] = process_raw_sections(raw_sections, index.category_id)
+      context[:raw_sections] = Array(
+        DocCategories::DocIndexTopicParser.new(first_post.cooked).sections,
+      )
     end
 
     def replace_sections(index:, built_sections:)
@@ -77,20 +84,21 @@ module DocCategories
     end
 
     def publish_changes(index:)
-      publish_changes_for(index.category_id)
+      Site.clear_cache
+      index.category.publish_category
     end
 
-    def process_raw_sections(raw_sections, category_id)
-      return [] if raw_sections.blank?
-
+    def fetch_linked_topics(raw_sections:)
       topic_ids =
         raw_sections
           .flat_map { |section| section[:links] }
           .filter_map { |link| DocCategories::Url.extract_topic_id_from_url(link[:href]) }
           .uniq
 
-      topics_by_id = ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
+      ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
+    end
 
+    def build_sections(index:, raw_sections:, linked_topics:)
       raw_sections.filter_map do |section|
         links =
           section[:links].filter_map do |link|
@@ -101,9 +109,7 @@ module DocCategories
 
             topic_id = DocCategories::Url.extract_topic_id_from_url(href)
             target_topic =
-              if topic_id.present?
-                sidebar_visible_target_topic(topics_by_id[topic_id], category_id)
-              end
+              (index.sidebar_visible_topic(linked_topics[topic_id]) if topic_id.present?)
             has_explicit_title = link_text.present? && link_text != href
             text = has_explicit_title ? link_text : (target_topic&.title || href)
 
@@ -114,29 +120,6 @@ module DocCategories
 
         { text: section[:text], links: links }
       end
-    end
-
-    # Kept from `main`: a link may point anywhere, so a topic the reader cannot
-    # see must not reach the sidebar, title included. The index's own category is
-    # allowed outright; anything else has to be in a category that is not
-    # read restricted.
-    def sidebar_visible_target_topic(topic, category_id)
-      return nil if topic.blank?
-      return nil if topic.private_message?
-      return nil if topic.trashed?
-      return nil if !topic.visible?
-      return topic if topic.category_id == category_id
-      return nil if topic.category&.read_restricted?
-
-      topic
-    end
-
-    def publish_changes_for(category_id)
-      category = ::Category.find_by(id: category_id)
-      return unless category
-
-      Site.clear_cache
-      category.publish_category
     end
   end
 end

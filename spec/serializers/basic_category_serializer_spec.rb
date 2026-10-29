@@ -122,6 +122,16 @@ describe BasicCategorySerializer do
       expect(data[:doc_category_index]).to be_nil
     end
 
+    it "hides the sidebar when its index topic is soft-deleted" do
+      index_topic.update_columns(deleted_at: Time.zone.now)
+      documentation_category.reload
+
+      data = described_class.new(documentation_category, root: false).as_json
+
+      expect(documentation_index.reload).to be_persisted
+      expect(data[:doc_category_index]).to be_nil
+    end
+
     it "is serialized as expected if the index topic can be parsed" do
       data = described_class.new(documentation_category, root: false).as_json
 

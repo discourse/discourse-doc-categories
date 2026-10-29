@@ -6,7 +6,7 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
   end
 
   describe ".call" do
-    subject(:result) { described_class.call(params:) }
+    subject(:result) { described_class.call(params:, **dependencies) }
 
     fab!(:category, :category_with_definition)
     fab!(:index) do
@@ -28,6 +28,9 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
     fab!(:topic) { Fabricate(:topic, category: category) }
 
     let(:params) { { topic_id: topic.id } }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
+
+    let(:dependencies) { {} }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -67,6 +70,23 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
       before { topic.update!(archetype: Archetype.banner) }
 
       it { is_expected.to fail_a_policy(:topic_qualifies) }
+    end
+
+    context "when the topic is already linked" do
+      fab!(:link) do
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: auto_section,
+          topic: topic,
+          href: topic.relative_url,
+          position: 0,
+        )
+      end
+
+      it "leaves the category unpublished" do
+        expect(messages).to be_empty
+        expect(result).to run_successfully
+      end
     end
 
     context "when everything is valid" do
@@ -109,7 +129,7 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
       end
 
       it "skips indexes where the section is full" do
-        stub_const(described_class, "MAX_LINKS_PER_SECTION", 1) do
+        stub_const(DocCategories::Index, :MAX_LINKS_PER_SECTION, 1) do
           Fabricate(
             :doc_categories_sidebar_link,
             sidebar_section: auto_section,
@@ -166,28 +186,27 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
         ).to eq(0)
       end
 
-      context "with subcategories" do
+      context "when subcategory indexing is enabled" do
         fab!(:subcategory) { Fabricate(:category, parent_category: category) }
         fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
 
-        context "when auto_index_include_subcategories is true" do
-          before { index.update!(auto_index_include_subcategories: true) }
+        let(:params) { { topic_id: sub_topic.id } }
 
-          let(:params) { { topic_id: sub_topic.id } }
+        before { index.update!(auto_index_include_subcategories: true) }
 
-          it "includes topics from subcategories" do
-            expect { result }.to change { DocCategories::SidebarLink.auto_indexed.count }.by(1)
-          end
+        it "includes topics from subcategories" do
+          expect { result }.to change { DocCategories::SidebarLink.auto_indexed.count }.by(1)
         end
+      end
 
-        context "when auto_index_include_subcategories is false" do
-          before { index.update!(auto_index_include_subcategories: false) }
+      context "when subcategory indexing is disabled" do
+        fab!(:subcategory) { Fabricate(:category, parent_category: category) }
+        fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
 
-          let(:params) { { topic_id: sub_topic.id } }
+        let(:params) { { topic_id: sub_topic.id } }
 
-          it "does not include topics from subcategories" do
-            expect { result }.not_to change { DocCategories::SidebarLink.auto_indexed.count }
-          end
+        it "leaves subcategory topics unindexed" do
+          expect { result }.not_to change { DocCategories::SidebarLink.auto_indexed.count }
         end
       end
     end

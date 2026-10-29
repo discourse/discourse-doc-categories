@@ -230,7 +230,7 @@ RSpec.describe ::DocCategories::IndexesController do
 
     it "paginates the remaining candidates rather than the unfiltered category" do
       sign_in(admin)
-      stub_const(described_class, :MAX_TOPICS, 1) do
+      stub_const(DocCategories::UnindexedTopicsList, :PAGE_SIZE, 1) do
         post "/doc-categories/indexes/#{category.id}/unindexed_topics.json",
              params: {
                exclude_topic_ids: [topic.id],
@@ -336,7 +336,10 @@ RSpec.describe ::DocCategories::IndexesController do
         { exclude_hrefs: [123] },
         { exclude_hrefs: ["x" * 2001] },
         { limit: 1000 },
-        { exclude_topic_ids: [topic.id] * (described_class::MAX_EXCLUDED_TOPICS + 1) },
+        {
+          exclude_topic_ids:
+            [topic.id] * (DocCategories::UnindexedTopicsList::MAX_EXCLUDED_TOPICS + 1),
+        },
         { page: -1 },
         { page: "invalid" },
         { search: "x" * 201 },
@@ -793,7 +796,7 @@ RSpec.describe ::DocCategories::IndexesController do
       sign_in(admin)
 
       sections =
-        (DocCategories::IndexSaver::MAX_SECTIONS + 1).times.map do |i|
+        (DocCategories::Index::MAX_SECTIONS + 1).times.map do |i|
           { title: "Section #{i}", links: [{ title: "Link", href: "/t/s/#{i}" }] }
         end
 

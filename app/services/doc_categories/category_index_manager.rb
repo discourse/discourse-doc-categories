@@ -9,25 +9,31 @@ module DocCategories
       attribute :topic_id
 
       validates :category_id, presence: true
+
+      def normalized_topic_id
+        value = topic_id.presence&.to_i
+        value if value&.positive? || value == DocCategories::Index::INDEX_TOPIC_ID_DIRECT
+      end
     end
 
     model :category
-    step :normalize_topic_id
-
-    only_if(:removing_index) do
-      model :existing_index, :fetch_existing_index, optional: true
-      step :remove_index
-    end
-
-    only_if(:assigning_direct_mode) { step :assign_direct }
+    model :index, optional: true
 
     only_if(:assigning_topic_mode) do
       model :topic
       policy :valid_index_topic
-      step :assign_topic
     end
 
-    step :publish_changes
+    only_if(:changing_index) do
+      transaction do
+        only_if(:removing_index) { step :remove_index }
+        only_if(:replacing_direct_sections) { step :remove_direct_sections }
+        only_if(:assigning_index) { model :saved_index, :save_index }
+      end
+
+      only_if(:assigning_topic_mode) { step :schedule_refresh }
+      step :publish_changes
+    end
 
     private
 
@@ -35,90 +41,60 @@ module DocCategories
       ::Category.find_by(id: params.category_id)
     end
 
-    def normalize_topic_id(params:)
-      value = params.topic_id
-
-      if value.blank?
-        context[:normalized_topic_id] = nil
-        context[:action] = :remove
-        return
-      end
-
-      id = value.to_i
-
-      if id == DocCategories::Index::INDEX_TOPIC_ID_DIRECT
-        context[:normalized_topic_id] = id
-        context[:action] = :direct
-      elsif id.positive?
-        context[:normalized_topic_id] = id
-        context[:action] = :topic
-      else
-        context[:normalized_topic_id] = nil
-        context[:action] = :remove
-      end
+    def fetch_index(category:)
+      DocCategories::Index.find_by(category: category)
     end
 
-    def removing_index
-      context[:action] == :remove
+    def assigning_topic_mode(params:)
+      params.normalized_topic_id&.positive?
     end
 
-    def fetch_existing_index(category:)
-      DocCategories::Index.find_by(category_id: category.id)
-    end
-
-    def remove_index(existing_index:, category:)
-      return if existing_index.nil?
-
-      existing_index.destroy!
-      category.reload
-      context[:changed] = true
-    end
-
-    def assigning_direct_mode
-      context[:action] == :direct
-    end
-
-    def assign_direct(category:)
-      index = DocCategories::Index.find_or_initialize_by(category_id: category.id)
-      return if index.mode_direct?
-
-      index.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
-      index.save!
-      context[:changed] = true
-    end
-
-    def assigning_topic_mode
-      context[:action] == :topic
-    end
-
-    def fetch_topic
-      ::Topic.find_by(id: context[:normalized_topic_id])
+    def fetch_topic(params:)
+      ::Topic.find_by(id: params.normalized_topic_id)
     end
 
     def valid_index_topic(topic:, category:)
-      return false if topic.category_id != category.id
-      return false if topic.private_message?
-      return false if topic.trashed?
-
-      true
+      topic.category_id == category.id && !topic.private_message? && !topic.trashed?
     end
 
-    def assign_topic(category:, topic:)
-      index = DocCategories::Index.find_or_initialize_by(category_id: category.id)
-      return if index.index_topic_id == topic.id
+    def changing_index(params:, index:)
+      params.normalized_topic_id != index&.index_topic_id ||
+        (params.normalized_topic_id.nil? && index.present?)
+    end
 
-      # Clear stale direct-mode sections before switching to topic mode
-      index.sidebar_sections.destroy_all if index.persisted? && index.mode_direct?
+    def removing_index(params:)
+      params.normalized_topic_id.nil?
+    end
 
-      index.index_topic = topic
-      index.save!
+    def remove_index(index:, category:)
+      index.destroy!
+      category.reload
+    end
+
+    def replacing_direct_sections(params:, index:)
+      assigning_topic_mode(params: params) && index&.mode_direct?
+    end
+
+    def remove_direct_sections(index:)
+      index.sidebar_sections.destroy_all
+    end
+
+    def assigning_index(params:)
+      params.normalized_topic_id.present?
+    end
+
+    def save_index(params:, category:, index:)
+      record = index || DocCategories::Index.new(category: category)
+      record.index_topic_id = params.normalized_topic_id
+      record.save
+      record
+    end
+
+    def schedule_refresh(category:)
       ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id)
-      context[:changed] = true
     end
 
     def publish_changes(category:)
-      return unless context[:changed]
-
       Site.clear_cache
       category.publish_category
     end

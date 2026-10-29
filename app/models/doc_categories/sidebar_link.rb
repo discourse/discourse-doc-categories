@@ -9,7 +9,7 @@ module DocCategories
                foreign_key: :sidebar_section_id,
                inverse_of: :sidebar_links
 
-    belongs_to :topic, optional: true
+    belongs_to :topic, -> { with_deleted }, optional: true
 
     scope :auto_indexed, -> { where(auto_indexed: true) }
 

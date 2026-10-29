@@ -14,7 +14,7 @@ module ::DocCategories
 
           if index.mode_topic?
             index_topic = index.index_topic
-            next if index_topic.blank?
+            next if index_topic.blank? || index_topic.trashed?
 
             # Ideally we should check if the current user has access to the topic above which
             # would allow securely using topics from any category, but we can't because the
