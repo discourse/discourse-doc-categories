@@ -8,6 +8,7 @@ import { trustHTML } from "@ember/template";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
 import DocIndexModeState from "../lib/doc-index-mode-state";
+import docIndexSaveLock from "../modifiers/doc-index-save-lock";
 import DocCategoryIndexEditor from "./doc-category-index-editor";
 import DocIndexModeSelector from "./doc-index-mode-selector";
 
@@ -20,6 +21,7 @@ const INDEX_FIELDS = [
 
 export default class DocCategoryIndexTab extends Component {
   @service dialog;
+  @service docIndexSaveLock;
   @service router;
   @service siteSettings;
 
@@ -88,7 +90,14 @@ export default class DocCategoryIndexTab extends Component {
 
   @action
   checkUnsavedIndex(transition) {
-    if (this.#discarding || transition.isAborted) {
+    if (transition.isAborted) {
+      return;
+    }
+    if (this.docIndexSaveLock.isSaving) {
+      transition.abort();
+      return;
+    }
+    if (this.#discarding) {
       return;
     }
     const from = transition.from;
@@ -157,8 +166,10 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   <template>
-    <div
+    <fieldset
       class="doc-category-index-tab"
+      disabled={{this.docIndexSaveLock.isSaving}}
+      {{docIndexSaveLock this.docIndexSaveLock.isSaving}}
       {{didInsert this.modeState.loadIndexTopic}}
     >
       <div class="doc-category-index-tab__header">
@@ -226,6 +237,6 @@ export default class DocCategoryIndexTab extends Component {
           @registerAfterReset={{@registerAfterReset}}
         />
       {{/if}}
-    </div>
+    </fieldset>
   </template>
 }

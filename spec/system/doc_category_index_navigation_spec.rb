@@ -97,4 +97,67 @@ RSpec.describe "Doc index unsaved navigation" do
     expect(page).to have_content("Applied title")
     expect(page).to have_no_content("Later unsaved title")
   end
+
+  it "locks editing, reset, category saving, and navigation until Apply succeeds" do
+    release = Queue.new
+    allow(DocCategories::IndexSaver).to receive(
+      :call,
+    ).and_wrap_original do |original, *args, &block|
+      release.pop(timeout: 15) if block
+      original.call(*args, &block)
+    end
+
+    editor.visit_doc_index_tab(category)
+    edit_title("Saved under lock")
+    find(".doc-category-index-editor__apply-btn").native.click
+    expect(page).to have_button("Applying...", disabled: true)
+    expect(page).to have_css(".doc-category-index-tab[disabled]")
+    expect(page).to have_no_css(".doc-category-index-tab button:not(:disabled)")
+    expect(page).to have_css(".edit-category-page[inert]")
+    find(".sidebar-section-link[href='/latest']").native.click
+    expect(page).to have_current_path("/c/#{category.slug}/edit/doc-index")
+    expect(page).to have_no_css(".dialog-container")
+
+    release << true
+    expect(editor).to have_applied
+    expect(page).to have_no_css(".edit-category-page[inert]")
+    expect(page).to have_button("Add section", disabled: false)
+    expect(page).to have_content("Saved under lock")
+    switch_tab("general")
+    expect(page).to have_current_path("/c/#{category.slug}/edit/general")
+  ensure
+    release << true
+  end
+
+  it "unlocks after an Apply failure and preserves the draft for retry" do
+    release = Queue.new
+    fail_save = true
+    allow(DocCategories::IndexSaver).to receive(
+      :call,
+    ).and_wrap_original do |original, *args, &block|
+      release.pop(timeout: 15) if block
+      raise Discourse::InvalidParameters.new(:sections) if fail_save
+      original.call(*args, &block)
+    end
+
+    editor.visit_doc_index_tab(category)
+    edit_title("Retained after failure")
+    find(".doc-category-index-editor__apply-btn").native.click
+    expect(page).to have_css(".edit-category-page[inert]")
+    release << true
+    expect(page).to have_button("OK")
+    click_button "OK"
+    expect(page).to have_no_css(".edit-category-page[inert]")
+    expect(page).to have_content("Retained after failure")
+    expect(page).to have_button("Apply", disabled: false)
+    expect(section.reload.title).to eq("Original section")
+
+    fail_save = false
+    release << true
+    find(".doc-category-index-editor__apply-btn").native.click
+    expect(editor).to have_applied
+    expect(index.reload.sidebar_sections.first.title).to eq("Retained after failure")
+  ensure
+    release << true
+  end
 end

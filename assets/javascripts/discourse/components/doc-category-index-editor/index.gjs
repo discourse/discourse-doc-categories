@@ -69,6 +69,7 @@ function sectionUid(section) {
 export default class DocCategoryIndexEditor extends Component {
   @service a11y;
   @service dialog;
+  @service docIndexSaveLock;
   @service modal;
   @service toasts;
 
@@ -101,7 +102,11 @@ export default class DocCategoryIndexEditor extends Component {
     super(...arguments);
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
-      if (this.isDestroying || this.isDestroyed) {
+      if (
+        this.isDestroying ||
+        this.isDestroyed ||
+        this.docIndexSaveLock.isSaving
+      ) {
         return;
       }
       this.sections = trackedArray(this.#initSectionsFromModel());
@@ -789,6 +794,9 @@ export default class DocCategoryIndexEditor extends Component {
    */
   @action
   undoLastAddition() {
+    if (this.docIndexSaveLock.isSaving) {
+      return;
+    }
     const addition = this.lastAddition;
     if (!addition) {
       return;
@@ -918,12 +926,14 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   async apply() {
+    if (this.docIndexSaveLock.isSaving) {
+      return;
+    }
     if (this.validationErrors.length > 0) {
       this.saveState = "error";
       this.args.onApplyError?.(this.validationErrors.join(" "));
       return;
     }
-    this.saveState = "saving";
     const payload = {
       force_direct: true,
       auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
@@ -941,6 +951,8 @@ export default class DocCategoryIndexEditor extends Component {
       })),
     };
 
+    this.saveState = "saving";
+    this.docIndexSaveLock.isSaving = true;
     try {
       const response = await ajax(
         `/doc-categories/indexes/${this.args.categoryId}`,
@@ -983,6 +995,8 @@ export default class DocCategoryIndexEditor extends Component {
       }
       this.saveState = "error";
       popupAjaxError(e);
+    } finally {
+      this.docIndexSaveLock.isSaving = false;
     }
   }
 
@@ -1231,7 +1245,11 @@ export default class DocCategoryIndexEditor extends Component {
   async #doIndexAllTopics() {
     try {
       const result = await this.fetchTopics(this.includeSubcategories);
-      if (this.isDestroying || this.isDestroyed) {
+      if (
+        this.isDestroying ||
+        this.isDestroyed ||
+        this.docIndexSaveLock.isSaving
+      ) {
         return;
       }
       if (result.topics.length === 0) {
@@ -1370,6 +1388,7 @@ export default class DocCategoryIndexEditor extends Component {
       {{! Untyped: the reorderable lists keep their drag tokens to themselves,
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}
+      inert={{this.docIndexSaveLock.isSaving}}
       class={{dConcatClass
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")

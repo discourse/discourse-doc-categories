@@ -6,7 +6,10 @@ import DocCategoryIndexTab from "discourse/plugins/discourse-doc-categories/disc
 export default {
   name: "doc-categories-edit-tab",
 
-  initialize() {
+  initialize(container) {
+    // Register before FormKit's dirty guard: a pending save cannot be discarded.
+    container.lookup("service:doc-index-save-lock");
+
     withPluginApi((api) => {
       api.registerEditCategoryTab({
         id: "doc-index",

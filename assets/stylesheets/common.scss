@@ -97,6 +97,11 @@ body.doc-simple-mode {
 
 /* Doc category index tab */
 .doc-category-index-tab {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+
   &__header {
     display: flex;
     align-items: center;
