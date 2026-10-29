@@ -21,6 +21,7 @@ import DComboButton from "discourse/ui-kit/d-combo-button";
 import DConditionalInElement from "discourse/ui-kit/d-conditional-in-element";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
 import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
+import DEmptyState from "discourse/ui-kit/d-empty-state";
 import DReorderableList from "discourse/ui-kit/d-reorderable-list";
 import DReorderableListGroup from "discourse/ui-kit/d-reorderable-list-group";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
@@ -69,6 +70,7 @@ export default class DocCategoryIndexEditor extends Component {
   @service a11y;
   @service dialog;
   @service modal;
+  @service toasts;
 
   @tracked sections = trackedArray(this.#initSections());
   @tracked saveState = null;
@@ -90,6 +92,7 @@ export default class DocCategoryIndexEditor extends Component {
   #originalAutoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   #saveStateTimer = null;
+  #additionToast = null;
   #unindexedCounter = new UnindexedTopicsCounter(this.args.categoryId);
   #lastDestination = null;
   @tracked _hasLocalChanges = false;
@@ -102,7 +105,7 @@ export default class DocCategoryIndexEditor extends Component {
       this.batchMode = false;
       this.selectedItems.clear();
       this.selectedSections.clear();
-      this.lastAddition = null;
+      this.dismissLastAddition();
       this.autoIndexIncludeSubcategories =
         this.#originalAutoIndexIncludeSubcategories;
       this.pendingResync = false;
@@ -114,6 +117,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   willDestroy() {
     super.willDestroy();
+    this.dismissLastAddition();
     this.#unindexedCounter.teardown();
     if (this.#saveStateTimer) {
       cancel(this.#saveStateTimer);
@@ -297,20 +301,6 @@ export default class DocCategoryIndexEditor extends Component {
         );
   }
 
-  /** Null once none of the added links is left to undo. */
-  get lastAdditionSummary() {
-    const addition = this.lastAddition;
-    if (!addition || this.batchMode) {
-      return null;
-    }
-
-    const present = new Set(this.sections.flatMap((section) => section.links));
-    if (!addition.links.some((link) => present.has(link))) {
-      return null;
-    }
-    return this.#additionSummary(addition);
-  }
-
   get hasPendingChanges() {
     return (
       this._hasLocalChanges ||
@@ -411,6 +401,19 @@ export default class DocCategoryIndexEditor extends Component {
    */
   @bind
   removeSection(section) {
+    const remove = () => {
+      const idx = this.sections.indexOf(section);
+      if (idx !== -1) {
+        this.sections.splice(idx, 1);
+      }
+      this._saveToTransientData();
+    };
+
+    if (!section.autoIndex && section.links.length === 0) {
+      remove();
+      return;
+    }
+
     const message = section.autoIndex
       ? i18n(
           "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section"
@@ -421,13 +424,7 @@ export default class DocCategoryIndexEditor extends Component {
 
     return this.dialog.yesNoConfirm({
       message,
-      didConfirm: () => {
-        const idx = this.sections.indexOf(section);
-        if (idx !== -1) {
-          this.sections.splice(idx, 1);
-        }
-        this._saveToTransientData();
-      },
+      didConfirm: remove,
     });
   }
 
@@ -768,7 +765,23 @@ export default class DocCategoryIndexEditor extends Component {
     this.#lastDestination = section;
     this.lastAddition = { links, section, createdSection };
     this._saveToTransientData();
-    this.a11y.announce(this.#additionSummary(this.lastAddition));
+    this.#additionToast = this.toasts.success({
+      key: "doc-index-added-topics",
+      duration: "long",
+      data: {
+        message: this.#additionSummary(this.lastAddition),
+        actions: [
+          {
+            label: i18n(
+              "doc_categories.category_settings.index_editor.unindexed_topics.undo"
+            ),
+            icon: "arrow-rotate-left",
+            class: "btn-flat doc-category-index-editor__undo-add",
+            action: this.undoLastAddition,
+          },
+        ],
+      },
+    });
 
     return { added: links.length };
   }
@@ -804,7 +817,7 @@ export default class DocCategoryIndexEditor extends Component {
       this.selectedSections.delete(created);
     }
 
-    this.lastAddition = null;
+    this.dismissLastAddition();
     this._saveToTransientData();
     this.a11y.announce(
       i18n(
@@ -815,6 +828,10 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   dismissLastAddition() {
+    if (this.#additionToast) {
+      this.toasts.close(this.#additionToast);
+      this.#additionToast = null;
+    }
     this.lastAddition = null;
   }
 
@@ -951,7 +968,7 @@ export default class DocCategoryIndexEditor extends Component {
         this.autoIndexIncludeSubcategories;
       this.args.category?.set("doc_index_sections", null);
       // Undo would reach into a draft that has just been saved.
-      this.lastAddition = null;
+      this.dismissLastAddition();
 
       if (response.index_structure) {
         this.#refreshFromServerData(response.index_structure);
@@ -1489,27 +1506,6 @@ export default class DocCategoryIndexEditor extends Component {
         </div>
       {{/if}}
 
-      {{#if this.lastAdditionSummary}}
-        <div class="doc-category-index-editor__added-topics">
-          {{icon "check"}}
-          <span class="doc-category-index-editor__added-topics-text">
-            {{this.lastAdditionSummary}}
-          </span>
-          <DButton
-            @action={{this.undoLastAddition}}
-            @icon="arrow-rotate-left"
-            @label="doc_categories.category_settings.index_editor.unindexed_topics.undo"
-            class="btn-flat btn-small doc-category-index-editor__undo-add"
-          />
-          <DButton
-            @action={{this.dismissLastAddition}}
-            @icon="xmark"
-            @title="doc_categories.category_settings.index_editor.unindexed_topics.dismiss"
-            class="btn-flat btn-small"
-          />
-        </div>
-      {{/if}}
-
       {{#if this.showUnindexedTopics}}
         <div class="doc-category-index-editor__missing-topics">
           {{icon "circle-info"}}
@@ -1543,9 +1539,11 @@ export default class DocCategoryIndexEditor extends Component {
           class="doc-category-index-editor__sections"
         >
           <:empty>
-            <p class="doc-category-index-editor__empty">
-              {{i18n "doc_categories.category_settings.index_editor.empty"}}
-            </p>
+            <DEmptyState
+              @body={{i18n
+                "doc_categories.category_settings.index_editor.empty"
+              }}
+            />
           </:empty>
           <:row as |section controls|>
             <IndexEditorSection

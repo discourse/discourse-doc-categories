@@ -79,6 +79,41 @@ module(
     setupRenderingTest(hooks);
     hooks.beforeEach(() => stubUnindexedTopics());
 
+    test("empty sections are removed without confirmation and show the shared empty state", async function (assert) {
+      const editor = await renderEditor([{ text: "", links: [] }]);
+      const confirm = sinon.stub(
+        this.owner.lookup("service:dialog"),
+        "yesNoConfirm"
+      );
+
+      editor.removeSection(editor.sections[0]);
+      await settled();
+
+      assert.false(confirm.called);
+      assert.strictEqual(editor.sections.length, 0);
+      assert.true(editor.hasPendingChanges);
+      assert
+        .dom(".empty-state__body")
+        .hasText(i18n("doc_categories.category_settings.index_editor.empty"));
+    });
+
+    test("populated and auto-index sections still require confirmation", async function (assert) {
+      const editor = await renderEditor([
+        ...indexData(),
+        { text: "Other topics", auto_index: true, links: [] },
+      ]);
+      const confirm = sinon.stub(
+        this.owner.lookup("service:dialog"),
+        "yesNoConfirm"
+      );
+
+      editor.removeSection(editor.sections[0]);
+      editor.removeSection(editor.sections[2]);
+
+      assert.strictEqual(confirm.callCount, 2);
+      assert.strictEqual(editor.sections.length, 3);
+    });
+
     test("it starts closed with nothing selected", async function (assert) {
       const editor = await renderEditor();
 
@@ -647,6 +682,14 @@ module(
   function (hooks) {
     setupRenderingTest(hooks);
 
+    hooks.beforeEach(function () {
+      this.toast = { id: "added-topics" };
+      this.showToast = sinon
+        .stub(this.owner.lookup("service:toasts"), "success")
+        .returns(this.toast);
+      this.closeToast = sinon.spy(this.owner.lookup("service:toasts"), "close");
+    });
+
     test("counts this category's topics that the draft leaves out", async function (assert) {
       const requests = stubUnindexedTopics(3);
       await renderTopicEditor();
@@ -908,11 +951,13 @@ module(
         ["/t/install/1", "/t/topic-7/7"],
         "the new link goes after the existing ones"
       );
-      assert
-        .dom(".doc-category-index-editor__added-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.added`, { count: 1, section: "Start here" })
-        );
+      assert.strictEqual(
+        this.showToast.firstCall.args[0].data.message,
+        i18n(`${UNINDEXED}.added`, { count: 1, section: "Start here" })
+      );
+      assert.false(
+        this.showToast.firstCall.args[0].data.message.includes("Apply to save")
+      );
     });
 
     test("undo takes back exactly the added links", async function (assert) {
@@ -929,15 +974,14 @@ module(
       editor.sections[1].links.push(moved);
       await settled();
 
-      await click(".doc-category-index-editor__undo-add");
+      this.showToast.lastCall.args[0].data.actions[0].action();
+      await settled();
 
       assert.deepEqual(
         allLinks(editor).map((link) => link.title),
         ["Install", "External", "Guide"]
       );
-      assert
-        .dom(".doc-category-index-editor__added-topics")
-        .doesNotExist("there is nothing left to undo");
+      assert.true(this.closeToast.calledWith(this.toast));
     });
 
     test("with no manual section, a new one goes before auto-index", async function (assert) {
@@ -1113,7 +1157,7 @@ module(
       await settled();
 
       assert.strictEqual(editor.lastAddition, null);
-      assert.dom(".doc-category-index-editor__added-topics").doesNotExist();
+      assert.true(this.closeToast.calledWith(this.toast));
     });
   }
 );

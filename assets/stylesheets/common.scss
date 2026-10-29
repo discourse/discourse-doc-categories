@@ -191,13 +191,6 @@ body.doc-simple-mode {
     align-items: center;
   }
 
-  &__empty {
-    color: var(--primary-medium);
-    font-style: italic;
-    margin: 1em 0;
-  }
-
-  &__added-topics,
   &__missing-topics {
     display: flex;
     flex-wrap: wrap;
@@ -207,18 +200,10 @@ body.doc-simple-mode {
     padding: 0.5em 0.75em;
     border-radius: var(--d-border-radius);
     font-size: var(--font-down-1);
-  }
-
-  &__added-topics {
-    background: var(--success-low);
-  }
-
-  &__missing-topics {
     background: var(--primary-very-low);
     color: var(--primary-high);
   }
 
-  &__added-topics-text,
   &__missing-topics-text {
     flex: 1 1 12em;
   }
@@ -237,6 +222,15 @@ body.doc-simple-mode {
     align-items: flex-start;
     gap: 0.35em;
     position: relative;
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible > .doc-category-index-editor__section {
+      outline: 2px solid var(--d-input-focused-color);
+      outline-offset: -2px;
+    }
 
     /* Sections are spaced apart rather than adjacent, so a line sitting against
        a row edge lands nearer one section than the other and the same slot

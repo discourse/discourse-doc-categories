@@ -152,8 +152,8 @@ en:
             destination_missing: "That section no longer exists. Choose another."
             too_many_sections: "The index already has as many sections as it can hold."
             added:
-              one: "Added %{count} topic to “%{section}”. Apply to save."
-              other: "Added %{count} topics to “%{section}”. Apply to save."
+              one: "Added %{count} topic to “%{section}”."
+              other: "Added %{count} topics to “%{section}”."
             undo: "Undo"
             undone: "Removed the added topics."
             dismiss: "Dismiss"
