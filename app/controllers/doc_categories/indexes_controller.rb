@@ -75,8 +75,7 @@ module ::DocCategories
     private
 
     def topic_candidates
-      category = ::Category.find_by(id: params[:category_id])
-      raise Discourse::NotFound if category.blank?
+      category = ::Category.find(params[:category_id])
       guardian.ensure_can_see!(category)
 
       TopicCandidatesQuery.new(

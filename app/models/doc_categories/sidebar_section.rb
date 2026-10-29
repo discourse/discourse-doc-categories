@@ -25,7 +25,9 @@ module DocCategories
 
     def only_one_auto_index_section_per_index
       existing = self.class.where(index_id: index_id, auto_index: true).where.not(id: id).exists?
-      errors.add(:auto_index, "only one auto-index section allowed per index") if existing
+      if existing
+        errors.add(:auto_index, I18n.t("doc_categories.errors.only_one_auto_index_section"))
+      end
     end
   end
 end

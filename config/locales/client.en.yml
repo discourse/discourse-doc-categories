@@ -33,7 +33,7 @@ en:
           topic_mode_help: 'Select a topic to use as the sidebar index. The index will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href="https://meta.discourse.org/t/322376" target="_blank" rel="noopener noreferrer">Learn more</a>.'
           mode_none: "Disabled"
           mode_none_description: "No sidebar index for this category"
-          none_mode_help: "The sidebar index is disabled. Select a mode above to create one."
+          none_mode_help: "A sidebar index organizes links to documentation topics into sections in the sidebar. It is currently disabled for this category. Select a mode above to create one."
           inherited_mode_help: "The sidebar index is inherited from %{category_name}. Select a mode above to create one for this category."
           disable_confirm: "This will permanently remove the current sidebar index. Are you sure?"
           mode_direct: "Editor"
