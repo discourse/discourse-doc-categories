@@ -37,10 +37,10 @@ module(
         <template>
           <div {{didInsert this.setToolbar}}></div>
           <DocCategoryIndexEditor
-            @toolbarElement={{this.toolbar.value}}
             @categoryId={{1}}
             @indexData={{this.indexData}}
             @onRegisterEditor={{capture}}
+            @toolbarElement={{this.toolbar.value}}
           />
         </template>
       );
@@ -85,9 +85,9 @@ module(
         <template>
           <div {{didInsert this.setToolbar}}></div>
           <DocCategoryIndexEditor
-            @toolbarElement={{this.toolbar.value}}
             @categoryId={{1}}
             @indexData={{this.indexData}}
+            @toolbarElement={{this.toolbar.value}}
           />
         </template>
       );
@@ -112,8 +112,8 @@ module(
       await render(
         <template>
           <div {{didInsert this.setToolbar}}></div><DocCategoryIndexEditor
-            @toolbarElement={{this.toolbar.value}}
             @categoryId={{1}}
+            @toolbarElement={{this.toolbar.value}}
           />
         </template>
       );

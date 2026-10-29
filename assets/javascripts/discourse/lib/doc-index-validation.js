@@ -1,5 +1,5 @@
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "./constants";
+import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "./constants.js";
 
 export default function validateDocIndexSections(sections) {
   const errors = new Set();

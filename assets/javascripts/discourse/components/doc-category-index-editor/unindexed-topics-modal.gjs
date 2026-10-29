@@ -16,8 +16,8 @@ import dCategoryBadge from "discourse/ui-kit/helpers/d-category-badge";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
 import dLoadingSpinner from "discourse/ui-kit/helpers/d-loading-spinner";
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION } from "../../lib/constants";
-import { fetchUnindexedTopics } from "../../lib/doc-index-unindexed-topics";
+import { MAX_LINKS_PER_SECTION } from "../../lib/constants.js";
+import { fetchUnindexedTopics } from "../../lib/doc-index-unindexed-topics.js";
 
 const MAX_SEARCH_LENGTH = 200;
 const SEARCH_DELAY = 300;
@@ -37,6 +37,7 @@ export default class UnindexedTopicsModal extends Component {
     search: "",
     section_id: this.args.model.initialDestination,
   };
+
   /** By id, so a choice survives loading more and searching. */
   selected = trackedMap();
   #formApi = null;
@@ -266,9 +267,7 @@ export default class UnindexedTopicsModal extends Component {
   }
 
   #isCurrent(sequence) {
-    return (
-      !this.isDestroying && !this.isDestroyed && sequence === this.#sequence
-    );
+    return !this.isDestroying && sequence === this.#sequence;
   }
 
   async #load({ append = false } = {}) {
@@ -320,6 +319,7 @@ export default class UnindexedTopicsModal extends Component {
 
   <template>
     <DModal
+      class="doc-category-unindexed-topics"
       @closeModal={{@closeModal}}
       @flash={{this.flash}}
       @flashType="error"
@@ -330,7 +330,6 @@ export default class UnindexedTopicsModal extends Component {
       @title={{i18n
         "doc_categories.category_settings.index_editor.unindexed_topics.modal_title"
       }}
-      class="doc-category-unindexed-topics"
     >
       <:body>
         <Form
@@ -398,13 +397,13 @@ export default class UnindexedTopicsModal extends Component {
           >
             {{#each this.topics key="id" as |topic|}}
               <group.Field
+                class="doc-category-unindexed-topics__topic"
+                data-topic-id={{topic.id}}
                 @format="full"
                 @name={{this.fieldName topic}}
                 @onSet={{fn this.toggleTopic topic}}
                 @title={{topic.title}}
                 @type="checkbox"
-                class="doc-category-unindexed-topics__topic"
-                data-topic-id={{topic.id}}
                 as |field|
               >
                 <field.Control>
@@ -466,16 +465,16 @@ export default class UnindexedTopicsModal extends Component {
               </span>
               {{#if this.topics.length}}
                 <DButton
+                  class="btn-flat btn-small doc-category-unindexed-topics__select-shown"
                   @action={{this.selectShown}}
                   @label="doc_categories.category_settings.index_editor.unindexed_topics.select_shown"
-                  class="btn-flat btn-small doc-category-unindexed-topics__select-shown"
                 />
               {{/if}}
               {{#if this.selected.size}}
                 <DButton
+                  class="btn-flat btn-small doc-category-unindexed-topics__clear-selection"
                   @action={{this.clearSelection}}
                   @label="doc_categories.category_settings.index_editor.unindexed_topics.clear_selection"
-                  class="btn-flat btn-small doc-category-unindexed-topics__clear-selection"
                 />
               {{/if}}
             </div>
@@ -483,18 +482,18 @@ export default class UnindexedTopicsModal extends Component {
 
           {{#if this.retryRequest}}
             <DButton
+              class="btn-default btn-small doc-category-unindexed-topics__retry"
               @action={{this.retry}}
               @label="doc_categories.category_settings.index_editor.unindexed_topics.retry"
-              class="btn-default btn-small doc-category-unindexed-topics__retry"
             />
           {{/if}}
 
           {{#if this.canLoadMore}}
             <DButton
+              class="btn-default btn-small doc-category-unindexed-topics__load-more"
               @action={{this.loadMore}}
               @isLoading={{this.isLoading}}
               @label="doc_categories.category_settings.index_editor.unindexed_topics.load_more"
-              class="btn-default btn-small doc-category-unindexed-topics__load-more"
             />
           {{/if}}
         </Form>
@@ -502,10 +501,10 @@ export default class UnindexedTopicsModal extends Component {
 
       <:footer>
         <DButton
+          class="btn-primary doc-category-unindexed-topics__add"
           @action={{this.add}}
           @disabled={{this.addDisabled}}
           @translatedLabel={{this.addLabel}}
-          class="btn-primary doc-category-unindexed-topics__add"
         />
         <DModalCancel @close={{@closeModal}} />
         {{#if this.capacityMessage}}

@@ -7,10 +7,10 @@ import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { i18n } from "discourse-i18n";
-import DocIndexModeState from "../lib/doc-index-mode-state";
-import docIndexSaveLock from "../modifiers/doc-index-save-lock";
-import DocCategoryIndexEditor from "./doc-category-index-editor";
-import DocIndexModeSelector from "./doc-index-mode-selector";
+import DocIndexModeState from "../lib/doc-index-mode-state.js";
+import docIndexSaveLock from "../modifiers/doc-index-save-lock.js";
+import DocCategoryIndexEditor from "./doc-category-index-editor/index.gjs";
+import DocIndexModeSelector from "./doc-index-mode-selector.gjs";
 
 const INDEX_FIELDS = [
   "doc_index_topic_id",
@@ -44,7 +44,7 @@ export default class DocCategoryIndexTab extends Component {
     this.captureSavedFormValues();
     this.router.on("routeWillChange", this.checkUnsavedIndex);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
-      if (this.isDestroying || this.isDestroyed || this.#discarding) {
+      if (this.isDestroying || this.#discarding) {
         return;
       }
       this.#removeIndexError = () => removeError?.("doc_index_sections");
@@ -67,7 +67,7 @@ export default class DocCategoryIndexTab extends Component {
       return errors.length > 0;
     });
     this.args.registerAfterReset(() => {
-      if (!this.isDestroying && !this.isDestroyed) {
+      if (!this.isDestroying) {
         this.modeState.reset();
       }
     });
@@ -76,6 +76,13 @@ export default class DocCategoryIndexTab extends Component {
   willDestroy() {
     super.willDestroy();
     this.router.off("routeWillChange", this.checkUnsavedIndex);
+  }
+
+  get showEditorOption() {
+    return (
+      this.siteSettings.doc_categories_index_editor ||
+      this.modeState.isDirectMode
+    );
   }
 
   @action
@@ -153,13 +160,6 @@ export default class DocCategoryIndexTab extends Component {
     this.#editorInstance = editor;
   }
 
-  get showEditorOption() {
-    return (
-      this.siteSettings.doc_categories_index_editor ||
-      this.modeState.isDirectMode
-    );
-  }
-
   @action
   registerToolbarElement(element) {
     this.toolbarElement = element;
@@ -176,10 +176,10 @@ export default class DocCategoryIndexTab extends Component {
         <div class="doc-category-index-tab__mode-selector">
           <DocIndexModeSelector
             @currentModeLabel={{this.modeState.currentModeLabel}}
-            @showEditorOption={{this.showEditorOption}}
+            @onSwitchToDirect={{this.modeState.switchToDirectMode}}
             @onSwitchToNone={{this.modeState.switchToNoneMode}}
             @onSwitchToTopic={{this.modeState.switchToTopicMode}}
-            @onSwitchToDirect={{this.modeState.switchToDirectMode}}
+            @showEditorOption={{this.showEditorOption}}
           />
         </div>
         <div
@@ -211,10 +211,10 @@ export default class DocCategoryIndexTab extends Component {
             }}
           </p>
           <TopicChooser
-            @value={{this.modeState.indexTopicId}}
             @content={{this.modeState.indexTopicContent}}
             @onChange={{this.modeState.onChangeIndexTopic}}
             @options={{hash additionalFilters=this.modeState.searchFilters}}
+            @value={{this.modeState.indexTopicId}}
           />
           {{#if this.modeState.topicErrorMessage}}
             <div class="doc-category-index-tab__error">
@@ -228,13 +228,13 @@ export default class DocCategoryIndexTab extends Component {
         <DocCategoryIndexEditor
           @category={{this.modeState.category}}
           @categoryId={{this.modeState.category.id}}
-          @indexData={{this.modeState.indexData}}
-          @toolbarElement={{this.toolbarElement}}
           @form={{@form}}
-          @transientData={{@transientData}}
-          @onRegisterEditor={{this.registerEditor}}
+          @indexData={{this.modeState.indexData}}
           @onApplied={{this.captureSavedFormValues}}
+          @onRegisterEditor={{this.registerEditor}}
           @registerAfterReset={{@registerAfterReset}}
+          @toolbarElement={{this.toolbarElement}}
+          @transientData={{@transientData}}
         />
       {{/if}}
     </fieldset>

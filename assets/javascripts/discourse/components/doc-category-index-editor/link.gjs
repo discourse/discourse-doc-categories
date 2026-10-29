@@ -138,7 +138,7 @@ export class IndexEditorLink extends Component {
     const card = event.currentTarget;
 
     next(() => {
-      if (this.isDestroying || this.isDestroyed) {
+      if (this.isDestroying) {
         return;
       }
 
@@ -288,8 +288,8 @@ export class IndexEditorLink extends Component {
     {{#if @batchMode}}
       <label class="doc-category-index-editor__batch-checkbox">
         <input
-          type="checkbox"
           checked={{@isSelected}}
+          type="checkbox"
           {{on "click" @onToggleSelection}}
         />
       </label>
@@ -311,7 +311,7 @@ export class IndexEditorLink extends Component {
     {{/if}}
 
     {{#if this.editing}}
-      {{! template-lint-disable no-invalid-interactive }}
+      {{! eslint-disable ember/template-no-invalid-interactive }}
       {{! Edit mode: expanded card with all fields. The card is not itself a
           control. It catches keydown and focusout on their way up from the
           fields inside it, so Escape and leaving the card are handled in one
@@ -326,21 +326,21 @@ export class IndexEditorLink extends Component {
       >
         <div class="doc-category-index-editor__link-edit-row">
           <DIconGridPicker
-            @value={{this._editIcon}}
-            @onChange={{this.updateIcon}}
             @favorites={{@favoriteIcons}}
+            @onChange={{this.updateIcon}}
             @showSelectedName={{true}}
+            @value={{this._editIcon}}
           />
           <input
-            type="text"
-            value={{this._editTitle}}
+            class="doc-category-index-editor__link-title"
             placeholder={{or
               this._topicOriginalTitle
               (i18n
                 "doc_categories.category_settings.index_editor.link_title_placeholder"
               )
             }}
-            class="doc-category-index-editor__link-title"
+            type="text"
+            value={{this._editTitle}}
             {{dAutoFocus selectText=true}}
             {{on "input" this.updateTitle}}
           />
@@ -358,18 +358,18 @@ export class IndexEditorLink extends Component {
             {{#if this.swapping}}
               <div class="doc-category-index-editor__swap-chooser">
                 <TopicChooser
-                  @value={{null}}
                   @content={{this.swapTopicContent}}
                   @onChange={{this.onSwapTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
                     none="doc_categories.category_settings.index_editor.select_topic"
                   }}
+                  @value={{null}}
                 />
                 <DButton
-                  @icon="xmark"
-                  @action={{this.cancelSwap}}
                   class="btn-flat btn-small"
+                  @action={{this.cancelSwap}}
+                  @icon="xmark"
                 />
               </div>
             {{else}}
@@ -379,20 +379,20 @@ export class IndexEditorLink extends Component {
                 {{this._editHref}}
               </span>
               <DButton
-                @icon="arrows-rotate"
-                @action={{this.startSwap}}
-                @label="doc_categories.category_settings.index_editor.replace_topic"
                 class="btn-flat btn-small"
+                @action={{this.startSwap}}
+                @icon="arrows-rotate"
+                @label="doc_categories.category_settings.index_editor.replace_topic"
               />
             {{/if}}
           {{else}}
             <input
-              type="text"
-              value={{this._editHref}}
+              class="doc-category-index-editor__link-url"
               placeholder={{i18n
                 "doc_categories.category_settings.index_editor.link_url_placeholder"
               }}
-              class="doc-category-index-editor__link-url"
+              type="text"
+              value={{this._editHref}}
               {{on "input" this.updateHref}}
             />
           {{/if}}
@@ -401,38 +401,38 @@ export class IndexEditorLink extends Component {
         <div class="doc-category-index-editor__link-edit-actions">
           {{#if this.isTopicLink}}
             <DButton
-              @icon="link"
-              @action={{this.switchToManualLink}}
-              @label="doc_categories.category_settings.index_editor.switch_to_url"
               class="btn-flat btn-small"
+              @action={{this.switchToManualLink}}
+              @icon="link"
+              @label="doc_categories.category_settings.index_editor.switch_to_url"
             />
           {{else}}
             <DButton
-              @icon="file"
-              @action={{this.switchToTopicLink}}
-              @label="doc_categories.category_settings.index_editor.switch_to_topic"
               class="btn-flat btn-small"
+              @action={{this.switchToTopicLink}}
+              @icon="file"
+              @label="doc_categories.category_settings.index_editor.switch_to_topic"
             />
           {{/if}}
           <DButton
-            @icon="check"
+            class="btn-flat btn-small doc-category-index-editor__confirm-edit-btn"
             @action={{this.confirmEdit}}
             @disabled={{not this.canConfirm}}
+            @icon="check"
             @title="doc_categories.category_settings.index_editor.confirm_edit"
-            class="btn-flat btn-small doc-category-index-editor__confirm-edit-btn"
           />
           <DButton
-            @icon="xmark"
-            @action={{this.cancelEdit}}
-            @title="cancel"
             class="btn-flat btn-small doc-category-index-editor__cancel-edit-btn"
+            @action={{this.cancelEdit}}
+            @icon="xmark"
+            @title="cancel"
           />
         </div>
       </div>
-      {{! template-lint-enable no-invalid-interactive }}
+      {{! eslint-enable ember/template-no-invalid-interactive }}
     {{else}}
       {{! View mode: card/pill with text labels }}
-      {{! template-lint-disable no-invalid-interactive }}
+      {{! eslint-disable ember/template-no-invalid-interactive }}
       {{! Batch mode switches the list off, so its row registers no drop target
           and this carries one instead. Gated rather than conditional, since a
           re-curried modifier would re-register mid-drag. }}
@@ -472,10 +472,10 @@ export class IndexEditorLink extends Component {
           {{/if}}
           {{#unless @batchMode}}
             <DButton
-              @icon="pencil"
-              @action={{this.enterEdit}}
-              @title="doc_categories.category_settings.index_editor.edit_link"
               class="btn-flat btn-small doc-category-index-editor__edit-btn"
+              @action={{this.enterEdit}}
+              @icon="pencil"
+              @title="doc_categories.category_settings.index_editor.edit_link"
             />
             {{#if @controls.remove}}
               <@controls.remove

@@ -76,7 +76,7 @@ RSpec.describe Search do
     context "when the plugin is disabled" do
       before { SiteSetting.doc_categories_enabled = false }
 
-      it "won't modify the search results" do
+      it "does not modify the search results" do
         results_with_advanced_search_trigger = Search.execute("looking in:docs").posts.map(&:id)
         results_without_advanced_search_trigger = Search.execute("looking").posts.map(&:id)
 

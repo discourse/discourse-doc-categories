@@ -1,15 +1,15 @@
 import { schedule } from "@ember/runloop";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DiscourseURL from "discourse/lib/url";
-import DocSimpleModeToggle from "../components/doc-simple-mode-toggle";
-import DocUpdatedHeaderCell from "../components/doc-updated-header-cell";
-import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel";
+import DocSimpleModeToggle from "../components/doc-simple-mode-toggle.gjs";
+import DocUpdatedHeaderCell from "../components/doc-updated-header-cell.gjs";
+import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel.js";
 import {
   attachNewPostInterceptor,
   collapseStream,
   getState,
   inDocSimpleMode,
-} from "../lib/simple-mode";
+} from "../lib/simple-mode.js";
 
 export default {
   name: "doc-categories",

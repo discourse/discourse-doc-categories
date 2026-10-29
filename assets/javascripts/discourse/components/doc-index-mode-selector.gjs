@@ -19,8 +19,8 @@ const DocIndexModeSelector = <template>
         {{#if @showEditorOption}}
           <dropdown.item>
             <DButton
-              @action={{fn @onSwitchToDirect dMenu}}
               class="--with-description doc-category-index-tab__mode-option"
+              @action={{fn @onSwitchToDirect dMenu}}
             >
               <div class="doc-category-index-tab__mode-option-texts">
                 <span class="doc-category-index-tab__mode-option-label">{{i18n
@@ -37,8 +37,8 @@ const DocIndexModeSelector = <template>
         {{/if}}
         <dropdown.item>
           <DButton
-            @action={{fn @onSwitchToTopic dMenu}}
             class="--with-description doc-category-index-tab__mode-option"
+            @action={{fn @onSwitchToTopic dMenu}}
           >
             <div class="doc-category-index-tab__mode-option-texts">
               <span class="doc-category-index-tab__mode-option-label">{{i18n
@@ -54,8 +54,8 @@ const DocIndexModeSelector = <template>
         </dropdown.item>
         <dropdown.item>
           <DButton
-            @action={{fn @onSwitchToNone dMenu}}
             class="--with-description doc-category-index-tab__mode-option"
+            @action={{fn @onSwitchToNone dMenu}}
           >
             <div class="doc-category-index-tab__mode-option-texts">
               <span class="doc-category-index-tab__mode-option-label">{{i18n

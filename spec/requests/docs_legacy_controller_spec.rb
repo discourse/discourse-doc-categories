@@ -15,35 +15,35 @@ RSpec.describe ::DocCategories::DocsLegacyController do
       context "when redirecting to a topic" do
         fab!(:topic)
 
-        it "should redirect /docs?topic=ID to /t/slug/id if the topics exists and the user can see it" do
+        it "redirects /docs?topic=ID to /t/slug/id if the topics exists and the user can see it" do
           get "/docs?topic=#{topic.id}"
 
           expect(response).to redirect_to(topic.relative_url)
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs?topic=ID to /t/slug/id keeping extra query parameters" do
+        it "redirects /docs?topic=ID to /t/slug/id keeping extra query parameters" do
           get "/docs?topic=#{topic.id}&test=true"
 
           expect(response).to redirect_to("#{topic.relative_url}?test=true")
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs.json?topic=ID to /t/slug/id.json" do
+        it "redirects /docs.json?topic=ID to /t/slug/id.json" do
           get "/docs.json?topic=#{topic.id}&test=true"
 
           expect(response).to redirect_to("#{topic.relative_url}.json?test=true")
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs?topic=ID to 404 if the topics exists and the user can't see it" do
+        it "redirects /docs?topic=ID to 404 if the topics exists and the user can't see it" do
           get "/docs?topic=#{topic.id}"
 
           expect(response).to redirect_to(topic.relative_url)
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs?topic=ID to 404 if the topic doesn't exist" do
+        it "redirects /docs?topic=ID to 404 if the topic doesn't exist" do
           private_group = Fabricate(:group)
           private_category = Fabricate(:private_category, group: private_group)
           private_topic = Fabricate(:topic, category: private_category)
@@ -55,21 +55,21 @@ RSpec.describe ::DocCategories::DocsLegacyController do
       end
 
       context "when redirecting to a homepage" do
-        it "should redirect /docs to the page specified in the docs if one is provided" do
+        it "redirects /docs to the page specified in the docs if one is provided" do
           get "/docs"
 
           expect(response).to redirect_to("/redirect-test")
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs keeping query parameters" do
+        it "redirects /docs keeping query parameters" do
           get "/docs?test=true"
 
           expect(response).to redirect_to("/redirect-test?test=true")
           expect(response.status).to eq(302)
         end
 
-        it "should redirect /docs to 404 if a page is not specified in the settings" do
+        it "redirects /docs to 404 if a page is not specified in the settings" do
           SiteSetting.doc_categories_homepage = ""
 
           get "/docs"
@@ -77,7 +77,7 @@ RSpec.describe ::DocCategories::DocsLegacyController do
           expect(response.status).to eq(404)
         end
 
-        it "should redirect /knowledge-explorer to the page specified in the docs if one is provided" do
+        it "redirects /knowledge-explorer to the page specified in the docs if one is provided" do
           get "/knowledge-explorer"
 
           expect(response).to redirect_to("/redirect-test")
@@ -92,13 +92,13 @@ RSpec.describe ::DocCategories::DocsLegacyController do
       context "when redirecting to a topic" do
         fab!(:topic)
 
-        it "should redirect /docs?topic=ID to 404" do
+        it "redirects /docs?topic=ID to 404" do
           get "/docs?topic=#{topic.id}"
 
           expect(response.status).to eq(404)
         end
 
-        it "should redirect /docs.json?topic=ID to /t/slug/id.json" do
+        it "redirects /docs.json?topic=ID to /t/slug/id.json" do
           get "/docs.json?topic=#{topic.id}&test=true"
 
           expect(response.status).to eq(404)
@@ -106,13 +106,13 @@ RSpec.describe ::DocCategories::DocsLegacyController do
       end
 
       context "when redirecting to a homepage" do
-        it "should redirect /docs to 404" do
+        it "redirects /docs to 404" do
           get "/docs"
 
           expect(response.status).to eq(404)
         end
 
-        it "should redirect /knowledge-explorer to 404" do
+        it "redirects /knowledge-explorer to 404" do
           get "/knowledge-explorer"
           follow_redirect!
 

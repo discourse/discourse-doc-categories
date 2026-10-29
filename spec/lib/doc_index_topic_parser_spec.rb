@@ -120,7 +120,7 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[1]).to eq({ text: "Another third item", href: "/another-third-item" })
     end
 
-    it "won't create sections for headings without lists" do
+    it "does not create sections for headings without lists" do
       cooked_text = <<-HTML
       <h1>First section</h1>
       <ul>
@@ -186,7 +186,7 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[0]).to eq({ text: "Test", href: "/test" })
     end
 
-    it "will use the last anchor as the source of the link and extract the text from the elements before" do
+    it "uses the last anchor as the source of the link and extract the text from the elements before" do
       cooked_text = <<-HTML
       <ul>
         <li>Another <a href="/test">test</a>: <a href="/another-test">This is another test</a></li>
@@ -207,7 +207,7 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[0]).to eq({ text: "Another test", href: "/another-test" })
     end
 
-    it "it will use the anchor inner text as the text in case another one is not provided" do
+    it "uses the anchor inner text as the text in case another one is not provided" do
       cooked_text = <<-HTML
       <ul>
         <li><a href="/test">This is a test</a></li>
@@ -228,7 +228,7 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[0]).to eq({ text: "This is a test", href: "/test" })
     end
 
-    it "it won't generate an item item a text can't be extracted" do
+    it "does not generate an item item a text can't be extracted" do
       cooked_text = <<-HTML
       <ul>
         <li><a href="/empty"></a></li>
@@ -275,7 +275,7 @@ RSpec.describe ::DocCategories::DocIndexTopicParser do
       expect(links[1]).to eq({ text: "Another test", href: "/another-test" })
     end
 
-    it "won't extract items that do not contain an anchor" do
+    it "does not extract items that do not contain an anchor" do
       cooked_text = <<-HTML
       <ul>
         <li>Test: This is a test></li>

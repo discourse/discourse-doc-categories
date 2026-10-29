@@ -29,16 +29,16 @@ import icon from "discourse/ui-kit/helpers/d-icon";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "../../lib/constants";
+import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "../../lib/constants.js";
 import {
   draftTopicIds,
   draftTopicReferences,
   UnindexedTopicsCounter,
-} from "../../lib/doc-index-unindexed-topics";
-import validateDocIndexSections from "../../lib/doc-index-validation";
-import { LINK_DRAG_TYPE } from "./link";
-import { IndexEditorSection, SECTION_DRAG_TYPE } from "./section";
-import UnindexedTopicsModal from "./unindexed-topics-modal";
+} from "../../lib/doc-index-unindexed-topics.js";
+import validateDocIndexSections from "../../lib/doc-index-validation.js";
+import { LINK_DRAG_TYPE } from "./link.gjs";
+import { IndexEditorSection, SECTION_DRAG_TYPE } from "./section.gjs";
+import UnindexedTopicsModal from "./unindexed-topics-modal.gjs";
 
 /** The destination that creates a section rather than naming one. */
 const NEW_SECTION = "new";
@@ -101,11 +101,7 @@ export default class DocCategoryIndexEditor extends Component {
     super(...arguments);
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
-      if (
-        this.isDestroying ||
-        this.isDestroyed ||
-        this.docIndexSaveLock.isSaving
-      ) {
+      if (this.isDestroying || this.docIndexSaveLock.isSaving) {
         return;
       }
       this.sections = trackedArray(this.#initSectionsFromModel());
@@ -391,6 +387,15 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
+  /**
+   * A batch publishes the type of whatever is selected, so the rows that
+   * already accept that kind accept the batch too and no target has to learn
+   * what a batch is.
+   */
+  get batchSourceType() {
+    return this.selectedSections.size > 0 ? SECTION_DRAG_TYPE : LINK_DRAG_TYPE;
+  }
+
   @bind
   isFirstSection(section) {
     return this.sections.indexOf(section) === 0;
@@ -488,21 +493,6 @@ export default class DocCategoryIndexEditor extends Component {
   @bind
   sectionLabel(section) {
     return this.#sectionLabel(section);
-  }
-
-  /** The section a group list id names. */
-  #sectionFor(listId) {
-    return this.sections.find((section) => sectionUid(section) === listId);
-  }
-
-  /** What to call a section a link has just landed in. */
-  #sectionLabel(section) {
-    return (
-      section.title?.trim() ||
-      i18n(
-        "doc_categories.category_settings.index_editor.first_section_no_title"
-      )
-    );
   }
 
   @bind
@@ -651,50 +641,6 @@ export default class DocCategoryIndexEditor extends Component {
     this.isBatchDragging = false;
     this.batchDragType = null;
     this._saveToTransientData();
-  }
-
-  /**
-   * Persists the current editor state to FormKit so it survives tab switches
-   * and is available for "Save Category". Two form fields are maintained:
-   *
-   * - `_docIndexEditorState`: Rich camelCase array used to restore the full
-   *   editor UI on tab-switch recovery (includes UI-only fields like
-   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
-   * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
-   *   via `registerCategorySaveProperty` when "Save Category" is clicked.
-   *
-   * Both fields must be committed after a successful Apply to clear the
-   * "Save Category" banner.
-   */
-  @bind
-  _saveToTransientData() {
-    const sections = this.#serializeSections();
-    this._hasLocalChanges = true;
-    this.args.form?.set("_docIndexEditorState", sections);
-    this.args.form?.set(
-      "_docIndexAutoIndexIncludeSubcategories",
-      this.autoIndexIncludeSubcategories
-    );
-
-    // Convert to snake_case for the backend payload
-    const backendSections = sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      auto_index: section.autoIndex || false,
-      links: section.links.map((link) => ({
-        title: link.title,
-        href: link.href,
-        topic_id: link.topic_id,
-        icon: link.icon,
-      })),
-    }));
-    const serialized =
-      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
-    this.args.form?.set("doc_index_sections", serialized);
-    if (serialized) {
-      this.args.form?.set("doc_index_topic_id", -1);
-    }
-    this.#refreshUnindexedCount();
   }
 
   @action
@@ -988,7 +934,7 @@ export default class DocCategoryIndexEditor extends Component {
           contentType: "application/json",
         }
       );
-      if (this.isDestroying || this.isDestroyed) {
+      if (this.isDestroying) {
         return;
       }
       this.saveState = "saved";
@@ -1016,7 +962,7 @@ export default class DocCategoryIndexEditor extends Component {
         }
       }, 3000);
     } catch (e) {
-      if (this.isDestroying || this.isDestroyed) {
+      if (this.isDestroying) {
         return;
       }
       this.saveState = "error";
@@ -1144,15 +1090,6 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
-  /**
-   * A batch publishes the type of whatever is selected, so the rows that
-   * already accept that kind accept the batch too and no target has to learn
-   * what a batch is.
-   */
-  get batchSourceType() {
-    return this.selectedSections.size > 0 ? SECTION_DRAG_TYPE : LINK_DRAG_TYPE;
-  }
-
   @action
   canDragBatch() {
     return this.canDragSelection;
@@ -1168,6 +1105,21 @@ export default class DocCategoryIndexEditor extends Component {
   batchDragEnd() {
     this.isBatchDragging = false;
     this.batchDragType = null;
+  }
+
+  /** The section a group list id names. */
+  #sectionFor(listId) {
+    return this.sections.find((section) => sectionUid(section) === listId);
+  }
+
+  /** What to call a section a link has just landed in. */
+  #sectionLabel(section) {
+    return (
+      section.title?.trim() ||
+      i18n(
+        "doc_categories.category_settings.index_editor.first_section_no_title"
+      )
+    );
   }
 
   #initSections() {
@@ -1271,11 +1223,7 @@ export default class DocCategoryIndexEditor extends Component {
   async #doIndexAllTopics() {
     try {
       const result = await this.fetchTopics(this.includeSubcategories);
-      if (
-        this.isDestroying ||
-        this.isDestroyed ||
-        this.docIndexSaveLock.isSaving
-      ) {
+      if (this.isDestroying || this.docIndexSaveLock.isSaving) {
         return;
       }
       if (result.topics.length === 0) {
@@ -1391,7 +1339,7 @@ export default class DocCategoryIndexEditor extends Component {
    */
   #moveAboveAutoIndex(section) {
     next(() => {
-      if (this.isDestroying || this.isDestroyed) {
+      if (this.isDestroying) {
         return;
       }
       const from = this.sections.indexOf(section);
@@ -1420,21 +1368,65 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
+  /**
+   * Persists the current editor state to FormKit so it survives tab switches
+   * and is available for "Save Category". Two form fields are maintained:
+   *
+   * - `_docIndexEditorState`: Rich camelCase array used to restore the full
+   *   editor UI on tab-switch recovery (includes UI-only fields like
+   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
+   * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
+   *   via `registerCategorySaveProperty` when "Save Category" is clicked.
+   *
+   * Both fields must be committed after a successful Apply to clear the
+   * "Save Category" banner.
+   */
+  @bind
+  _saveToTransientData() {
+    const sections = this.#serializeSections();
+    this._hasLocalChanges = true;
+    this.args.form?.set("_docIndexEditorState", sections);
+    this.args.form?.set(
+      "_docIndexAutoIndexIncludeSubcategories",
+      this.autoIndexIncludeSubcategories
+    );
+
+    // Convert to snake_case for the backend payload
+    const backendSections = sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      auto_index: section.autoIndex || false,
+      links: section.links.map((link) => ({
+        title: link.title,
+        href: link.href,
+        topic_id: link.topic_id,
+        icon: link.icon,
+      })),
+    }));
+    const serialized =
+      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
+    this.args.form?.set("doc_index_sections", serialized);
+    if (serialized) {
+      this.args.form?.set("doc_index_topic_id", -1);
+    }
+    this.#refreshUnindexedCount();
+  }
+
   <template>
     {{! The page scrolls, not the editor: it has no scroll container of its own,
         so a row dragged toward the viewport edge has to move the window or a
         long index cannot be reordered end to end without dropping halfway. }}
     <div
-      {{! Untyped: the reorderable lists keep their drag tokens to themselves,
-          and this page has no drag it would be wrong to scroll for. }}
-      {{dDragAndDropAutoScroll target="window"}}
-      inert={{this.docIndexSaveLock.isSaving}}
       class={{dConcatClass
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")
       }}
+      inert={{this.docIndexSaveLock.isSaving}}
+      {{! Untyped: the reorderable lists keep their drag tokens to themselves,
+          and this page has no drag it would be wrong to scroll for. }}
+      {{dDragAndDropAutoScroll target="window"}}
     >
-      <DConditionalInElement @element={{@toolbarElement}} @append={{true}}>
+      <DConditionalInElement @append={{true}} @element={{@toolbarElement}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">
             <DButton
@@ -1445,11 +1437,11 @@ export default class DocCategoryIndexEditor extends Component {
               @title={{this.toggleAllSectionsTitle}}
             />
             <DButton
-              @icon="list-check"
-              @label="doc_categories.category_settings.index_editor.batch_edit"
+              class="btn-default"
               @action={{this.toggleBatchMode}}
               @disabled={{not this.canToggleBatchMode}}
-              class="btn-default"
+              @icon="list-check"
+              @label="doc_categories.category_settings.index_editor.batch_edit"
             />
             <DMenu
               @identifier="index-options-menu"
@@ -1463,10 +1455,10 @@ export default class DocCategoryIndexEditor extends Component {
                 <DDropdownMenu as |dropdown|>
                   <dropdown.item>
                     <DButton
+                      class="btn-transparent"
+                      @action={{fn this.indexAllTopics menuArgs.close}}
                       @icon="arrows-rotate"
                       @label="doc_categories.category_settings.index_editor.index_all_topics"
-                      @action={{fn this.indexAllTopics menuArgs.close}}
-                      class="btn-transparent"
                     />
                   </dropdown.item>
                   <dropdown.item>
@@ -1474,8 +1466,8 @@ export default class DocCategoryIndexEditor extends Component {
                       class="doc-category-index-editor__subcategory-toggle"
                     >
                       <input
-                        type="checkbox"
                         checked={{this.includeSubcategories}}
+                        type="checkbox"
                         {{on "change" this.toggleIncludeSubcategories}}
                       />
                       {{i18n
@@ -1486,10 +1478,10 @@ export default class DocCategoryIndexEditor extends Component {
                   <dropdown.divider />
                   <dropdown.item>
                     <DButton
+                      class="btn-transparent doc-category-index-editor__clear-index-btn"
+                      @action={{fn this.clearIndex menuArgs.close}}
                       @icon="trash-can"
                       @label="doc_categories.category_settings.index_editor.clear_index"
-                      @action={{fn this.clearIndex menuArgs.close}}
-                      class="btn-transparent doc-category-index-editor__clear-index-btn"
                     />
                   </dropdown.item>
                 </DDropdownMenu>
@@ -1503,16 +1495,16 @@ export default class DocCategoryIndexEditor extends Component {
         <div class="doc-category-index-editor__batch-bar">
           {{#if this.canDragSelection}}
             <DDragHandle
+              class="doc-category-index-editor__batch-drag-handle"
+              @label={{i18n
+                "doc_categories.category_settings.index_editor.drag_selection"
+              }}
               {{dDragAndDropSource
                 type=this.batchSourceType
                 canDrag=this.canDragBatch
                 onDragStart=this.batchDragStart
                 onDragEnd=this.batchDragEnd
               }}
-              @label={{i18n
-                "doc_categories.category_settings.index_editor.drag_selection"
-              }}
-              class="doc-category-index-editor__batch-drag-handle"
             />
           {{/if}}
 
@@ -1529,35 +1521,35 @@ export default class DocCategoryIndexEditor extends Component {
           <div class="doc-category-index-editor__batch-actions">
             {{#if this.hasSelection}}
               <DButton
-                @icon="trash-can"
-                @action={{this.bulkDelete}}
-                @title="doc_categories.category_settings.index_editor.batch_delete"
                 class="btn-flat btn-small doc-category-index-editor__batch-delete-btn"
+                @action={{this.bulkDelete}}
+                @icon="trash-can"
+                @title="doc_categories.category_settings.index_editor.batch_delete"
               />
             {{/if}}
             <DButton
-              @icon="check-double"
+              class="btn-flat btn-small"
               @action={{this.selectAll}}
+              @icon="check-double"
               @title="doc_categories.category_settings.index_editor.batch_select_all"
-              class="btn-flat btn-small"
             />
             <DButton
-              @icon="right-left"
+              class="btn-flat btn-small"
               @action={{this.invertSelection}}
+              @icon="right-left"
               @title="doc_categories.category_settings.index_editor.batch_invert"
-              class="btn-flat btn-small"
             />
             <DButton
-              @icon="eraser"
+              class="btn-flat btn-small"
               @action={{this.clearSelection}}
+              @icon="eraser"
               @title="doc_categories.category_settings.index_editor.batch_clear_selection"
-              class="btn-flat btn-small"
             />
             <DButton
-              @icon="xmark"
-              @action={{this.toggleBatchMode}}
-              @title="doc_categories.category_settings.index_editor.batch_close"
               class="btn-flat btn-small"
+              @action={{this.toggleBatchMode}}
+              @icon="xmark"
+              @title="doc_categories.category_settings.index_editor.batch_close"
             />
           </div>
         </div>
@@ -1570,9 +1562,9 @@ export default class DocCategoryIndexEditor extends Component {
             {{this.unindexedTopicsMessage}}
           </span>
           <DButton
+            class="btn-default btn-small doc-category-index-editor__review-topics"
             @action={{this.reviewUnindexedTopics}}
             @label="doc_categories.category_settings.index_editor.unindexed_topics.review"
-            class="btn-default btn-small doc-category-index-editor__review-topics"
           />
         </div>
       {{/if}}
@@ -1584,16 +1576,16 @@ export default class DocCategoryIndexEditor extends Component {
           and a member carries the group's. }}
       <DReorderableListGroup @onMove={{this.applyLinkMove}} as |group|>
         <DReorderableList
+          class="doc-category-index-editor__sections"
+          @controls="manual"
+          @disabled={{this.batchMode}}
           @items={{this.sections}}
+          @itemTag="div"
           @label={{this.sectionLabel}}
           @onMove={{this.applySectionMove}}
           @onRemove={{this.removeSection}}
-          @disabled={{this.batchMode}}
-          @controls="manual"
-          @tag="div"
-          @itemTag="div"
           @rowClass="doc-category-index-editor__section-row"
-          class="doc-category-index-editor__sections"
+          @tag="div"
         >
           <:empty>
             <DEmptyState
@@ -1604,71 +1596,71 @@ export default class DocCategoryIndexEditor extends Component {
           </:empty>
           <:row as |section controls|>
             <IndexEditorSection
-              @section={{section}}
-              @sectionUid={{sectionUid section}}
-              @group={{group}}
-              @controls={{controls}}
-              @isFirstSection={{this.isFirstSection}}
+              @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
+              @batchDragType={{this.batchDragType}}
+              @batchMode={{this.batchMode}}
               @categoryId={{@categoryId}}
-              @searchFilters={{this.searchFilters}}
+              @clearAllInSection={{this.clearAllInSection}}
+              @controls={{controls}}
               @duplicateHrefs={{this.duplicateHrefs}}
               @duplicateTitles={{this.duplicateTitles}}
               @favoriteIcons={{this.favoriteIcons}}
-              @isBatchDragging={{this.isBatchDragging}}
-              @batchDragType={{this.batchDragType}}
-              @batchMode={{this.batchMode}}
-              @isSectionSelected={{this.isSectionSelected}}
-              @isItemSelected={{this.isItemSelected}}
-              @toggleSectionSelection={{this.toggleSectionSelection}}
-              @toggleItemSelection={{this.toggleItemSelection}}
-              @selectAllInSection={{this.selectAllInSection}}
-              @clearAllInSection={{this.clearAllInSection}}
-              @invertSelectionInSection={{this.invertSelectionInSection}}
-              @onCancelNew={{this.cancelNewSection}}
-              @onBatchSectionDrop={{this.batchReorderSections}}
-              @onBatchItemDrop={{this.batchReorderItems}}
-              @onReviewUnindexedTopics={{this.reviewUnindexedTopics}}
-              @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
-              @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
-              @pendingResync={{this.pendingResync}}
+              @group={{group}}
               @hideResyncToggle={{this.subcategorySettingChanged}}
-              @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
+              @invertSelectionInSection={{this.invertSelectionInSection}}
+              @isBatchDragging={{this.isBatchDragging}}
+              @isFirstSection={{this.isFirstSection}}
+              @isItemSelected={{this.isItemSelected}}
+              @isSectionSelected={{this.isSectionSelected}}
+              @onBatchItemDrop={{this.batchReorderItems}}
+              @onBatchSectionDrop={{this.batchReorderSections}}
+              @onCancelNew={{this.cancelNewSection}}
               @onChange={{this._saveToTransientData}}
+              @onReviewUnindexedTopics={{this.reviewUnindexedTopics}}
+              @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
+              @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
+              @pendingResync={{this.pendingResync}}
+              @searchFilters={{this.searchFilters}}
+              @section={{section}}
+              @sectionUid={{sectionUid section}}
+              @selectAllInSection={{this.selectAllInSection}}
+              @toggleItemSelection={{this.toggleItemSelection}}
+              @toggleSectionSelection={{this.toggleSectionSelection}}
             />
           </:row>
         </DReorderableList>
       </DReorderableListGroup>
 
       <DConditionalInElement
+        @append={{true}}
         @element={{@footerElement}}
         @inline={{not @footerElement}}
-        @append={{true}}
       >
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__footer">
             <DComboButton @hasMenu={{not this.hasAutoIndexSection}}>
               <:default as |combo|>
                 <combo.Button
-                  @disabled={{this.sectionLimitReached}}
+                  class="btn-default btn-small"
                   @action={{this.addSection}}
+                  @disabled={{this.sectionLimitReached}}
                   @icon="plus"
                   @label="doc_categories.category_settings.index_editor.add_section"
-                  class="btn-default btn-small"
                 />
                 {{! The menu is gated by @hasMenu, so guarding it here as well
                     would be the same condition written twice. }}
                 <combo.Menu
-                  @identifier="add-section-menu"
                   class="btn-default btn-small"
+                  @identifier="add-section-menu"
                 >
                   <DDropdownMenu as |dropdown|>
                     <dropdown.item>
                       <DButton
+                        class="btn-transparent"
+                        @action={{this.addAutoIndexSection}}
+                        @disabled={{this.sectionLimitReached}}
                         @icon="bolt"
                         @label="doc_categories.category_settings.index_editor.add_auto_index_section"
-                        @disabled={{this.sectionLimitReached}}
-                        @action={{this.addAutoIndexSection}}
-                        class="btn-transparent"
                       />
                     </dropdown.item>
                   </DDropdownMenu>
@@ -1685,11 +1677,11 @@ export default class DocCategoryIndexEditor extends Component {
 
         <div class="doc-category-index-editor__apply-footer">
           <DButton
-            @icon="check"
-            @label={{this.applyLabel}}
+            class="btn-primary btn-small doc-category-index-editor__apply-btn"
             @action={{this.apply}}
             @disabled={{this.applyDisabled}}
-            class="btn-primary btn-small doc-category-index-editor__apply-btn"
+            @icon="check"
+            @label={{this.applyLabel}}
           />
         </div>
       </DConditionalInElement>

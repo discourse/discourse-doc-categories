@@ -18,8 +18,8 @@ import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import dDragDwell from "discourse/ui-kit/modifiers/d-drag-dwell";
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION } from "../../lib/constants";
-import { IndexEditorLink, LINK_DRAG_TYPE } from "./link";
+import { MAX_LINKS_PER_SECTION } from "../../lib/constants.js";
+import { IndexEditorLink, LINK_DRAG_TYPE } from "./link.gjs";
 
 /** What a dragged batch selection of sections publishes. */
 export const SECTION_DRAG_TYPE = "doc-index-section";
@@ -346,8 +346,8 @@ export class IndexEditorSection extends Component {
     {{#if @batchMode}}
       <label class="doc-category-index-editor__batch-checkbox">
         <input
-          type="checkbox"
           checked={{@isSectionSelected @section}}
+          type="checkbox"
           {{on "click" (fn @toggleSectionSelection @section)}}
         />
       </label>
@@ -359,6 +359,11 @@ export class IndexEditorSection extends Component {
     {{/if}}
 
     <div
+      class={{dConcatClass
+        "doc-category-index-editor__section"
+        (if (@isSectionSelected @section) "--selected")
+        (if (or this.titleValidationError this.missingTitleError) "--error")
+      }}
       {{! A batch selection of sections lands here rather than on the row: the
             row belongs to the list, which is switched off in batch mode. }}
       {{dDragAndDropTarget
@@ -370,19 +375,14 @@ export class IndexEditorSection extends Component {
       {{! A collapsed section has no rows on screen to aim at, so a link held
             over it opens it. The dwell owns the wait and the cancelling. }}
       {{dDragDwell types=@group.token onDwell=this.expandForDrag}}
-      class={{dConcatClass
-        "doc-category-index-editor__section"
-        (if (@isSectionSelected @section) "--selected")
-        (if (or this.titleValidationError this.missingTitleError) "--error")
-      }}
     >
       {{#if @section.autoIndex}}
         <DMenu
-          @identifier="auto-index-badge-menu"
-          @triggerClass="doc-category-index-editor__auto-index-badge"
           title={{i18n
             "doc_categories.category_settings.index_editor.auto_index_badge_title"
           }}
+          @identifier="auto-index-badge-menu"
+          @triggerClass="doc-category-index-editor__auto-index-badge"
         >
           <:trigger>
             {{icon (if @pendingResync "arrows-rotate" "bolt")}}
@@ -410,8 +410,8 @@ export class IndexEditorSection extends Component {
                   class="doc-category-index-editor__auto-index-subcategories"
                 >
                   <input
-                    type="checkbox"
                     checked={{@autoIndexIncludeSubcategories}}
+                    type="checkbox"
                     {{on
                       "change"
                       (fn @onToggleAutoIndexIncludeSubcategories args.close)
@@ -426,14 +426,14 @@ export class IndexEditorSection extends Component {
                 <dropdown.divider />
                 <dropdown.item>
                   <DButton
+                    class="btn-transparent"
+                    @action={{fn @onToggleResyncAutoIndex args.close}}
                     @icon={{if @pendingResync "xmark" "arrows-rotate"}}
                     @label={{if
                       @pendingResync
                       "doc_categories.category_settings.index_editor.cancel_resync"
                       "doc_categories.category_settings.index_editor.resync_auto_index"
                     }}
-                    @action={{fn @onToggleResyncAutoIndex args.close}}
-                    class="btn-transparent"
                   />
                 </dropdown.item>
               {{/unless}}
@@ -444,37 +444,37 @@ export class IndexEditorSection extends Component {
 
       <div class="doc-category-index-editor__section-header">
         <DButton
-          @icon={{if this.collapsed "angle-right" "angle-down"}}
-          @action={{this.toggleCollapsed}}
           class="btn-flat btn-small doc-category-index-editor__collapse-btn"
+          @action={{this.toggleCollapsed}}
+          @icon={{if this.collapsed "angle-right" "angle-down"}}
         />
 
         {{#if this.editingTitle}}
           <input
-            type="text"
-            value={{this._editSectionTitle}}
+            class="doc-category-index-editor__section-title"
             placeholder={{i18n
               "doc_categories.category_settings.index_editor.section_title_placeholder"
             }}
-            class="doc-category-index-editor__section-title"
+            type="text"
+            value={{this._editSectionTitle}}
             {{dAutoFocus selectText=true}}
             {{on "input" this.updateTitle}}
             {{on "keydown" this.onTitleKeydown}}
           />
           <DButton
-            @icon="check"
-            @action={{this.confirmTitleEdit}}
-            @title="doc_categories.category_settings.index_editor.confirm_edit"
             class="btn-flat btn-small doc-category-index-editor__confirm-title-btn"
+            @action={{this.confirmTitleEdit}}
+            @icon="check"
+            @title="doc_categories.category_settings.index_editor.confirm_edit"
           />
           <DButton
-            @icon="xmark"
-            @action={{this.cancelTitleEdit}}
-            @title="cancel"
             class="btn-flat btn-small doc-category-index-editor__cancel-title-btn"
+            @action={{this.cancelTitleEdit}}
+            @icon="xmark"
+            @title="cancel"
           />
         {{else}}
-          {{! template-lint-disable no-invalid-interactive }}
+          {{! eslint-disable ember/template-no-invalid-interactive }}
           <span
             class={{dConcatClass
               "doc-category-index-editor__section-title-label"
@@ -515,29 +515,29 @@ export class IndexEditorSection extends Component {
 
         {{#if @batchMode}}
           <DButton
-            @icon="check-double"
+            class="btn-flat btn-small"
             @action={{fn @selectAllInSection @section}}
+            @icon="check-double"
             @title="doc_categories.category_settings.index_editor.batch_select_all"
-            class="btn-flat btn-small"
           />
           <DButton
-            @icon="right-left"
+            class="btn-flat btn-small"
             @action={{fn @invertSelectionInSection @section}}
+            @icon="right-left"
             @title="doc_categories.category_settings.index_editor.batch_invert"
-            class="btn-flat btn-small"
           />
           <DButton
-            @icon="eraser"
-            @action={{fn @clearAllInSection @section}}
-            @title="doc_categories.category_settings.index_editor.batch_clear_selection"
             class="btn-flat btn-small"
+            @action={{fn @clearAllInSection @section}}
+            @icon="eraser"
+            @title="doc_categories.category_settings.index_editor.batch_clear_selection"
           />
         {{else}}{{#unless this.editingTitle}}
             <DButton
-              @icon="pencil"
-              @action={{this.enterTitleEdit}}
-              @title="doc_categories.category_settings.index_editor.edit_section_title"
               class="btn-flat btn-small doc-category-index-editor__edit-btn"
+              @action={{this.enterTitleEdit}}
+              @icon="pencil"
+              @title="doc_categories.category_settings.index_editor.edit_section_title"
             />
             {{#if @controls.remove}}
               <@controls.remove
@@ -559,56 +559,56 @@ export class IndexEditorSection extends Component {
             Fixed to `before` rather than left to resolve, so the whole body
             reads as the target while the line stays where the links will go. }}
       <div
+        aria-hidden={{if this.collapsed "true"}}
+        class={{dConcatClass
+          "doc-category-index-editor__section-body"
+          (if this.collapsed "--collapsed")
+          (if this.showsBatchDropSlot "--batch-drop-slot")
+        }}
         {{dDragAndDropTarget
           accepts=LINK_DRAG_TYPE
           position="before"
           canDrop=this.canDropBatchLinks
           onDrop=this.onBatchLinkDrop
         }}
-        class={{dConcatClass
-          "doc-category-index-editor__section-body"
-          (if this.collapsed "--collapsed")
-          (if this.showsBatchDropSlot "--batch-drop-slot")
-        }}
-        aria-hidden={{if this.collapsed "true"}}
       >
         {{! Rendered even while collapsed, so the section stays a registered
               member of the group and keeps standing as a destination in every
               other section's move menu. The body is what hides it. }}
         <div class="doc-category-index-editor__links">
           <DReorderableList
+            class="doc-category-index-editor__link-list"
+            @controls="manual"
+            @disabled={{@batchMode}}
             @group={{@group}}
+            @items={{@section.links}}
+            @itemTag="div"
+            @label={{this.linkLabel}}
             @listId={{@sectionUid}}
             @listLabel={{this.displayTitle}}
-            @spill={{true}}
-            @items={{@section.links}}
-            @label={{this.linkLabel}}
             @onRemove={{this.removeLink}}
             @removeIcon="trash-can"
-            @disabled={{@batchMode}}
-            @controls="manual"
-            @tag="div"
-            @itemTag="div"
             @rowClass={{this.linkRowClass}}
-            class="doc-category-index-editor__link-list"
+            @spill={{true}}
+            @tag="div"
           >
             <:row as |link controls|>
               <IndexEditorLink
-                @link={{link}}
-                @section={{@section}}
+                @batchMode={{@batchMode}}
                 @controls={{controls}}
-                @searchFilters={{@searchFilters}}
                 @duplicateHrefs={{@duplicateHrefs}}
                 @favoriteIcons={{@favoriteIcons}}
-                @batchMode={{@batchMode}}
                 @isBatchDraggingItems={{and
                   @isBatchDragging
                   (eq @batchDragType "items")
                 }}
                 @isSelected={{@isItemSelected link}}
-                @onToggleSelection={{fn @toggleItemSelection link}}
+                @link={{link}}
                 @onBatchItemDrop={{@onBatchItemDrop}}
                 @onChange={{@onChange}}
+                @onToggleSelection={{fn @toggleItemSelection link}}
+                @searchFilters={{@searchFilters}}
+                @section={{@section}}
               />
             </:row>
           </DReorderableList>
@@ -647,18 +647,18 @@ export class IndexEditorSection extends Component {
             <div class="doc-category-index-editor__inline-topic-chooser">
               <div class="doc-category-index-editor__link-card --adding">
                 <TopicChooser
-                  @value={{null}}
                   @content={{this.topicChooserContent}}
                   @onChange={{this.onAddTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
                     none="doc_categories.category_settings.index_editor.select_topic"
                   }}
+                  @value={{null}}
                 />
                 <DButton
-                  @icon="xmark"
-                  @action={{this.cancelTopicChooser}}
                   class="btn-flat btn-small"
+                  @action={{this.cancelTopicChooser}}
+                  @icon="xmark"
                 />
               </div>
             </div>
@@ -669,25 +669,25 @@ export class IndexEditorSection extends Component {
               <DComboButton @hasMenu={{true}}>
                 <:default as |combo|>
                   <combo.Button
-                    @disabled={{this.linkLimitReached}}
+                    class="btn-default btn-small"
                     @action={{this.showTopicChooser}}
+                    @disabled={{this.linkLimitReached}}
                     @icon="plus"
                     @label="doc_categories.category_settings.index_editor.add_topic"
-                    class="btn-default btn-small"
                   />
                   <combo.Menu
+                    class="btn-default btn-small"
                     @identifier="section-add-menu"
                     @onRegisterApi={{this.registerAddMenuApi}}
-                    class="btn-default btn-small"
                   >
                     <DDropdownMenu as |dropdown|>
                       <dropdown.item>
                         <DButton
+                          class="btn-transparent"
+                          @action={{this.addManualLink}}
+                          @disabled={{this.linkLimitReached}}
                           @icon="link"
                           @label="doc_categories.category_settings.index_editor.add_link"
-                          @disabled={{this.linkLimitReached}}
-                          @action={{this.addManualLink}}
-                          class="btn-transparent"
                         />
                       </dropdown.item>
                       {{! Auto-index already gathers what the index leaves out
@@ -696,10 +696,10 @@ export class IndexEditorSection extends Component {
                         <dropdown.divider />
                         <dropdown.item>
                           <DButton
+                            class="btn-transparent doc-category-index-editor__review-section-topics"
+                            @action={{this.reviewUnindexedTopics}}
                             @icon="list-check"
                             @label="doc_categories.category_settings.index_editor.add_missing_topics"
-                            @action={{this.reviewUnindexedTopics}}
-                            class="btn-transparent doc-category-index-editor__review-section-topics"
                           />
                         </dropdown.item>
                       {{/unless}}

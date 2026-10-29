@@ -7,7 +7,7 @@ import BaseCustomSidebarSectionLink from "discourse/lib/sidebar/base-custom-side
 import DiscourseURL from "discourse/lib/url";
 import { escapeExpression, unicodeSlugify } from "discourse/lib/utilities";
 import { i18n } from "discourse-i18n";
-import { SIDEBAR_DOCS_PANEL } from "../services/doc-category-sidebar";
+import { SIDEBAR_DOCS_PANEL } from "../services/doc-category-sidebar.js";
 
 const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
   class DocCategorySidebarPanel extends BaseCustomSidebarPanel {
@@ -41,8 +41,7 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
       if (this.docCategorySidebar.activeCategory) {
         categoryFilter =
           " " +
-          (this.#assembleCategoryFilter("", active, 1) ??
-            `category:${active.id}`);
+          (assembleCategoryFilter("", active, 1) ?? `category:${active.id}`);
       }
 
       const params = {
@@ -56,26 +55,6 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
       return trustHTML(
         i18n("doc_categories.sidebar.filter.no_results.description", params)
       );
-    }
-
-    #assembleCategoryFilter(filter, category, level) {
-      if (!category) {
-        return filter;
-      }
-
-      if (level > 2) {
-        return null;
-      }
-
-      if (category.parentCategory) {
-        return this.#assembleCategoryFilter(
-          ":" + category.slug,
-          category.parentCategory,
-          level + 1
-        );
-      } else {
-        return "#" + category.slug + filter;
-      }
     }
   };
 
@@ -196,5 +175,25 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
 
   get prefixValue() {
     return this.#data.icon || "far-file";
+  }
+}
+
+function assembleCategoryFilter(filter, category, level) {
+  if (!category) {
+    return filter;
+  }
+
+  if (level > 2) {
+    return null;
+  }
+
+  if (category.parentCategory) {
+    return assembleCategoryFilter(
+      ":" + category.slug,
+      category.parentCategory,
+      level + 1
+    );
+  } else {
+    return "#" + category.slug + filter;
   }
 }
