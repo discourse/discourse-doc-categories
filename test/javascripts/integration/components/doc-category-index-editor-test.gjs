@@ -683,11 +683,7 @@ module(
     setupRenderingTest(hooks);
 
     hooks.beforeEach(function () {
-      this.toast = { id: "added-topics" };
-      this.showToast = sinon
-        .stub(this.owner.lookup("service:toasts"), "success")
-        .returns(this.toast);
-      this.closeToast = sinon.spy(this.owner.lookup("service:toasts"), "close");
+      this.toasts = this.owner.lookup("service:toasts");
     });
 
     test("counts this category's topics that the draft leaves out", async function (assert) {
@@ -952,11 +948,13 @@ module(
         "the new link goes after the existing ones"
       );
       assert.strictEqual(
-        this.showToast.firstCall.args[0].data.message,
+        this.toasts.activeToasts.at(-1).options.data.message,
         i18n(`${UNINDEXED}.added`, { count: 1, section: "Start here" })
       );
       assert.false(
-        this.showToast.firstCall.args[0].data.message.includes("Apply to save")
+        this.toasts.activeToasts
+          .at(-1)
+          .options.data.message.includes("Apply to save")
       );
     });
 
@@ -974,14 +972,18 @@ module(
       editor.sections[1].links.push(moved);
       await settled();
 
-      this.showToast.lastCall.args[0].data.actions[0].action();
+      this.toasts.activeToasts.at(-1).options.data.actions[0].action();
       await settled();
 
       assert.deepEqual(
         allLinks(editor).map((link) => link.title),
         ["Install", "External", "Guide"]
       );
-      assert.true(this.closeToast.calledWith(this.toast));
+      assert.strictEqual(
+        this.toasts.activeToasts.length,
+        0,
+        "dismisses the addition toast"
+      );
     });
 
     test("with no manual section, a new one goes before auto-index", async function (assert) {
@@ -1157,7 +1159,11 @@ module(
       await settled();
 
       assert.strictEqual(editor.lastAddition, null);
-      assert.true(this.closeToast.calledWith(this.toast));
+      assert.strictEqual(
+        this.toasts.activeToasts.length,
+        0,
+        "dismisses the addition toast"
+      );
     });
   }
 );

@@ -39,6 +39,8 @@ describe "Doc Category Index Editor" do
       )
       category_page.visit_general(category)
       find(".edit-category-doc-index a").click
+      expect(page).to have_css(".edit-category-security")
+      category_page.toggle_advanced_settings
       expect(page).to have_no_css(".edit-category-security")
 
       editor.switch_to_mode("mode_none")
@@ -64,9 +66,6 @@ describe "Doc Category Index Editor" do
         find(".edit-category-doc-index a").click
 
         expect(page).to have_css(".doc-category-index-tab")
-        expect(page).to have_no_css(".edit-category-security")
-
-        category_page.toggle_advanced_settings
         expect(page).to have_css(".edit-category-security")
         expect(page).to have_css(".edit-category-doc-index", count: 1)
 
@@ -79,7 +78,7 @@ describe "Doc Category Index Editor" do
         page.refresh
 
         expect(page).to have_css(".doc-category-index-tab")
-        expect(page).to have_no_css(".edit-category-security")
+        expect(page).to have_css(".edit-category-security")
       end
     end
   end

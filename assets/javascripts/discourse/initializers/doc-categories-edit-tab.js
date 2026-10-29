@@ -15,7 +15,14 @@ export default {
         id: "doc-index",
         name: i18n("doc_categories.category_settings.tab_title"),
         component: DocCategoryIndexTab,
-        primary: ({ category }) => !!category.doc_index_topic_id,
+        // The tab API reads a boolean, so evaluate the current category on access.
+        get primary() {
+          const controller = container.lookup("controller:edit-category.tabs");
+          return (
+            !!controller.model?.doc_index_topic_id ||
+            controller.selectedTab === "doc-index"
+          );
+        },
         condition: ({ category, siteSettings }) =>
           siteSettings.doc_categories_enabled && isPresent(category.id),
       });
