@@ -10,13 +10,14 @@ describe Jobs::DocCategoriesRefreshIndex do
   end
 
   it "delegates to the index refresher" do
-    refresher = instance_spy(DocCategories::IndexStructureRefresher)
-    allow(DocCategories::IndexStructureRefresher).to receive(:new).with(category.id).and_return(
-      refresher,
-    )
+    allow(DocCategories::IndexStructureRefresher).to receive(:call).and_call_original
 
     job.execute(category_id: category.id)
 
-    expect(refresher).to have_received(:refresh!)
+    expect(DocCategories::IndexStructureRefresher).to have_received(:call).with(
+      params: {
+        category_id: category.id,
+      },
+    )
   end
 end

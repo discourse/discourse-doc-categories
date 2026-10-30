@@ -12,6 +12,16 @@ doc_categories:
       status: "experimental"
       impact: "other,all_members"
       learn_more_url: "https://meta.discourse.org/t/-/403366"
+  doc_categories_index_editor:
+    default: false
+    hidden: true
+    client: true
+    upcoming_change:
+      status: "alpha"
+      impact: "feature,admins"
+      learn_more_url: "https://meta.discourse.org/t/-/415945"
+      allow_enabled_for:
+        - everyone
   doc_categories_homepage:
     default: ""
     client: true

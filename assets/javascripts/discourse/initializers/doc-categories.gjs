@@ -1,8 +1,6 @@
 import { schedule } from "@ember/runloop";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DiscourseURL from "discourse/lib/url";
-import DocCategorySettings from "../components/doc-category-settings.gjs";
-import DocCategorySettingsForm from "../components/doc-category-settings-form.gjs";
 import DocSimpleModeToggle from "../components/doc-simple-mode-toggle.gjs";
 import DocUpdatedHeaderCell from "../components/doc-updated-header-cell.gjs";
 import DocCategorySidebarPanel from "../lib/doc-category-sidebar-panel.js";
@@ -21,11 +19,7 @@ export default {
 
     withPluginApi((api) => {
       api.registerCategorySaveProperty("doc_index_topic_id");
-      if (siteSettings.enable_simplified_category_creation) {
-        api.renderInOutlet("category-custom-settings", DocCategorySettingsForm);
-      } else {
-        api.renderInOutlet("category-custom-settings", DocCategorySettings);
-      }
+      api.registerCategorySaveProperty("doc_index_sections");
       api.addSidebarPanel(DocCategorySidebarPanel);
 
       api.registerBehaviorTransformer(
