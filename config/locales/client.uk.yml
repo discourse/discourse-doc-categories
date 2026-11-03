@@ -9,3 +9,29 @@ uk:
     doc_categories:
       simple_mode:
         updated: "Оновлено"
+      category_settings:
+        index_editor:
+          stay: "залишитися"
+          mode_none: "Вимкнено"
+          mode_direct: "Редактор"
+          section_title_placeholder: "Назва розділу"
+          remove_link: "Видалити посилання"
+          include_subcategories: "Включити підкатегорії"
+          edit_link: "Редагувати посилання"
+          all_topics_section: "Всі теми"
+          save: "Зберегти"
+          apply: "Застосувати"
+          batch_select_all: "Вибрати все"
+          batch_delete: "Видалити вибране"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Пошук"
+            search_placeholder: "Фільтрувати за назвою"
+            selected:
+              one: "%{count} вибрано"
+              few: "%{count} вибрано"
+              many: "%{count} вибрано"
+              other: "%{count} вибрано"
+            retry: "Повторити спробу"
+            undo: "Скасувати"
+            dismiss: "Відхилити"

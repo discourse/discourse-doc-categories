@@ -27,7 +27,29 @@ el:
           label: "Θέμα ευρετηρίου"
           errors:
             topic_not_found: "Το θέμα δεν βρέθηκε! Το ευρετήριο δεν θα εμφανιστεί"
-            mismatched-category: "Το ευρετήριο δεν θα εμφανίζεται επειδή το θέμα ανήκει σε διαφορετική κατηγορία: %{category_name}"
+            mismatched_category: "Το ευρετήριο δεν θα εμφανίζεται επειδή το θέμα ανήκει σε διαφορετική κατηγορία: %{category_name}"
+        index_editor:
+          stay: "Παραμονή"
+          mode_none: "Απενεργοποιημένος"
+          mode_direct: "Επεξεργαστής"
+          section_title_placeholder: "Τίτλος ενότητας"
+          remove_link: "Αφαίρεση συνδέσμου"
+          include_subcategories: "Συμπερίληψη υποκατηγοριών"
+          edit_link: "Επεξεργασία συνδέσμου"
+          all_topics_section: "Όλα τα θέματα"
+          save: "Αποθήκευση"
+          apply: "Εφαρμογή"
+          batch_select_all: "Επιλογή όλων"
+          batch_delete: "Διαγραφή επιλεγμένων"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Αναζήτηση"
+            selected:
+              one: "%{count} επιλεγμένα"
+              other: "%{count} επιλεγμένα"
+            retry: "Επανάληψη"
+            undo: "Αναίρεση"
+            dismiss: "Παράβλεψη"
       sidebar:
         filter:
           no_results:

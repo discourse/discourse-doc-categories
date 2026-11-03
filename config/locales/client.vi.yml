@@ -9,3 +9,24 @@ vi:
     doc_categories:
       simple_mode:
         updated: "Cập nhật"
+      category_settings:
+        index_editor:
+          stay: "Ở lại"
+          mode_none: "Vô hiệu hóa"
+          mode_direct: "Lần Đầu Sửa Tút"
+          section_title_placeholder: "Tên phần"
+          remove_link: "Gỡ link"
+          edit_link: "Sửa link"
+          all_topics_section: "Tất cả chủ đề"
+          save: "Lưu lại"
+          apply: "Áp dụng"
+          batch_select_all: "Chọn hết"
+          batch_delete: "Xóa các mục đã chọn"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Tìm"
+            selected:
+              other: "%{count} được chọn"
+            retry: "Thử lại"
+            undo: "Hoàn tác"
+            dismiss: "Bỏ qua"

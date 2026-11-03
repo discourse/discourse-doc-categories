@@ -9,3 +9,20 @@ te:
     doc_categories:
       simple_mode:
         updated: "నవీకరించబడింది"
+      category_settings:
+        index_editor:
+          stay: "ఉండండి"
+          mode_none: "నిలిపివేయబడింది"
+          mode_direct: "ఎడిటరు"
+          section_title_placeholder: "విభాగం శీర్షిక"
+          all_topics_section: "అన్ని విషయాలు"
+          save: "సేవ్ చేయండి"
+          apply: "దరఖాస్తు చేసుకోండి"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "శోధించండి"
+            selected:
+              one: "%{count} ఎంచుకోబడింది"
+              other: "%{count} ఎంచుకోబడింది"
+            undo: "రద్దు చేయండి"
+            dismiss: "తీసివేయండి"

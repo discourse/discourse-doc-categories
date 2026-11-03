@@ -31,7 +31,29 @@ nl:
           label: "Indextopic"
           errors:
             topic_not_found: "Topic niet gevonden! De index wordt niet weergegeven."
-            mismatched-category: "De index wordt niet weergegeven omdat het topic tot een andere categorie behoort: %{category_name}"
+            mismatched_category: "De index wordt niet weergegeven omdat het topic tot een andere categorie behoort: %{category_name}"
+        index_editor:
+          stay: "Blijven"
+          mode_none: "Uitgeschakeld"
+          mode_direct: "Bewerker"
+          section_title_placeholder: "Sectietitel"
+          remove_link: "Link verwijderen"
+          edit_link: "Link bewerken"
+          all_topics_section: "Alle topics"
+          save: "Opslaan"
+          apply: "Toepassen"
+          batch_select_all: "Selecteer alles"
+          batch_delete: "Geselecteerde verwijderen"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Zoeken"
+            search_placeholder: "Filteren op titel"
+            selected:
+              one: "%{count} geselecteerd"
+              other: "%{count} geselecteerd"
+            retry: "Opnieuw proberen"
+            undo: "Ongedaan maken"
+            dismiss: "Sluiten"
       sidebar:
         filter:
           no_results:

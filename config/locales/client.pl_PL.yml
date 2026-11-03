@@ -9,3 +9,29 @@ pl_PL:
     doc_categories:
       simple_mode:
         updated: "Zaktualizowane"
+      category_settings:
+        index_editor:
+          stay: "Zostań"
+          mode_none: "Wyłączone"
+          mode_direct: "Edytor"
+          section_title_placeholder: "Tytuł sekcji"
+          remove_link: "Usuń link"
+          include_subcategories: "Uwzględnij podkategorie"
+          edit_link: "Edytuj link"
+          all_topics_section: "Wszystkie tematy"
+          save: "Zapisz"
+          apply: "Zastosuj"
+          batch_select_all: "Zaznacz wszystkie"
+          batch_delete: "Usuń wybrane"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Szukaj"
+            selected:
+              one: "%{count} wybrano"
+              few: "%{count} wybrano"
+              many: "%{count} wybrano"
+              other: "%{count} wybrano"
+            load_more: "Załaduj więcej"
+            retry: "Ponów"
+            undo: "Cofnij"
+            dismiss: "Odrzuć"

@@ -27,7 +27,28 @@ ja:
           label: "トピックのインデックス"
           errors:
             topic_not_found: "トピックが見つかりません！インデックスは表示されません"
-            mismatched-category: "トピックが別のカテゴリに属しているため、インデックスは表示されません: %{category_name}"
+            mismatched_category: "トピックが別のカテゴリに属しているため、インデックスは表示されません: %{category_name}"
+        index_editor:
+          stay: "移動しない"
+          mode_none: "無効"
+          mode_direct: "編集者"
+          section_title_placeholder: "セクションのタイトル"
+          remove_link: "リンクの削除"
+          edit_link: "リンクの編集"
+          all_topics_section: "すべてのトピック"
+          save: "保存"
+          apply: "適用"
+          batch_select_all: "すべて選択"
+          batch_delete: "選択項目を削除"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "検索"
+            search_placeholder: "タイトルで絞り込みます"
+            selected:
+              other: "%{count} 個選択済み"
+            retry: "再試行"
+            undo: "元に戻す"
+            dismiss: "閉じる"
       sidebar:
         filter:
           no_results:

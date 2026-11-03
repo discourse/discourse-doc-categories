@@ -31,7 +31,29 @@ tr_TR:
           label: "Dizin Konusu"
           errors:
             topic_not_found: "Konu bulunamadı! Dizin görüntülenmeyecek."
-            mismatched-category: "Konu farklı bir kategoriye ait olduğu için dizin görüntülenmeyecektir: %{category_name}"
+            mismatched_category: "Konu farklı bir kategoriye ait olduğu için dizin görüntülenmeyecektir: %{category_name}"
+        index_editor:
+          stay: "Kal"
+          mode_none: "Devre Dışı"
+          mode_direct: "Düzenleyici"
+          section_title_placeholder: "Bölüm başlığı"
+          remove_link: "Bağlantıyı kaldır"
+          edit_link: "Bağlantıyı düzenle"
+          all_topics_section: "Tüm konular"
+          save: "Kaydet"
+          apply: "Uygula"
+          batch_select_all: "Tümünü seç"
+          batch_delete: "Seçilenleri sil"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Ara"
+            search_placeholder: "Başlığa göre filtrele"
+            selected:
+              one: "%{count} tane seçildi"
+              other: "%{count} tane seçildi"
+            retry: "Tekrar Dene"
+            undo: "Geri Al"
+            dismiss: "Kapat"
       sidebar:
         filter:
           no_results:

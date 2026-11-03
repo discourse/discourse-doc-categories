@@ -9,3 +9,22 @@ sv:
     doc_categories:
       simple_mode:
         updated: "Uppdaterade"
+      category_settings:
+        index_editor:
+          stay: "Stanna"
+          mode_none: "Inaktiverad"
+          mode_direct: "Redigerare"
+          section_title_placeholder: "Avsnittstitel"
+          add_link: "Lägg till länk"
+          all_topics_section: "Alla ämnen"
+          save: "Spara"
+          apply: "Tillämpa"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Sök"
+            search_placeholder: "Filtrera efter titel"
+            selected:
+              one: "%{count} har valts"
+              other: "%{count} har valts"
+            undo: "Ångra"
+            dismiss: "Avfärda"

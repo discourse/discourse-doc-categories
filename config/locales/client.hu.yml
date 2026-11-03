@@ -9,3 +9,26 @@ hu:
     doc_categories:
       simple_mode:
         updated: "Frissítve"
+      category_settings:
+        index_editor:
+          stay: "Marad"
+          mode_none: "Kikapcsolva"
+          mode_direct: "Szerkesztő"
+          section_title_placeholder: "A szakasz címe"
+          remove_link: "Hivatkozás eltávolítása"
+          edit_link: "Hivatkozás szerkesztése"
+          all_topics_section: "Minden téma"
+          save: "Mentés"
+          apply: "Alkalmaz"
+          batch_select_all: "Összes kiválasztása"
+          batch_delete: "Kiválasztottak törlése"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Keresés"
+            search_placeholder: "Szűrés cím szerint"
+            selected:
+              one: "%{count} kiválasztva"
+              other: "%{count} kiválasztva"
+            retry: "Újra"
+            undo: "Visszavonás"
+            dismiss: "Elvetés"

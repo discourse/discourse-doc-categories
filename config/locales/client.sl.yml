@@ -5,3 +5,16 @@
 # https://translate.discourse.org/
 
 sl:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Onemogočeno"
+          mode_direct: "Urednik"
+          save: "Shrani"
+          apply: "Uporabi"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Išči"
+            undo: "Razveljavi"
+            dismiss: "Opusti"

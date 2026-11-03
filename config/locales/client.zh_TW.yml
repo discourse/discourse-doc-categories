@@ -9,3 +9,24 @@ zh_TW:
     doc_categories:
       simple_mode:
         updated: "更新時間"
+      category_settings:
+        index_editor:
+          stay: "保留"
+          mode_none: "已禁用"
+          mode_direct: "編輯"
+          section_title_placeholder: "章節標題"
+          remove_link: "移除連結"
+          edit_link: "編輯連結"
+          all_topics_section: "所有話題"
+          save: "保存"
+          apply: "應用"
+          batch_select_all: "全選"
+          batch_delete: "刪除所選項目"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "搜尋"
+            selected:
+              other: "已選擇 %{count} 個"
+            retry: "重試"
+            undo: "復原"
+            dismiss: "忽略"

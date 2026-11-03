@@ -9,3 +9,27 @@ lt:
     doc_categories:
       simple_mode:
         updated: "Atnaujinta"
+      category_settings:
+        index_editor:
+          stay: "Likti"
+          mode_none: "Išjungta"
+          mode_direct: "Redaguotojas"
+          section_title_placeholder: "Skilties pavadinimas"
+          remove_link: "Pašalinti nuorodą"
+          edit_link: "Redaguoti nuorodą"
+          all_topics_section: "Visos temos"
+          save: "Išsaugoti"
+          apply: "Kandidatuoti"
+          batch_select_all: "Pasirinkti viską"
+          batch_delete: "Ištrinti pasirinktus"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Paieška"
+            selected:
+              one: "%{count} pasirinkta"
+              few: "%{count} pasirinkta"
+              many: "%{count} pasirinkta"
+              other: "%{count} pasirinkta"
+            retry: "Bandykite dar kartą"
+            undo: "Anuliuoti"
+            dismiss: "Praleisti"

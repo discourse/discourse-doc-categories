@@ -9,3 +9,27 @@ ru:
     doc_categories:
       simple_mode:
         updated: "Обновлена"
+      category_settings:
+        index_editor:
+          stay: "Остаться"
+          mode_none: "Отключен"
+          mode_direct: "Редактор"
+          section_title_placeholder: "Заголовок раздела"
+          remove_link: "Удалить ссылку"
+          edit_link: "Редактировать ссылку"
+          all_topics_section: "Все темы"
+          save: "Сохранить"
+          apply: "Применить"
+          batch_select_all: "Выбрать все"
+          batch_delete: "Удалить выбранное"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Искать"
+            selected:
+              one: "Выбрано %{count}"
+              few: "Выбрано %{count}"
+              many: "Выбрано %{count}"
+              other: "Выбрано %{count}"
+            retry: "Повторить"
+            undo: "Отменить"
+            dismiss: "Закрыть"

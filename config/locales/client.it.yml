@@ -9,3 +9,24 @@ it:
     doc_categories:
       simple_mode:
         updated: "Aggiornamento"
+      category_settings:
+        index_editor:
+          stay: "Resta"
+          mode_none: "Disabilitati"
+          mode_direct: "Redattore"
+          section_title_placeholder: "Titolo della sezione"
+          remove_link: "Rimuovi link"
+          edit_link: "Modifica link"
+          all_topics_section: "Tutti gli argomenti"
+          save: "Salva"
+          apply: "Applica"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Cerca"
+            search_placeholder: "Filtra per titolo"
+            selected:
+              one: "%{count} selezionati"
+              other: "%{count} selezionati"
+            retry: "Riprova"
+            undo: "Annulla"
+            dismiss: "Ignora"

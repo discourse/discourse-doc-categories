@@ -27,7 +27,31 @@ cs:
           label: "Téma s obsahem"
           errors:
             topic_not_found: "Téma nebylo nalezeno! Obsah se nezobrazí."
-            mismatched-category: "Obsah se nezobrazí, protože téma patří do jiné kategorie: %{category_name}"
+            mismatched_category: "Obsah se nezobrazí, protože téma patří do jiné kategorie: %{category_name}"
+        index_editor:
+          stay: "Stay"
+          mode_none: "Vypnuto"
+          mode_direct: "Uživatel"
+          section_title_placeholder: "Název sekce"
+          remove_link: "Odebrat odkaz"
+          edit_link: "Upravit odkaz"
+          all_topics_section: "Všechna témata"
+          save: "Uložit"
+          apply: "Použít"
+          batch_select_all: "Vybrat vše"
+          batch_delete: "Smazat vybrané"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Vyhledávání"
+            search_placeholder: "Filtrovat podle názvu"
+            selected:
+              one: "%{count} vybraná"
+              few: "%{count} vybraná"
+              many: "%{count} vybrané"
+              other: "%{count} vybraná"
+            retry: "Zkuste znovu"
+            undo: "Zpět"
+            dismiss: "Označit jako přečtené"
       sidebar:
         filter:
           no_results:

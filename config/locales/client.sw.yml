@@ -5,3 +5,15 @@
 # https://translate.discourse.org/
 
 sw:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Imezuiwa"
+          mode_direct: "Mhariri"
+          save: "Hifadhi"
+          apply: "Tumia"
+          unindexed_topics:
+            search_field: "Tafuta"
+            undo: "Tendua"
+            dismiss: "Ondosha..."

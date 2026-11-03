@@ -9,3 +9,18 @@ hy:
     doc_categories:
       simple_mode:
         updated: "Թարմացված"
+      category_settings:
+        index_editor:
+          stay: "Մնալ"
+          mode_none: "Անջատված"
+          mode_direct: "Խմբագրիչ"
+          save: "Պահպանել"
+          apply: "Կիրառել"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Որոնում"
+            selected:
+              one: "%{count} ընտրված"
+              other: "%{count} ընտրված"
+            undo: "Ետարկել"
+            dismiss: "Չեղարկել"

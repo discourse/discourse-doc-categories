@@ -9,3 +9,15 @@ bs_BA:
     doc_categories:
       simple_mode:
         updated: "Ažurirano"
+      category_settings:
+        index_editor:
+          stay: "Ostani"
+          mode_none: "Neomogućen"
+          mode_direct: "Urednik"
+          save: "Save"
+          apply: "Snimi"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Pretraži"
+            undo: "Vrati nazad"
+            dismiss: "Odbaci"

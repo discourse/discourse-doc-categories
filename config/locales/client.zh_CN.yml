@@ -30,7 +30,28 @@ zh_CN:
           label: "索引话题"
           errors:
             topic_not_found: "找不到话题！索引将不会显示"
-            mismatched-category: "由于话题属于不同的类别（%{category_name}），索引将不会显示"
+            mismatched_category: "由于话题属于不同的类别（%{category_name}），索引将不会显示"
+        index_editor:
+          stay: "保留"
+          mode_none: "已禁用"
+          mode_direct: "编辑者"
+          section_title_placeholder: "版块标题"
+          remove_link: "移除链接"
+          include_subcategories: "包括子类别"
+          edit_link: "编辑链接"
+          all_topics_section: "所有话题"
+          save: "保存"
+          apply: "应用"
+          batch_select_all: "全选"
+          batch_delete: "删除所选"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "搜索"
+            selected:
+              other: "已选择 %{count} 个"
+            retry: "重试"
+            undo: "撤消"
+            dismiss: "关闭"
       sidebar:
         filter:
           no_results:
