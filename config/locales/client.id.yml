@@ -5,3 +5,18 @@
 # https://translate.discourse.org/
 
 id:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Dinonaktifkan"
+          mode_direct: "Editor"
+          all_topics_section: "Semua topik"
+          save: "Simpan"
+          apply: "menerapkan"
+          unindexed_topics:
+            search_field: "Cari"
+            selected:
+              other: "%{count} dipilih"
+            undo: "Batalkan perintah"
+            dismiss: "Bubar"

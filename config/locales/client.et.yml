@@ -5,3 +5,15 @@
 # https://translate.discourse.org/
 
 et:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Välja lülitatud"
+          save: "Salvesta"
+          apply: "Rakenda"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Otsi"
+            undo: "Ennista"
+            dismiss: "Ignoreeri"

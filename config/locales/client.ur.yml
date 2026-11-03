@@ -18,3 +18,26 @@ ur:
     doc_categories:
       simple_mode:
         updated: "اپ ڈیٹ"
+      category_settings:
+        index_editor:
+          stay: "ادھر رہیں"
+          mode_none: "غیر فعال"
+          mode_direct: "ایڈیٹر"
+          section_title_placeholder: "سیکشن کا عنوان"
+          remove_link: "لنک ہٹانا"
+          include_subcategories: "ذیلی زمروں کو شامل کریں"
+          edit_link: "رابطہ میں ترمیم"
+          all_topics_section: "تمام موضوعات"
+          save: "محفوظ کریں"
+          apply: "لاگو کریں"
+          batch_select_all: "سبھی منتخب کریں"
+          batch_delete: "منتخب کردہ کو حذف کر دیں"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "تلاش کریں"
+            selected:
+              one: "%{count} منتخب کیا گیا"
+              other: "%{count} منتخب کیا گیا"
+            retry: "دوبارہ کوشش"
+            undo: "کالعدم کریں"
+            dismiss: "بر خاست کریں"

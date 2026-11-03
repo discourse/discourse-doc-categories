@@ -5,3 +5,20 @@
 # https://translate.discourse.org/
 
 sr:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Isključeno"
+          mode_direct: "Urednik"
+          include_subcategories: "Uključi potkategorije"
+          save: "Sačuvaj"
+          apply: "Primeni"
+          unindexed_topics:
+            search_field: "Pretraži"
+            selected:
+              one: "%{count} selektovano"
+              few: "%{count} selektovane"
+              other: "%{count} selektovano"
+            undo: "Vrati na prethodno"
+            dismiss: "Odbaci"

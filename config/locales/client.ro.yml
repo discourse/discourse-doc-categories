@@ -9,3 +9,18 @@ ro:
     doc_categories:
       simple_mode:
         updated: "Actualizat"
+      category_settings:
+        index_editor:
+          mode_none: "Dezactivate"
+          mode_direct: "Editor"
+          remove_link: "Elimină legătură"
+          edit_link: "Editează legătură"
+          save: "Salvează"
+          apply: "Aplică"
+          batch_select_all: "Selectează tot"
+          batch_delete: "Șterge selecția"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Căutare"
+            undo: "Anulează"
+            dismiss: "Respinge"

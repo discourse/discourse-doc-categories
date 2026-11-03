@@ -9,3 +9,17 @@ nb_NO:
     doc_categories:
       simple_mode:
         updated: "Oppdatert"
+      category_settings:
+        index_editor:
+          mode_none: "Deaktivert"
+          mode_direct: "Tekstbehandler"
+          save: "Lagre"
+          apply: "Bruk"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Søk"
+            selected:
+              one: "%{count} valgte"
+              other: "%{count} valgte"
+            undo: "Angre"
+            dismiss: "Avvis"

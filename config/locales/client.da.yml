@@ -9,3 +9,21 @@ da:
     doc_categories:
       simple_mode:
         updated: "Opdateret"
+      category_settings:
+        index_editor:
+          stay: "Bliv"
+          mode_none: "Deaktiveret"
+          mode_direct: "Redaktør"
+          section_title_placeholder: "Sektionens titel"
+          edit_link: "Rediger link"
+          all_topics_section: "Alle emner"
+          save: "Gem"
+          apply: "Anvend"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Søg"
+            selected:
+              one: "%{count} valgt"
+              other: "%{count} valgt"
+            undo: "Fortryd"
+            dismiss: "Afvis alle"

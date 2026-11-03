@@ -9,3 +9,13 @@ th:
     doc_categories:
       simple_mode:
         updated: "อัปเดตแล้ว"
+      category_settings:
+        index_editor:
+          mode_none: "ปิดใช้งานแล้ว"
+          save: "บันทึก"
+          apply: "นำไปใช้"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "ค้นหา"
+            undo: "เลิกทำ"
+            dismiss: "ซ่อน"

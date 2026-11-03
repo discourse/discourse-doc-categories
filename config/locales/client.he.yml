@@ -23,7 +23,28 @@ he:
         show_comments:
           one: "הצגת תגובה"
           two: "הצגת שתי תגובות"
-          many: "הצגת %{count} תגובות"
           other: "הצגת %{count} תגובות"
         hide_comments: "הסתרת תגובות"
         updated: "עודכן"
+      category_settings:
+        index_editor:
+          stay: "להישאר"
+          mode_none: "כבוי"
+          mode_direct: "עורכים"
+          section_title_placeholder: "כותרת מקטע"
+          remove_link: "הסרת קישור"
+          edit_link: "עריכת קישור"
+          all_topics_section: "כל הנושאים"
+          save: "שמירה"
+          apply: "החלה"
+          batch_select_all: "בחירה בהכול"
+          batch_delete: "מחיקת הנבחרים"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "חיפוש"
+            selected:
+              one: "%{count} נבחרו"
+              two: "%{count} נבחרו"
+              other: "%{count} נבחרו"
+            undo: "לבטל פעולה"
+            dismiss: "דחה"

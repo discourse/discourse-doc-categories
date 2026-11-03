@@ -9,3 +9,25 @@ sk:
     doc_categories:
       simple_mode:
         updated: "Aktualizované"
+      category_settings:
+        index_editor:
+          stay: "Ponechať"
+          mode_none: "Vypnuté"
+          mode_direct: "Editor"
+          section_title_placeholder: "Názov sekcie"
+          remove_link: "Odstrániť odkaz"
+          edit_link: "Upraviť odkaz"
+          all_topics_section: "Všetky témy"
+          save: "Uložiť"
+          apply: "Použi"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Hľadať"
+            selected:
+              one: "%{count} vybrané"
+              few: "%{count} vybrané"
+              many: "%{count} vybrané"
+              other: "%{count} vybrané"
+            retry: "Skúsiť znova"
+            undo: "Späť"
+            dismiss: "Zahodiť"

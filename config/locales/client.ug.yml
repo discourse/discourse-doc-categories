@@ -9,3 +9,25 @@ ug:
     doc_categories:
       simple_mode:
         updated: "يېڭىلاندى"
+      category_settings:
+        index_editor:
+          stay: "قال"
+          mode_none: "چەكلەندى"
+          mode_direct: "تەھرىر"
+          section_title_placeholder: "بۆلەك ماۋزۇسى"
+          remove_link: "ئۇلانمىنى چىقىرىۋەت"
+          edit_link: "ئۇلانما تەھرىر"
+          all_topics_section: "بارلىق تېما"
+          save: "ساقلا"
+          apply: "قوللان"
+          batch_select_all: "ھەممىنى تاللا"
+          batch_delete: "تاللانغاننى ئۆچۈر"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "ئىزدە"
+            selected:
+              one: "%{count} تاللاندى"
+              other: "%{count} تاللاندى"
+            retry: "قايتا سىنا"
+            undo: "يېنىۋال"
+            dismiss: "پەرۋا قىلما"

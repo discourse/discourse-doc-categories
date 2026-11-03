@@ -9,3 +9,23 @@ hr:
     doc_categories:
       simple_mode:
         updated: "Ažurirano"
+      category_settings:
+        index_editor:
+          stay: "Ostanite"
+          mode_none: "Onemogućeno"
+          mode_direct: "Urednik"
+          section_title_placeholder: "Naslov odjeljka"
+          remove_link: "Uklonite poveznicu"
+          edit_link: "Uredite poveznicu"
+          all_topics_section: "Sve teme"
+          save: "Spremi"
+          apply: "Primijeni"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Pretraživanje"
+            selected:
+              one: "%{count} odabrano"
+              few: "%{count} odabrano"
+              other: "%{count} odabrano"
+            undo: "Vrati na prethodno"
+            dismiss: "Odbaciti"

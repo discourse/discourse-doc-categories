@@ -27,7 +27,29 @@ es:
           label: "Tema del índice"
           errors:
             topic_not_found: "Tema no encontrado. No se mostrará el índice."
-            mismatched-category: "El índice no se mostrará porque el tema pertenece a una categoría diferente: %{category_name}"
+            mismatched_category: "El índice no se mostrará porque el tema pertenece a una categoría diferente: %{category_name}"
+        index_editor:
+          stay: "Permanecer"
+          mode_none: "Desactivado"
+          mode_direct: "Editor"
+          section_title_placeholder: "Título de la sección"
+          remove_link: "Eliminar enlace"
+          edit_link: "Editar enlace"
+          all_topics_section: "Todos los temas"
+          save: "Guardar"
+          apply: "Aplicar"
+          batch_select_all: "Seleccionar todo"
+          batch_delete: "Eliminar selección"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Buscar"
+            search_placeholder: "Filtrar por título"
+            selected:
+              one: "%{count} seleccionados"
+              other: "%{count} seleccionados"
+            retry: "Reintentar"
+            undo: "Deshacer"
+            dismiss: "Descartar"
       sidebar:
         filter:
           no_results:

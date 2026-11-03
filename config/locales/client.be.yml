@@ -5,3 +5,16 @@
 # https://translate.discourse.org/
 
 be:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "Адключаныя"
+          mode_direct: "Рэдактар"
+          all_topics_section: "Усе тэмы"
+          save: "Захаваць"
+          apply: "Прымяніць"
+          unindexed_topics:
+            search_field: "Пошук"
+            undo: "Адрабіць"
+            dismiss: "Адхіліць"

@@ -27,7 +27,29 @@ pt_BR:
           label: "Tópico do índice"
           errors:
             topic_not_found: "Tópico não encontrado! O índice não será exibido"
-            mismatched-category: "O índice não será exibido porque o tópico pertence a uma categoria diferente: %{category_name}"
+            mismatched_category: "O índice não será exibido porque o tópico pertence a uma categoria diferente: %{category_name}"
+        index_editor:
+          stay: "Permanecer"
+          mode_none: "Desativados"
+          mode_direct: "Editor(a)"
+          section_title_placeholder: "Título da seção"
+          remove_link: "Remover link"
+          edit_link: "Editar link"
+          all_topics_section: "Todos os tópicos"
+          save: "Salvar"
+          apply: "Aplicar"
+          batch_select_all: "Selecionar tudo"
+          batch_delete: "Excluir selecionados"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Pesquisar"
+            search_placeholder: "Filtrar pelo título"
+            selected:
+              one: "Selecionou %{count}"
+              other: "Selecionou %{count}"
+            retry: "Tentar novamente"
+            undo: "Desfazer"
+            dismiss: "Descartar"
       sidebar:
         filter:
           no_results:

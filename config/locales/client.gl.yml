@@ -9,3 +9,15 @@ gl:
     doc_categories:
       simple_mode:
         updated: "Actualizado"
+      category_settings:
+        index_editor:
+          stay: "Deixar"
+          mode_none: "Desactivado"
+          mode_direct: "Editor"
+          save: "Gardar"
+          apply: "Aplicar"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Buscar"
+            undo: "Desfacer"
+            dismiss: "Desbotar"

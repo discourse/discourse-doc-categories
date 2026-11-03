@@ -31,7 +31,28 @@ fr:
           label: "Sujet d'index"
           errors:
             topic_not_found: "Sujet introuvable ! L'index ne sera pas affiché"
-            mismatched-category: "L'index ne sera pas affiché, car le sujet appartient à une autre catégorie : %{category_name}"
+            mismatched_category: "L'index ne sera pas affiché, car le sujet appartient à une autre catégorie : %{category_name}"
+        index_editor:
+          stay: "Rester"
+          mode_none: "Désactivées"
+          mode_direct: "Éditeur"
+          section_title_placeholder: "Titre de la section"
+          remove_link: "Supprimer le lien"
+          edit_link: "Modifier le lien"
+          all_topics_section: "Tous les sujets"
+          save: "Enregistrer"
+          apply: "Appliquer"
+          batch_select_all: "Tout sélectionner"
+          batch_delete: "Supprimer la sélection"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Rechercher"
+            selected:
+              one: "Sélection : %{count}"
+              other: "Sélection : %{count}"
+            retry: "Réessayer"
+            undo: "Annuler"
+            dismiss: "Rejeter"
       sidebar:
         filter:
           no_results:

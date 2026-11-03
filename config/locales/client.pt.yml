@@ -9,3 +9,22 @@ pt:
     doc_categories:
       simple_mode:
         updated: "Atualizado"
+      category_settings:
+        index_editor:
+          mode_none: "Desativado"
+          mode_direct: "Editor"
+          remove_link: "Remover hiperligação"
+          edit_link: "Editar hiperligação"
+          save: "Guardar"
+          apply: "Aplicar"
+          batch_select_all: "Selecionar tudo"
+          batch_delete: "Eliminar seleção"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Procurar"
+            selected:
+              one: "%{count} selecionado"
+              other: "%{count} selecionados"
+            retry: "Tentar novamente"
+            undo: "Desfazer"
+            dismiss: "Ignorar"

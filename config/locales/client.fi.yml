@@ -9,3 +9,24 @@ fi:
     doc_categories:
       simple_mode:
         updated: "Päivitetty"
+      category_settings:
+        index_editor:
+          stay: "Jää"
+          mode_none: "Pois käytöstä"
+          mode_direct: "Muokkaaja"
+          section_title_placeholder: "Osion otsikko"
+          remove_link: "Poista linkki"
+          edit_link: "Muokkaa linkkiä"
+          all_topics_section: "Kaikki ketjut"
+          save: "Tallenna"
+          apply: "Käytä"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Hae"
+            search_placeholder: "Suodata nimen mukaan"
+            selected:
+              one: "%{count} valittu"
+              other: "%{count} valittu"
+            retry: "Yritä uudelleen"
+            undo: "Kumoa"
+            dismiss: "Selvä"

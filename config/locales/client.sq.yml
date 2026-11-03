@@ -5,3 +5,19 @@
 # https://translate.discourse.org/
 
 sq:
+  js:
+    doc_categories:
+      category_settings:
+        index_editor:
+          mode_none: "E çaktivizuar"
+          mode_direct: "Redaktor"
+          save: "Ruani"
+          apply: "Apliko"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "Kërko"
+            selected:
+              one: "%{count} zgjedhur"
+              other: "%{count} zgjedhur"
+            undo: "Zhbëj"
+            dismiss: "Hiqe"

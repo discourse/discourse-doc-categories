@@ -9,3 +9,17 @@ ko:
     doc_categories:
       simple_mode:
         updated: "업데이트"
+      category_settings:
+        index_editor:
+          stay: "머무르다"
+          mode_none: "비활성"
+          mode_direct: "에디터"
+          all_topics_section: "모든 글"
+          save: "저장"
+          apply: "적용"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "검색"
+            retry: "재시도"
+            undo: "실행 취소"
+            dismiss: "읽음으로 표시"

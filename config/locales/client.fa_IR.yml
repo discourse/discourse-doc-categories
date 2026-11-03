@@ -9,3 +9,21 @@ fa_IR:
     doc_categories:
       simple_mode:
         updated: "به روز شده"
+      category_settings:
+        index_editor:
+          stay: "ماندن"
+          mode_none: "ازکاراندازی"
+          mode_direct: "ویرایشگر"
+          section_title_placeholder: "عنوان بخش"
+          add_link: "افزودن پیوند"
+          all_topics_section: "همه موضوعات"
+          save: "ذخیره"
+          apply: "اعمال کردن"
+          unindexed_topics:
+            numbered_section: "%{title} (%{count})"
+            search_field: "جستجو"
+            selected:
+              one: "%{count} تا انتخاب شده است"
+              other: "%{count} تا انتخاب شده است"
+            undo: "بی‌اثر کردن"
+            dismiss: "رد کردن"
