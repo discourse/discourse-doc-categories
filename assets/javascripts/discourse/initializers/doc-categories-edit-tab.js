@@ -24,7 +24,9 @@ export default {
           );
         },
         condition: ({ category, siteSettings }) =>
-          siteSettings.doc_categories_enabled && isPresent(category.id),
+          siteSettings.doc_categories_enabled &&
+          siteSettings.doc_categories_index_editor &&
+          isPresent(category.id),
       });
     });
   },

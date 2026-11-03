@@ -86,6 +86,19 @@ describe "Doc Category Index Editor" do
   context "when the index editor setting is disabled" do
     before { SiteSetting.doc_categories_index_editor = false }
 
+    it "hides the doc index tab even with an existing index and advanced settings enabled" do
+      Fabricate(:doc_categories_index, category: category, index_topic_id: -1)
+      category_page = PageObjects::Pages::Category.new
+      category_page.visit_general(category)
+
+      expect(page).to have_no_css(".edit-category-doc-index")
+
+      category_page.toggle_advanced_settings
+
+      expect(page).to have_css(".edit-category-security")
+      expect(page).to have_no_css(".edit-category-doc-index")
+    end
+
     it "hides the editor mode option from the mode selector" do
       editor.visit_doc_index_tab(category)
       editor.open_mode_selector

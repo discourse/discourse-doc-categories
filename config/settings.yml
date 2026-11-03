@@ -17,7 +17,7 @@ doc_categories:
     hidden: true
     client: true
     upcoming_change:
-      status: "alpha"
+      status: "experimental"
       impact: "feature,admins"
       learn_more_url: "https://meta.discourse.org/t/-/415945"
       allow_enabled_for:
