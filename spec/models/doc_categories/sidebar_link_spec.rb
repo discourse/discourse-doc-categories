@@ -40,7 +40,13 @@ describe DocCategories::SidebarLink do
     topic = Fabricate(:topic, category: category).tap { |topic| Fabricate(:post, topic:) }
     topic.trash!
 
-    link = described_class.new(sidebar_section:, position: 1, topic:)
+    link =
+      described_class.new(
+        sidebar_section: sidebar_section,
+        position: 1,
+        topic_id: topic.id,
+        href: topic.relative_url,
+      )
 
     expect(link).not_to be_valid
     expect(link.errors[:topic_id]).to include("cannot reference a deleted topic")

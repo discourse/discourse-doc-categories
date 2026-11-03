@@ -9,6 +9,10 @@ DocCategories::Engine.routes.draw do
 
   get "knowledge-explorer" => "docs_legacy#redirect_url",
       :constraints => ::DocCategories::DocsLegacyConstraint.new
+
+  get "/doc-categories/indexes/:category_id/topics" => "indexes#topics"
+  post "/doc-categories/indexes/:category_id/unindexed_topics" => "indexes#unindexed_topics"
+  put "/doc-categories/indexes/:category_id" => "indexes#update"
 end
 
 Discourse::Application.routes.draw { mount ::DocCategories::Engine, at: "/" }

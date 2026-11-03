@@ -44,6 +44,32 @@ describe DocCategories::Initializers::HandlePostChanges do
     }.not_to raise_error
   end
 
+  it "enqueues auto-index remove for the old category when a topic moves" do
+    regular_topic =
+      Fabricate(:topic, category: documentation_category).tap { |t| Fabricate(:post, topic: t) }
+
+    expect_enqueued_with(
+      job: :doc_categories_auto_index,
+      args: {
+        action: "remove",
+        topic_id: regular_topic.id,
+      },
+    ) { revise(regular_topic.first_post, category_id: other_category.id) }
+  end
+
+  it "enqueues auto-index add for the new category when a topic moves" do
+    regular_topic =
+      Fabricate(:topic, category: other_category).tap { |t| Fabricate(:post, topic: t) }
+
+    expect_enqueued_with(
+      job: :doc_categories_auto_index,
+      args: {
+        action: "add",
+        topic_id: regular_topic.id,
+      },
+    ) { revise(regular_topic.first_post, category_id: documentation_category.id) }
+  end
+
   it "clears the index and refreshes the index's category when the index topic moves" do
     Jobs.run_immediately!
     revise(index_topic.first_post, category_id: other_category.id)

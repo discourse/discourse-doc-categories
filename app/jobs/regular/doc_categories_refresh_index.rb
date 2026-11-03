@@ -6,7 +6,7 @@ module Jobs
       category_id = args[:category_id]
       raise Discourse::InvalidParameters.new(:category_id) if category_id.blank?
 
-      DocCategories::IndexStructureRefresher.new(category_id).refresh!
+      DocCategories::IndexStructureRefresher.call(params: { category_id: category_id })
     end
   end
 end

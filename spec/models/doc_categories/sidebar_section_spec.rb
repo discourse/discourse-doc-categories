@@ -43,6 +43,17 @@ describe DocCategories::SidebarSection do
     expect(section.reload.sidebar_links.map(&:id)).to eq([earlier.id, middle.id, later.id])
   end
 
+  it "rejects a second auto-index section with a translated error" do
+    section = described_class.create!(index: doc_index, position: 1, auto_index: true)
+    duplicate = described_class.new(index: doc_index, position: 2, auto_index: true)
+
+    expect(section).to be_valid
+    expect(duplicate).not_to be_valid
+    expect(duplicate.errors[:auto_index]).to contain_exactly(
+      I18n.t("doc_categories.errors.only_one_auto_index_section"),
+    )
+  end
+
   it "cleans up sidebar links when destroyed" do
     section = described_class.create!(index: doc_index, position: 1, title: "Links")
     link = section.sidebar_links.create!(position: 1, title: "Earlier", href: "/earlier")

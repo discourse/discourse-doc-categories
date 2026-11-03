@@ -2,66 +2,103 @@
 
 module DocCategories
   class IndexStructureRefresher
-    def initialize(category_id)
-      @category_id = category_id
+    include Service::Base
+
+    params do
+      attribute :category_id, :integer
+
+      validates :category_id, presence: true
     end
 
-    def refresh!
-      index = DocCategories::Index.includes(:index_topic).find_by(category_id: category_id)
-      return unless index
+    model :index
+    policy :is_topic_mode
+    only_if(:invalid_index_topic) do
+      transaction { step :remove_index }
+      step :publish_changes
+      step :ensure_valid_topic
+    end
 
+    model :topic
+    step :parse_first_post
+    model :linked_topics, optional: true
+    model :built_sections, :build_sections, optional: true
+
+    transaction { step :replace_sections }
+    step :publish_changes
+
+    private
+
+    def fetch_index(params:)
+      DocCategories::Index.includes(:index_topic).find_by(category_id: params.category_id)
+    end
+
+    def is_topic_mode(index:)
+      index.mode_topic?
+    end
+
+    def invalid_index_topic(index:)
       topic = index.index_topic
-      unless valid_topic?(topic)
-        category_id = index.category_id
-        index.destroy!
-        publish_changes(category_id)
-        return
-      end
+      topic.nil? || topic.private_message? || topic.trashed? ||
+        topic.category_id != index.category_id
+    end
 
+    def remove_index(index:)
+      index.destroy!
+    end
+
+    def ensure_valid_topic
+      fail!("index topic is no longer valid")
+    end
+
+    def fetch_topic(index:)
+      index.index_topic
+    end
+
+    def parse_first_post(topic:)
       first_post = topic.first_post
-      return if first_post&.cooked.blank?
+      fail!("first post has no content") if first_post&.cooked.blank?
 
-      sections = DocCategories::DocIndexTopicParser.new(first_post.cooked).sections
-      sections = build_sections(sections)
+      context[:raw_sections] = Array(
+        DocCategories::DocIndexTopicParser.new(first_post.cooked).sections,
+      )
+    end
 
-      ActiveRecord::Base.transaction do
-        # it is far easier to just delete and recreate everything
-        index.sidebar_sections.destroy_all
+    def replace_sections(index:, built_sections:)
+      index.sidebar_sections.destroy_all
 
-        sections.each_with_index do |section, section_position|
-          section_record =
-            index.sidebar_sections.create!(title: section[:text], position: section_position)
+      built_sections.each_with_index do |section, section_position|
+        section_record =
+          index.sidebar_sections.create!(title: section[:text], position: section_position)
 
-          section[:links].each_with_index do |link, link_position|
-            section_record.sidebar_links.create!(
-              title: link[:text],
-              href: link[:href],
-              topic_id: link[:topic_id],
-              position: link_position,
-            )
-          end
+        section[:links].each_with_index do |link, link_position|
+          section_record.sidebar_links.create!(
+            title: link[:text],
+            href: link[:href],
+            topic_id: link[:topic_id],
+            position: link_position,
+          )
         end
       end
 
       index.touch
-      publish_changes(index.category_id)
     end
 
-    private
+    def publish_changes(index:)
+      Site.clear_cache
+      index.category.publish_category
+    end
 
-    attr_reader :category_id
-
-    def build_sections(raw_sections)
-      return [] if raw_sections.blank?
-
+    def fetch_linked_topics(raw_sections:)
       topic_ids =
         raw_sections
           .flat_map { |section| section[:links] }
           .filter_map { |link| DocCategories::Url.extract_topic_id_from_url(link[:href]) }
           .uniq
 
-      topics_by_id = ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
+      ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
+    end
 
+    def build_sections(index:, raw_sections:, linked_topics:)
       raw_sections.filter_map do |section|
         links =
           section[:links].filter_map do |link|
@@ -72,7 +109,7 @@ module DocCategories
 
             topic_id = DocCategories::Url.extract_topic_id_from_url(href)
             target_topic =
-              topic_id.present? ? sidebar_visible_target_topic(topics_by_id[topic_id]) : nil
+              (index.sidebar_visible_topic(linked_topics[topic_id]) if topic_id.present?)
             has_explicit_title = link_text.present? && link_text != href
             text = has_explicit_title ? link_text : (target_topic&.title || href)
 
@@ -83,34 +120,6 @@ module DocCategories
 
         { text: section[:text], links: links }
       end
-    end
-
-    def sidebar_visible_target_topic(topic)
-      return nil if topic.blank?
-      return nil if topic.private_message?
-      return nil if topic.trashed?
-      return nil if !topic.visible?
-      return topic if topic.category_id == category_id
-      return nil if topic.category&.read_restricted?
-
-      topic
-    end
-
-    def valid_topic?(topic)
-      return false if topic.blank?
-      return false if topic.private_message?
-      return false if topic.trashed?
-      return false if topic.category_id != category_id
-
-      true
-    end
-
-    def publish_changes(category_id)
-      category = ::Category.find_by(id: category_id)
-      return unless category
-
-      Site.clear_cache
-      category.publish_category
     end
   end
 end

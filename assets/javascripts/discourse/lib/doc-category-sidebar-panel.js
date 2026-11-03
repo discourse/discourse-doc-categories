@@ -1,5 +1,4 @@
 import { cached } from "@glimmer/tracking";
-import { computed } from "@ember/object";
 import { trustHTML } from "@ember/template";
 import { getOwnerWithFallback } from "discourse/lib/get-owner";
 import getURL, { samePrefix } from "discourse/lib/get-url";
@@ -149,8 +148,7 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get classNames() {
-    const list = ["docs-sidebar-nav-link"];
-    return list.join(" ");
+    return "docs-sidebar-nav-link";
   }
 
   get href() {
@@ -165,7 +163,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
     return this.#data.text;
   }
 
-  @computed("data.text")
   get keywords() {
     return {
       navigation: this.#data.text.toLowerCase().split(/\s+/g),
@@ -177,7 +174,7 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
   }
 
   get prefixValue() {
-    return "far-file";
+    return this.#data.icon || "far-file";
   }
 }
 
