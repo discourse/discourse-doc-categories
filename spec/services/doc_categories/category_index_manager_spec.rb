@@ -19,7 +19,10 @@ RSpec.describe DocCategories::CategoryIndexManager do
 
     let(:dependencies) { {} }
 
-    before { SiteSetting.doc_categories_enabled = true }
+    before do
+      SiteSetting.doc_categories_enabled = true
+      SiteSetting.doc_categories_index_editor = false
+    end
 
     context "when the contract is invalid" do
       let(:params) { { category_id: nil, topic_id: topic.id } }
@@ -31,6 +34,43 @@ RSpec.describe DocCategories::CategoryIndexManager do
       let(:params) { { category_id: -1, topic_id: topic.id } }
 
       it { is_expected.to fail_to_find_a_model(:category) }
+    end
+
+    context "when creating a direct-mode index with the editor disabled" do
+      let(:params) { { category_id: category.id, topic_id: -1 } }
+
+      it { is_expected.to fail_a_policy(:index_editor_enabled) }
+
+      it "leaves the index unconfigured and the category unpublished" do
+        expect(messages).to be_empty
+        expect(DocCategories::Index.exists?(category: category)).to eq(false)
+      end
+    end
+
+    context "when switching a topic-mode index to direct mode with the editor disabled" do
+      fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic: topic) }
+
+      let(:params) { { category_id: category.id, topic_id: "-1" } }
+
+      it { is_expected.to fail_a_policy(:index_editor_enabled) }
+
+      it "keeps the index topic and leaves the category unpublished" do
+        expect(messages).to be_empty
+        expect(index.reload.index_topic_id).to eq(topic.id)
+      end
+    end
+
+    context "when retaining a direct-mode index with the editor disabled" do
+      fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic_id: -1) }
+
+      let(:params) { { category_id: category.id, topic_id: "-1" } }
+
+      it { is_expected.to run_successfully }
+
+      it "keeps the direct-mode index and leaves the category unpublished" do
+        expect(messages).to be_empty
+        expect(index.reload).to be_mode_direct
+      end
     end
 
     context "when assigning a topic" do
@@ -112,6 +152,8 @@ RSpec.describe DocCategories::CategoryIndexManager do
 
     context "when assigning direct mode" do
       let(:params) { { category_id: category.id, topic_id: -1 } }
+
+      before { SiteSetting.doc_categories_index_editor = true }
 
       it { is_expected.to run_successfully }
 

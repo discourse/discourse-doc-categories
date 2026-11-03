@@ -18,6 +18,7 @@ module DocCategories
 
     model :category
     model :index, optional: true
+    policy :index_editor_enabled
 
     only_if(:assigning_topic_mode) do
       model :topic
@@ -43,6 +44,11 @@ module DocCategories
 
     def fetch_index(category:)
       DocCategories::Index.find_by(category: category)
+    end
+
+    def index_editor_enabled(params:, index:)
+      params.normalized_topic_id != DocCategories::Index::INDEX_TOPIC_ID_DIRECT ||
+        SiteSetting.doc_categories_index_editor || index&.mode_direct?
     end
 
     def assigning_topic_mode(params:)

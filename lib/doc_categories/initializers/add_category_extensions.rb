@@ -24,7 +24,7 @@ module ::DocCategories
               category_id: category.id,
               topic_id: value,
             },
-          )
+          ) { on_failed_policy(:index_editor_enabled) { raise Discourse::InvalidAccess } }
         end
 
         plugin.register_category_update_param_with_callback(

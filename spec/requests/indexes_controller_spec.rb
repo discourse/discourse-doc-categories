@@ -445,6 +445,67 @@ RSpec.describe ::DocCategories::IndexesController do
         expect(DocCategories::Index.find_by(category_id: category.id)).to be_nil
       end
 
+      [
+        ["without sections", { doc_index_topic_id: -1 }],
+        ["with blank sections", { doc_index_topic_id: "-1", doc_index_sections: "" }],
+        ["with empty sections", { doc_index_topic_id: -1, doc_index_sections: "[]" }],
+        [
+          "with sections",
+          {
+            doc_index_topic_id: "-1",
+            doc_index_sections: [
+              { title: "New section", links: [{ title: "Link", href: "https://example.com" }] },
+            ].to_json,
+          },
+        ],
+      ].each do |description, index_params|
+        it "rejects direct-mode assignment #{description} via category save" do
+          sign_in(admin)
+          original_name = category.name
+
+          put "/categories/#{category.id}.json",
+              params: {
+                name: "Renamed category",
+                color: category.color,
+                text_color: category.text_color,
+                **index_params,
+              }.to_json,
+              headers: {
+                "CONTENT_TYPE" => "application/json",
+              }
+
+          expect(response.status).to eq(403)
+          expect(DocCategories::Index.exists?(category: category)).to eq(false)
+          expect(category.reload.name).to eq(original_name)
+        end
+      end
+
+      it "keeps the topic index and category unchanged when direct-mode conversion is rejected" do
+        sign_in(admin)
+        topic = Fabricate(:topic_with_op, category: category)
+        index = Fabricate(:doc_categories_index, category: category, index_topic: topic)
+        section = Fabricate(:doc_categories_sidebar_section, index: index)
+        link = Fabricate(:doc_categories_sidebar_link, sidebar_section: section)
+        original_name = category.name
+
+        put "/categories/#{category.id}.json",
+            params: {
+              name: "Renamed category",
+              color: category.color,
+              text_color: category.text_color,
+              doc_index_topic_id: "-1",
+              doc_index_sections: [
+                { title: "Replacement", links: [{ title: "Link", href: "https://example.com" }] },
+              ].to_json,
+            }
+
+        expect(response.status).to eq(403)
+        expect(category.reload.name).to eq(original_name)
+        expect(index.reload.index_topic_id).to eq(topic.id)
+        expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
+        expect(section.sidebar_links.pluck(:id)).to eq([link.id])
+      end
+
       it "allows updates to an existing direct-mode index via category save" do
         sign_in(admin)
         DocCategories::Index.create!(
@@ -459,6 +520,7 @@ RSpec.describe ::DocCategories::IndexesController do
               name: category.name,
               color: category.color,
               text_color: category.text_color,
+              doc_index_topic_id: "-1",
               doc_index_sections: sections,
             }
 
@@ -811,6 +873,7 @@ RSpec.describe ::DocCategories::IndexesController do
     end
 
     it "creates a topic-mode index via category save when doc_index_sections is blank" do
+      SiteSetting.doc_categories_index_editor = false
       sign_in(admin)
       topic = Fabricate(:topic, category: category)
       Fabricate(:post, topic: topic)
@@ -841,6 +904,7 @@ RSpec.describe ::DocCategories::IndexesController do
             name: category.name,
             color: category.color,
             text_color: category.text_color,
+            doc_index_topic_id: -1,
             doc_index_sections: sections,
           }
 
@@ -852,6 +916,27 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(index.sidebar_sections.count).to eq(1)
       expect(index.sidebar_sections.first.title).to eq("Via Category")
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("Link")
+    end
+
+    it "switches a topic index to direct mode via category save with the editor enabled" do
+      sign_in(admin)
+      topic = Fabricate(:topic_with_op, category: category)
+      index = Fabricate(:doc_categories_index, category: category, index_topic: topic)
+
+      put "/categories/#{category.id}.json",
+          params: {
+            name: category.name,
+            color: category.color,
+            text_color: category.text_color,
+            doc_index_topic_id: "-1",
+            doc_index_sections: [
+              { title: "Replacement", links: [{ title: "Link", href: "https://example.com" }] },
+            ].to_json,
+          }
+
+      expect(response.status).to eq(200)
+      expect(index.reload).to be_mode_direct
+      expect(index.sidebar_sections.pluck(:title)).to eq(["Replacement"])
     end
 
     it "saves auto-index section via category save with doc_index_sections" do
