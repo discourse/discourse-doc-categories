@@ -40,14 +40,14 @@ module DocCategories
 
     def sidebar_structure
       sidebar_sections
-        .includes(sidebar_links: :topic)
+        .includes(sidebar_links: { topic: :category })
         .map do |section|
           links =
             section.sidebar_links.filter_map do |link|
-              # for text: always use link[:title] if present, otherwise use topic title if topic is valid
-              # for href: always use link[:href] if present, otherwise use topic relative_url if topic is valid
+              referenced_topic = link.topic
+              next if referenced_topic && !topic_category_visible?(referenced_topic)
 
-              topic = valid_topic(link.topic)
+              topic = valid_topic(referenced_topic)
 
               text = link.title.presence || (topic&.title)
               href = link.href.presence || (topic&.relative_url)
@@ -144,13 +144,16 @@ module DocCategories
     def sidebar_visible_topic(topic)
       topic = valid_topic(topic)
       return if topic.nil?
-      return topic if topic.category_id == category_id
-      return if topic.category&.read_restricted?
 
-      topic
+      topic if topic_category_visible?(topic)
     end
 
     private
+
+    def topic_category_visible?(topic)
+      !topic.private_message? &&
+        (topic.category_id == category_id || topic.category&.read_restricted? == false)
+    end
 
     def index_topic_matches_category
       return if index_topic&.category_id == category_id

@@ -12,7 +12,7 @@ module ::DocCategories
               query.includes(
                 doc_categories_index: [
                   :index_topic,
-                  { sidebar_sections: { sidebar_links: :topic } },
+                  { sidebar_sections: { sidebar_links: { topic: :category } } },
                 ],
               )
           end
