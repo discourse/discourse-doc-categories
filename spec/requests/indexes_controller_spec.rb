@@ -813,8 +813,7 @@ RSpec.describe ::DocCategories::IndexesController do
                 id: section.id,
                 title: "Topics",
                 auto_index: true,
-                links:
-                  section.sidebar_links.map { |l| { title: l.title, href: l.href, icon: l.icon } },
+                links: section.sidebar_links.map { |l| { title: l.title, href: l.href } },
               },
             ],
           }.to_json,

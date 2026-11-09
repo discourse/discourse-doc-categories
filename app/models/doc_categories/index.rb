@@ -53,7 +53,6 @@ module DocCategories
               href = link.href.presence || (topic&.relative_url)
               next if text.blank? || href.blank?
               result = { text:, href: }
-              result[:icon] = link.icon if link.icon.present?
               if link.topic_id.present?
                 result[:topic_id] = link.topic_id
                 result[:topic_title] = topic&.title
@@ -129,7 +128,7 @@ module DocCategories
           title = link[:title]
           title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
           section_record.sidebar_links.create!(
-            **link.slice(:href, :icon, :topic_id),
+            **link.slice(:href, :topic_id),
             title: title,
             position: link_position,
             auto_indexed:

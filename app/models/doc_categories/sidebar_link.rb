@@ -3,6 +3,7 @@
 module DocCategories
   class SidebarLink < ActiveRecord::Base
     self.table_name = "doc_categories_sidebar_links"
+    self.ignored_columns += %i[icon]
 
     belongs_to :sidebar_section,
                class_name: "DocCategories::SidebarSection",
@@ -51,7 +52,6 @@ end
 #  id                 :bigint           not null, primary key
 #  auto_indexed       :boolean          default(FALSE), not null
 #  href               :text             not null
-#  icon               :string(100)
 #  position           :integer          not null
 #  title              :string
 #  created_at         :datetime         not null

@@ -14,7 +14,6 @@ register_asset "stylesheets/common.scss"
 
 GlobalSetting.add_default :docs_path, "docs"
 
-register_svg_icon "far-file"
 register_svg_icon "eraser"
 register_svg_icon "check-double"
 register_svg_icon "bolt"

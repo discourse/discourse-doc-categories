@@ -232,19 +232,6 @@ export default class DocCategoryIndexEditor extends Component {
     return dupes;
   }
 
-  @cached
-  get favoriteIcons() {
-    const icons = new Set(["far-file", "link"]);
-    for (const section of this.sections) {
-      for (const link of section.links) {
-        if (link.icon) {
-          icons.add(link.icon);
-        }
-      }
-    }
-    return [...icons];
-  }
-
   get hasAutoIndexSection() {
     return this.sections.some((s) => s.autoIndex);
   }
@@ -918,7 +905,6 @@ export default class DocCategoryIndexEditor extends Component {
           title: link.title,
           href: link.href,
           topic_id: link.topic_id,
-          icon: link.icon,
         })),
       })),
     };
@@ -1148,7 +1134,6 @@ export default class DocCategoryIndexEditor extends Component {
                 topic_id: link.topic_id,
                 topicTitle: link.topicTitle,
                 autoTitle: link.autoTitle,
-                icon: link.icon || "far-file",
                 autoIndexed: link.autoIndexed || false,
                 isEditing: !link.title && !link.href,
               })
@@ -1184,7 +1169,6 @@ export default class DocCategoryIndexEditor extends Component {
               topic_id: link.topic_id ?? null,
               topicTitle: link.topic_title,
               autoTitle: link.topic_id && !link.custom_title,
-              icon: link.icon || "far-file",
               autoIndexed: link.auto_indexed || false,
             })
           )
@@ -1214,7 +1198,6 @@ export default class DocCategoryIndexEditor extends Component {
         topic_id: link.topic_id,
         topicTitle: link.topicTitle,
         autoTitle: link.autoTitle,
-        icon: link.icon,
         autoIndexed: link.autoIndexed || false,
       })),
     }));
@@ -1261,7 +1244,6 @@ export default class DocCategoryIndexEditor extends Component {
       title: topic.title || topic.fancy_title,
       href: `/t/${topic.slug}/${topic.id}`,
       type: "topic",
-      icon: "far-file",
       topic_id: topic.id,
       topicTitle: topic.title || topic.fancy_title,
       autoTitle: true,
@@ -1400,7 +1382,6 @@ export default class DocCategoryIndexEditor extends Component {
         title: link.title,
         href: link.href,
         topic_id: link.topic_id,
-        icon: link.icon,
       })),
     }));
     const serialized =
@@ -1604,7 +1585,6 @@ export default class DocCategoryIndexEditor extends Component {
               @controls={{controls}}
               @duplicateHrefs={{this.duplicateHrefs}}
               @duplicateTitles={{this.duplicateTitles}}
-              @favoriteIcons={{this.favoriteIcons}}
               @group={{group}}
               @hideResyncToggle={{this.subcategorySettingChanged}}
               @invertSelectionInSection={{this.invertSelectionInSection}}

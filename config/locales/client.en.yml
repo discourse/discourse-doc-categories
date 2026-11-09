@@ -62,7 +62,6 @@ en:
           index_all_topics: "Reindex all topics"
           add_missing_topics: "Add missing topics"
           topics_truncated: "Only the first %{loaded} of %{total} topics were loaded. Some topics may not appear in the list."
-          change_icon: "Change icon"
           edit_link: "Edit link"
           edit_section_title: "Edit section title"
           confirm_edit: "Confirm edit"

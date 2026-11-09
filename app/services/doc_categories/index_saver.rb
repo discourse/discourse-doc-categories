@@ -82,9 +82,7 @@ module DocCategories
 
               next if link_title.blank? && topic_id.blank?
 
-              link_icon = link_param[:icon].to_s.strip.first(100).presence
-
-              { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
+              { title: link_title, href: link_href, topic_id: topic_id }
             end
 
           auto_index = ActiveRecord::Type::Boolean.new.cast(section_param[:auto_index])
