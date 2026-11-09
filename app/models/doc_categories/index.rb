@@ -8,6 +8,7 @@ module DocCategories
     # NULL = no index configured (MODE_NONE), -1 = visual editor (MODE_DIRECT),
     # positive integer = topic-based index (MODE_TOPIC).
     INDEX_TOPIC_ID_DIRECT = -1
+    MAX_SECTION_DEPTH = 3
     MAX_SECTIONS = 50
     MAX_LINKS_PER_SECTION = 200
 
@@ -39,37 +40,9 @@ module DocCategories
     end
 
     def sidebar_structure
-      sidebar_sections
-        .includes(sidebar_links: { topic: :category })
-        .map do |section|
-          links =
-            section.sidebar_links.filter_map do |link|
-              referenced_topic = link.topic
-              next if referenced_topic && !topic_category_visible?(referenced_topic)
-
-              topic = valid_topic(referenced_topic)
-
-              text = link.title.presence || (topic&.title)
-              href = link.href.presence || (topic&.relative_url)
-              next if text.blank? || href.blank?
-              result = { text:, href: }
-              result[:icon] = link.icon if link.icon.present?
-              if link.topic_id.present?
-                result[:topic_id] = link.topic_id
-                result[:topic_title] = topic&.title
-                result[:custom_title] = link.title.present?
-              end
-              result[:auto_indexed] = true if link.auto_indexed?
-              result
-            end
-
-          next if links.blank? && !section.auto_index?
-
-          section_result = { id: section.id, text: section.title, links: links }
-          section_result[:auto_index] = true if section.auto_index?
-          section_result
-        end
-        .compact
+      sections =
+        sidebar_sections.includes(sidebar_links: { topic: :category }).group_by(&:parent_section_id)
+      serialize_sections(sections.fetch(nil, []), sections).map(&:last)
     end
 
     def auto_index_section
@@ -106,8 +79,7 @@ module DocCategories
     end
 
     def replace_sidebar_sections!(sections)
-      topic_ids =
-        sections.flat_map { |section| section[:links].filter_map { |link| link[:topic_id] } }.uniq
+      topic_ids = section_topic_ids(sections).uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
       auto_indexed_topic_ids =
         DocCategories::SidebarLink
@@ -118,24 +90,8 @@ module DocCategories
           .to_set
 
       sidebar_sections.destroy_all
-      sections.each_with_index do |section, section_position|
-        section_record =
-          sidebar_sections.create!(
-            title: section[:title],
-            position: section_position,
-            auto_index: section[:auto_index] || false,
-          )
-        section[:links].each_with_index do |link, link_position|
-          title = link[:title]
-          title = nil if link[:topic_id] && title == topic_titles[link[:topic_id]]
-          section_record.sidebar_links.create!(
-            **link.slice(:href, :icon, :topic_id),
-            title: title,
-            position: link_position,
-            auto_indexed:
-              link[:topic_id].present? && auto_indexed_topic_ids.include?(link[:topic_id]),
-          )
-        end
+      sections.each_with_index do |section, position|
+        create_section!(section, nil, position, topic_titles, auto_indexed_topic_ids)
       end
 
       touch
@@ -149,6 +105,84 @@ module DocCategories
     end
 
     private
+
+    def serialize_sections(roots, sections)
+      roots.filter_map do |section|
+        children = serialize_sections(sections.fetch(section.id, []), sections)
+        links =
+          section.sidebar_links.filter_map do |link|
+            data = serialize_link(link)
+            [link.position, data] if data
+          end
+        next if children.empty? && links.empty? && !section.auto_index?
+
+        data = { id: section.id, text: section.title }
+        data[:auto_index] = true if section.auto_index?
+        if children.empty?
+          data[:links] = links.map(&:last)
+        else
+          entries = links.map { |position, link| [position, link.merge(type: "link")] }
+          entries.concat(
+            children.map { |position, child| [position, child.merge(type: "section")] },
+          )
+          data[:items] = entries.sort_by(&:first).map(&:last)
+        end
+        [section.position, data]
+      end
+    end
+
+    def serialize_link(link)
+      referenced_topic = link.topic
+      return if referenced_topic && !topic_category_visible?(referenced_topic)
+
+      topic = valid_topic(referenced_topic)
+      text = link.title.presence || topic&.title
+      href = link.href.presence || topic&.relative_url
+      return if text.blank? || href.blank?
+
+      result = { text:, href: }
+      result[:icon] = link.icon if link.icon.present?
+      if link.topic_id.present?
+        result[:topic_id] = link.topic_id
+        result[:topic_title] = topic&.title
+        result[:custom_title] = link.title.present?
+      end
+      result[:auto_indexed] = true if link.auto_indexed?
+      result
+    end
+
+    def section_topic_ids(sections)
+      sections.flat_map do |section|
+        section[:items].flat_map do |item|
+          item.key?(:items) ? section_topic_ids([item]) : Array(item[:topic_id])
+        end
+      end
+    end
+
+    def create_section!(section, parent, position, topic_titles, auto_indexed_topic_ids)
+      record =
+        sidebar_sections.create!(
+          title: section[:title],
+          parent_section: parent,
+          position:,
+          auto_index: section[:auto_index],
+        )
+      section[:items].each_with_index do |item, item_position|
+        if item.key?(:items)
+          create_section!(item, record, item_position, topic_titles, auto_indexed_topic_ids)
+        else
+          title = item[:title]
+          title = nil if item[:topic_id] && title == topic_titles[item[:topic_id]]
+          record.sidebar_links.create!(
+            **item.slice(:href, :icon, :topic_id),
+            title:,
+            position: item_position,
+            auto_indexed:
+              item[:topic_id].present? && auto_indexed_topic_ids.include?(item[:topic_id]),
+          )
+        end
+      end
+    end
 
     def topic_category_visible?(topic)
       !topic.private_message? &&

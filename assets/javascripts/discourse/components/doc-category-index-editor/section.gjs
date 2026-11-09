@@ -18,7 +18,11 @@ import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import dDragDwell from "discourse/ui-kit/modifiers/d-drag-dwell";
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION } from "../../lib/constants.js";
+import {
+  MAX_LINKS_PER_SECTION,
+  MAX_SECTION_DEPTH,
+} from "../../lib/constants.js";
+import { isIndexSection, sectionLinks } from "../../lib/doc-index-tree.js";
 import { IndexEditorLink, LINK_DRAG_TYPE } from "./link.gjs";
 
 /** What a dragged batch selection of sections publishes. */
@@ -80,7 +84,7 @@ export class IndexEditorSection extends Component {
   }
 
   get linkCount() {
-    return this.args.section.links.length;
+    return sectionLinks(this.args.section).length;
   }
 
   /**
@@ -99,13 +103,32 @@ export class IndexEditorSection extends Component {
   }
 
   get hasDuplicateLinks() {
-    return this.args.section.links.some((link) =>
+    return sectionLinks(this.args.section).some((link) =>
       this.args.duplicateHrefs?.has(link.href)
     );
   }
 
+  get hasSubsections() {
+    return this.args.section.items.some(isIndexSection);
+  }
+
+  get depthLimitReached() {
+    return this.args.sectionDepth(this.args.section) >= MAX_SECTION_DEPTH;
+  }
+
+  get depthLimitMessage() {
+    return i18n(
+      "doc_categories.category_settings.index_editor.section_depth_limit",
+      {
+        count: MAX_SECTION_DEPTH,
+      }
+    );
+  }
+
   get isFirstSection() {
-    return this.args.isFirstSection?.(this.args.section);
+    return (
+      this.args.isFirstSection?.(this.args.section) && !this.hasSubsections
+    );
   }
 
   get missingTitleError() {
@@ -140,6 +163,12 @@ export class IndexEditorSection extends Component {
 
     return i18n(
       "doc_categories.category_settings.index_editor.section_title_placeholder"
+    );
+  }
+
+  get canDropBatchSectionsInside() {
+    return (
+      this.canDropBatchSections() && this.args.canAddChild(this.args.section)
     );
   }
 
@@ -227,6 +256,11 @@ export class IndexEditorSection extends Component {
   }
 
   @action
+  onBatchSectionDropInside() {
+    this.args.onBatchSectionDropInside(this.args.section);
+  }
+
+  @action
   onBatchLinkDrop() {
     this.args.onBatchItemDrop(null, this.args.section, false);
   }
@@ -241,7 +275,7 @@ export class IndexEditorSection extends Component {
     if (this.linkLimitReached) {
       return;
     }
-    this.args.section.links.push(
+    this.args.section.items.push(
       trackedObject({
         title: "",
         href: "",
@@ -269,7 +303,7 @@ export class IndexEditorSection extends Component {
       return;
     }
     const topicTitle = topic.title || topic.fancy_title;
-    this.args.section.links.push(
+    this.args.section.items.push(
       trackedObject({
         title: topicTitle,
         href: `/t/${topic.slug}/${topic.id}`,
@@ -308,9 +342,9 @@ export class IndexEditorSection extends Component {
         "doc_categories.category_settings.index_editor.confirm_remove_link"
       ),
       didConfirm: () => {
-        const idx = this.args.section.links.indexOf(link);
+        const idx = this.args.section.items.indexOf(link);
         if (idx !== -1) {
-          this.args.section.links.splice(idx, 1);
+          this.args.section.items.splice(idx, 1);
         }
         this.args.onChange?.();
       },
@@ -319,7 +353,10 @@ export class IndexEditorSection extends Component {
 
   /** What to call a link: its own title, or the placeholder standing for one. */
   @action
-  linkLabel(link) {
+  itemLabel(link) {
+    if (isIndexSection(link)) {
+      return this.args.sectionPath(link);
+    }
     return (
       link.title ||
       i18n(
@@ -334,10 +371,20 @@ export class IndexEditorSection extends Component {
    * whole row.
    */
   @action
-  linkRowClass(link) {
+  itemRowClass(link) {
+    if (isIndexSection(link)) {
+      return "doc-category-index-editor__section-row";
+    }
     return this.args.duplicateHrefs?.has(link.href)
       ? "doc-category-index-editor__link --duplicate"
       : "doc-category-index-editor__link";
+  }
+
+  @action
+  removeItem(item) {
+    return isIndexSection(item)
+      ? this.args.onRemoveSection(item)
+      : this.removeLink(item);
   }
 
   <template>
@@ -362,8 +409,11 @@ export class IndexEditorSection extends Component {
       class={{dConcatClass
         "doc-category-index-editor__section"
         (if (@isSectionSelected @section) "--selected")
+        (if this.hasSubsections "--has-subsections")
+        (if (@canMoveOut @section) "--nested")
         (if (or this.titleValidationError this.missingTitleError) "--error")
       }}
+      data-doc-index-section={{@sectionUid}}
       {{! A batch selection of sections lands here rather than on the row: the
             row belongs to the list, which is switched off in batch mode. }}
       {{dDragAndDropTarget
@@ -539,6 +589,14 @@ export class IndexEditorSection extends Component {
               @icon="pencil"
               @title="doc_categories.category_settings.index_editor.edit_section_title"
             />
+            {{#if (@canMoveOut @section)}}
+              <DButton
+                class="btn-flat btn-small doc-category-index-editor__move-out"
+                @action={{fn @onMoveOut @section}}
+                @icon="arrow-turn-up"
+                @title="doc_categories.category_settings.index_editor.move_section_out"
+              />
+            {{/if}}
             {{#if @controls.remove}}
               <@controls.remove
                 class="btn-flat btn-small doc-category-index-editor__remove-btn"
@@ -575,41 +633,59 @@ export class IndexEditorSection extends Component {
         {{! Rendered even while collapsed, so the section stays a registered
               member of the group and keeps standing as a destination in every
               other section's move menu. The body is what hides it. }}
+        {{#if this.canDropBatchSectionsInside}}
+          <div
+            class="doc-category-index-editor__batch-section-drop"
+            {{dDragAndDropTarget
+              accepts=SECTION_DRAG_TYPE
+              position="inside"
+              onDrop=this.onBatchSectionDropInside
+            }}
+          >
+            {{i18n
+              "doc_categories.category_settings.index_editor.drop_sections_inside"
+            }}
+          </div>
+        {{/if}}
         <div class="doc-category-index-editor__links">
           <DReorderableList
             class="doc-category-index-editor__link-list"
             @controls="manual"
             @disabled={{@batchMode}}
             @group={{@group}}
-            @items={{@section.links}}
+            @items={{@section.items}}
             @itemTag="div"
-            @label={{this.linkLabel}}
+            @label={{this.itemLabel}}
             @listId={{@sectionUid}}
-            @listLabel={{this.displayTitle}}
-            @onRemove={{this.removeLink}}
+            @listLabel={{@sectionPath @section}}
+            @onRemove={{this.removeItem}}
             @removeIcon="trash-can"
-            @rowClass={{this.linkRowClass}}
+            @rowClass={{this.itemRowClass}}
             @spill={{true}}
             @tag="div"
           >
-            <:row as |link controls|>
-              <IndexEditorLink
-                @batchMode={{@batchMode}}
-                @controls={{controls}}
-                @duplicateHrefs={{@duplicateHrefs}}
-                @favoriteIcons={{@favoriteIcons}}
-                @isBatchDraggingItems={{and
-                  @isBatchDragging
-                  (eq @batchDragType "items")
-                }}
-                @isSelected={{@isItemSelected link}}
-                @link={{link}}
-                @onBatchItemDrop={{@onBatchItemDrop}}
-                @onChange={{@onChange}}
-                @onToggleSelection={{fn @toggleItemSelection link}}
-                @searchFilters={{@searchFilters}}
-                @section={{@section}}
-              />
+            <:row as |item controls|>
+              {{#if (isIndexSection item)}}
+                {{yield item controls}}
+              {{else}}
+                <IndexEditorLink
+                  @batchMode={{@batchMode}}
+                  @controls={{controls}}
+                  @duplicateHrefs={{@duplicateHrefs}}
+                  @favoriteIcons={{@favoriteIcons}}
+                  @isBatchDraggingItems={{and
+                    @isBatchDragging
+                    (eq @batchDragType "items")
+                  }}
+                  @isSelected={{@isItemSelected item}}
+                  @link={{item}}
+                  @onBatchItemDrop={{@onBatchItemDrop}}
+                  @onChange={{@onChange}}
+                  @onToggleSelection={{fn @toggleItemSelection item}}
+                  @searchFilters={{@searchFilters}}
+                  @section={{@section}}
+                />
+              {{/if}}
             </:row>
           </DReorderableList>
 
@@ -707,6 +783,19 @@ export class IndexEditorSection extends Component {
                   </combo.Menu>
                 </:default>
               </DComboButton>
+              {{#if (@canAddChild @section)}}
+                <DButton
+                  class="btn-default btn-small doc-category-index-editor__add-subsection"
+                  @action={{fn @onAddSection @section}}
+                  @disabled={{@sectionLimitReached}}
+                  @icon="plus"
+                  @label="doc_categories.category_settings.index_editor.add_subsection"
+                />
+              {{else if this.depthLimitReached}}
+                <span class="doc-category-index-editor__capacity-message">
+                  {{this.depthLimitMessage}}
+                </span>
+              {{/if}}
               {{#if this.linkLimitReached}}
                 <span class="doc-category-index-editor__capacity-message">
                   {{this.linkLimitMessage}}

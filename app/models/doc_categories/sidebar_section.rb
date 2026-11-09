@@ -9,6 +9,8 @@ module DocCategories
                foreign_key: :index_id,
                inverse_of: :sidebar_sections
 
+    belongs_to :parent_section, class_name: "DocCategories::SidebarSection", optional: true
+
     has_many :sidebar_links,
              -> { order(:position) },
              class_name: "DocCategories::SidebarLink",
@@ -17,11 +19,16 @@ module DocCategories
              dependent: :destroy
 
     validates :index_id, presence: true
-    validates :position, presence: true, uniqueness: { scope: :index_id }
+    validates :position, presence: true, uniqueness: { scope: %i[index_id parent_section_id] }
     validates :title, length: { maximum: 255 }, allow_blank: true
+    validate :parent_belongs_to_index, if: :parent_section_id?
     validate :only_one_auto_index_section_per_index, if: :auto_index?
 
     private
+
+    def parent_belongs_to_index
+      errors.add(:parent_section, :invalid) if parent_section&.index_id != index_id
+    end
 
     def only_one_auto_index_section_per_index
       existing = self.class.where(index_id: index_id, auto_index: true).where.not(id: id).exists?
@@ -36,15 +43,17 @@ end
 #
 # Table name: doc_categories_sidebar_sections
 #
-#  id         :bigint           not null, primary key
-#  auto_index :boolean          default(FALSE), not null
-#  position   :integer          not null
-#  title      :string
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
-#  index_id   :bigint           not null
+#  id                :bigint           not null, primary key
+#  auto_index        :boolean          default(FALSE), not null
+#  position          :integer          not null
+#  title             :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  index_id          :bigint           not null
+#  parent_section_id :bigint
 #
 # Indexes
 #
-#  idx_doc_categories_sections_on_index_id_and_position  (index_id,position) UNIQUE
+#  idx_doc_categories_sections_on_parent_and_position          (index_id,parent_section_id,position) UNIQUE
+#  index_doc_categories_sidebar_sections_on_parent_section_id  (parent_section_id)
 #

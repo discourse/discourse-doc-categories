@@ -25,9 +25,11 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
     get sections() {
       const router = getOwnerWithFallback(this).lookup("service:router");
 
-      return this.docCategorySidebar.sectionsConfig.map((config) => {
-        return prepareDocsSection({ config, router });
-      });
+      return this.docCategorySidebar.sectionsConfig
+        .flatMap(flattenDocsSection)
+        .map((config) => {
+          return prepareDocsSection({ config, router });
+        });
     }
 
     get filterable() {
@@ -59,6 +61,18 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
   };
 
 export default sidebarPanelClassBuilder;
+
+function flattenDocsSection(section) {
+  if (!section.items) {
+    return [section];
+  }
+  const links = section.items.filter((item) => item.type === "link");
+  const children = section.items.filter((item) => item.type === "section");
+  return [
+    ...(links.length ? [{ ...section, links }] : []),
+    ...children.flatMap(flattenDocsSection),
+  ];
+}
 
 function prepareDocsSection({ config, router }) {
   return class extends BaseCustomSidebarSection {

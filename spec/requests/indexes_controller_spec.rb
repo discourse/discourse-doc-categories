@@ -894,6 +894,96 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(index.index_topic_id).to eq(topic.id)
     end
 
+    context "with nested sections" do
+      let(:sections) do
+        [
+          {
+            title: "Guides",
+            items: [
+              { type: "link", title: "Pages", href: "/pages" },
+              {
+                type: "section",
+                title: "Docs",
+                items: [
+                  { type: "link", title: "Create a doc", href: "/create" },
+                  {
+                    type: "section",
+                    title: "Sidebar",
+                    links: [{ title: "Sidebar items", href: "/sidebar" }],
+                  },
+                ],
+              },
+              { type: "link", title: "Reference", href: "/reference" },
+            ],
+          },
+        ]
+      end
+
+      before { sign_in(admin) }
+
+      it "round-trips mixed sibling order through Apply" do
+        put "/doc-categories/indexes/#{category.id}.json", params: { sections: }, as: :json
+
+        expect(response.status).to eq(200)
+        structure = response.parsed_body["index_structure"]
+        expect(structure.first["items"].pluck("text")).to eq(%w[Pages Docs Reference])
+        expect(structure.first["items"][1]["items"].pluck("text")).to eq(
+          ["Create a doc", "Sidebar"],
+        )
+        expect(structure.first["items"][1]["items"][1]["links"].pluck("text")).to eq(
+          ["Sidebar items"],
+        )
+
+        index = DocCategories::Index.find_by!(category:)
+        guides = index.sidebar_sections.find_by!(title: "Guides")
+        docs = index.sidebar_sections.find_by!(title: "Docs")
+        sidebar = index.sidebar_sections.find_by!(title: "Sidebar")
+        expect([guides.parent_section_id, docs.parent_section_id, sidebar.parent_section_id]).to eq(
+          [nil, guides.id, docs.id],
+        )
+      end
+
+      it "round-trips the same tree through Save Category" do
+        put "/categories/#{category.id}.json",
+            params: {
+              name: category.name,
+              color: category.color,
+              text_color: category.text_color,
+              doc_index_topic_id: -1,
+              doc_index_sections: sections.to_json,
+            }
+
+        expect(response.status).to eq(200)
+        index = DocCategories::Index.find_by!(category:)
+        expect(index.sidebar_structure.first[:items].pluck(:text)).to eq(%w[Pages Docs Reference])
+        expect(index.sidebar_structure.first[:items][1][:items].pluck(:text)).to eq(
+          ["Create a doc", "Sidebar"],
+        )
+      end
+
+      it "rejects a fourth section level before replacing the index" do
+        index =
+          DocCategories::Index.create!(
+            category:,
+            index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+          )
+        existing = index.sidebar_sections.create!(title: "Existing", position: 0)
+        sidebar = sections.first[:items][1][:items][1]
+        sidebar[:items] = [
+          { type: "section", title: "Too deep", links: [{ title: "Link", href: "/link" }] },
+        ]
+        sidebar.delete(:links)
+
+        put "/doc-categories/indexes/#{category.id}.json", params: { sections: }, as: :json
+
+        expect(response.status).to eq(400)
+        expect(response.parsed_body["errors"]).to eq(
+          [I18n.t("doc_categories.errors.section_depth_limit", max: 3)],
+        )
+        expect(index.sidebar_sections.pluck(:id)).to eq([existing.id])
+      end
+    end
+
     it "creates an index with sections via category save using doc_index_sections" do
       sign_in(admin)
 
