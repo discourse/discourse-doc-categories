@@ -265,6 +265,16 @@ body.doc-simple-mode {
       padding-top: 1.25em;
     }
 
+    &.--nested,
+    &.--has-subsections {
+      border-color: transparent;
+      padding-inline-end: 0;
+
+      > .doc-category-index-editor__section-body {
+        border-inline-start: 1px solid var(--primary-low);
+      }
+    }
+
     &.--error {
       border-color: var(--danger);
     }
@@ -371,6 +381,13 @@ body.doc-simple-mode {
     }
   }
 
+  &__batch-section-drop {
+    margin-inline-start: 2em;
+    padding: 0.5em;
+    border: 1px dashed var(--primary-low);
+    color: var(--primary-high);
+  }
+
   &__links {
     display: flex;
     flex-direction: column;
@@ -389,6 +406,10 @@ body.doc-simple-mode {
     /* A section with no links is a live drop target with no height to drop
        onto, and the list marks that state itself. Toned down from the default
        so it reads as a slot inside a section rather than a second section. */
+
+    > .doc-category-index-editor__section-row {
+      margin-block: 0.25em;
+    }
 
     &.--empty-drop-target {
       min-height: 2.5em;

@@ -4,6 +4,7 @@ import { ajax } from "discourse/lib/ajax";
 import discourseDebounce from "discourse/lib/debounce";
 import { withoutPrefix } from "discourse/lib/get-url";
 import DiscourseURL from "discourse/lib/url";
+import { sectionEntries, sectionLinks } from "./doc-index-tree.js";
 
 const MAX_HREF_LENGTH = 2000;
 
@@ -48,8 +49,8 @@ export function draftTopicReferences(sections) {
   const topicIds = new Set();
   const hrefs = new Set();
 
-  for (const section of sections) {
-    for (const link of section.links) {
+  for (const { section } of sectionEntries(sections)) {
+    for (const link of sectionLinks(section)) {
       const topicId = Number(link.topic_id);
       if (Number.isInteger(topicId) && topicId > 0) {
         topicIds.add(topicId);

@@ -14,23 +14,61 @@ module DocCategories
       validates :category_id, presence: true
 
       def sections_error
-        return if sections.blank?
-        unless sections.is_a?(Array) && sections.all? { |section| section.is_a?(Hash) }
-          return I18n.t("doc_categories.errors.invalid_sections")
-        end
-        if sections.size > DocCategories::Index::MAX_SECTIONS
+        return if sections.nil?
+        return invalid_sections unless sections.is_a?(Array)
+
+        validate_sections(sections, 1, { sections: 0, auto_index: 0 })
+      end
+
+      def built_sections
+        build_sections(sections || [])
+      end
+
+      private
+
+      def invalid_sections
+        I18n.t("doc_categories.errors.invalid_sections")
+      end
+
+      def section_items(section)
+        return section[:items] if section.key?(:items)
+
+        links = section[:links] || []
+        return unless links.is_a?(Array) && links.all?(Hash)
+
+        links.map { |link| link.symbolize_keys.merge(type: "link") }
+      end
+
+      def validate_sections(sections, depth, counts)
+        if depth > DocCategories::Index::MAX_SECTION_DEPTH
           return(
             I18n.t(
-              "doc_categories.errors.too_many_sections",
-              max: DocCategories::Index::MAX_SECTIONS,
+              "doc_categories.errors.section_depth_limit",
+              max: DocCategories::Index::MAX_SECTION_DEPTH,
             )
           )
         end
-        sections.each do |section|
-          links = section.to_h.with_indifferent_access[:links] || []
-          unless links.is_a?(Array) && links.all? { |link| link.is_a?(Hash) }
-            return I18n.t("doc_categories.errors.invalid_sections")
+
+        sections.each do |raw_section|
+          return invalid_sections unless raw_section.is_a?(Hash)
+          if (counts[:sections] += 1) > DocCategories::Index::MAX_SECTIONS
+            return(
+              I18n.t(
+                "doc_categories.errors.too_many_sections",
+                max: DocCategories::Index::MAX_SECTIONS,
+              )
+            )
           end
+
+          section = raw_section.symbolize_keys
+          items = section_items(section)
+          return invalid_sections unless items.is_a?(Array) && items.all?(Hash)
+          items = items.map(&:symbolize_keys)
+          unless items.all? { |item| %w[link section].include?(item[:type]) }
+            return invalid_sections
+          end
+
+          children, links = items.partition { |item| item[:type] == "section" }
           if links.size > DocCategories::Index::MAX_LINKS_PER_SECTION
             return(
               I18n.t(
@@ -39,59 +77,55 @@ module DocCategories
               )
             )
           end
-        end
-        if sections.count { |section|
-             ActiveRecord::Type::Boolean.new.cast(section.to_h.with_indifferent_access[:auto_index])
-           } > 1
-          I18n.t("doc_categories.errors.only_one_auto_index_section")
-        end
-      end
 
-      def incoming_auto_index_section_id
-        return if sections.blank?
-
-        section =
-          Array(sections).find do |candidate|
-            ActiveRecord::Type::Boolean.new.cast(
-              candidate.to_h.with_indifferent_access[:auto_index],
-            )
+          auto_index = ActiveRecord::Type::Boolean.new.cast(section[:auto_index])
+          return invalid_sections if depth > 1 && (section[:title].to_s.strip.blank? || auto_index)
+          if children.present? && (section[:title].to_s.strip.blank? || auto_index)
+            return invalid_sections
           end
-        section&.to_h&.with_indifferent_access&.dig(:id).presence&.to_i
+          if auto_index && (counts[:auto_index] += 1) > 1
+            return I18n.t("doc_categories.errors.only_one_auto_index_section")
+          end
+
+          if children.present? && (error = validate_sections(children, depth + 1, counts))
+            return error
+          end
+        end
+        nil
       end
 
-      def built_sections
-        return [] if sections.blank?
-
-        sections_data = Array(sections).map { |section| section.to_h.with_indifferent_access }
-        sections_data.filter_map.with_index do |section_param, idx|
-          title = section_param[:title].to_s.strip.first(255)
-          # First section is allowed to have a blank title (not collapsible in sidebar)
-          next if title.blank? && idx > 0
-
-          links = section_param[:links] || []
-          links =
-            links.filter_map do |link_param|
-              link_param = link_param.to_h.with_indifferent_access
-              link_title = link_param[:title].to_s.strip.first(255).presence
-              link_href = link_param[:href].to_s.strip.first(2000)
-              next if link_href.blank?
-
-              topic_id =
-                link_param[:topic_id].presence&.to_i ||
-                  DocCategories::Url.extract_topic_id_from_url(link_href)
-
-              next if link_title.blank? && topic_id.blank?
-
-              link_icon = link_param[:icon].to_s.strip.first(100).presence
-
-              { title: link_title, href: link_href, icon: link_icon, topic_id: topic_id }
-            end
-
-          auto_index = ActiveRecord::Type::Boolean.new.cast(section_param[:auto_index])
-          next if links.blank? && !auto_index
-
-          { title: title, links: links, auto_index: auto_index || false }
+      def build_sections(sections)
+        sections.filter_map.with_index do |section, position|
+          build_section(section.symbolize_keys, allow_untitled: position.zero?)
         end
+      end
+
+      def build_section(section, allow_untitled: false)
+        title = section[:title].to_s.strip.first(255)
+        return if title.blank? && !allow_untitled
+
+        items =
+          section_items(section).filter_map do |raw_item|
+            item = raw_item.symbolize_keys
+            item[:type] == "section" ? build_section(item) : build_link(item)
+          end
+
+        auto_index = ActiveRecord::Type::Boolean.new.cast(section[:auto_index])
+        return if items.blank? && !auto_index
+
+        { id: section[:id], title:, items:, auto_index: auto_index || false }
+      end
+
+      def build_link(link)
+        title = link[:title].to_s.strip.first(255).presence
+        href = link[:href].to_s.strip.first(2000)
+        return if href.blank?
+
+        topic_id =
+          link[:topic_id].presence&.to_i || DocCategories::Url.extract_topic_id_from_url(href)
+        return if title.blank? && topic_id.blank?
+
+        { title:, href:, icon: link[:icon].to_s.strip.first(100).presence, topic_id: }
       end
     end
 
@@ -130,21 +164,22 @@ module DocCategories
     def parse_and_validate_sections(params:)
       error = params.sections_error
       fail!(error) if error
+      context[:built_sections] = params.built_sections
     end
 
-    def determine_sync_needed(params:, index:)
+    def determine_sync_needed(params:, index:, built_sections:)
       # The submitted section ID refers to the rows before replacement.
+      incoming_id = built_sections.find { |section| section[:auto_index] }&.dig(:id).presence&.to_i
       context[:sync_required] = params.force_sync ||
         (
           !params.auto_index_include_subcategories.nil? &&
             params.auto_index_include_subcategories !=
               (index&.auto_index_include_subcategories || false)
-        ) || params.incoming_auto_index_section_id.nil? ||
-        params.incoming_auto_index_section_id != index&.auto_index_section&.id
+        ) || incoming_id.nil? || incoming_id != index&.auto_index_section&.id
     end
 
-    def removing_index(params:, index:)
-      params.built_sections.empty? && index.present?
+    def removing_index(built_sections:, index:)
+      built_sections.empty? && index.present?
     end
 
     def remove_index(index:, category:)
@@ -152,8 +187,8 @@ module DocCategories
       category.association(:doc_categories_index).reset
     end
 
-    def saving_sections(params:)
-      params.built_sections.present?
+    def saving_sections(built_sections:)
+      built_sections.present?
     end
 
     def save_index(params:, category:, index:)
@@ -166,12 +201,12 @@ module DocCategories
       record
     end
 
-    def replace_sections(params:, saved_index:)
-      saved_index.replace_sidebar_sections!(params.built_sections)
+    def replace_sections(built_sections:, saved_index:)
+      saved_index.replace_sidebar_sections!(built_sections)
     end
 
-    def index_changed(params:, index:)
-      params.built_sections.present? || index&.destroyed?
+    def index_changed(built_sections:, index:)
+      built_sections.present? || index&.destroyed?
     end
 
     def publish_changes(category:)
@@ -179,8 +214,8 @@ module DocCategories
       category.publish_category
     end
 
-    def should_sync_auto_index(sync_required:, params:, category:)
-      sync_required && params.built_sections.present? &&
+    def should_sync_auto_index(sync_required:, built_sections:, category:)
+      sync_required && built_sections.present? &&
         DocCategories::Index.find_by(category: category)&.auto_index_section.present?
     end
 
