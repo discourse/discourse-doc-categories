@@ -25,11 +25,16 @@ const sidebarPanelClassBuilder = (BaseCustomSidebarPanel) =>
     get sections() {
       const router = getOwnerWithFallback(this).lookup("service:router");
 
-      return this.docCategorySidebar.sectionsConfig
-        .flatMap(flattenDocsSection)
-        .map((config) => {
-          return prepareDocsSection({ config, router });
-        });
+      const sections = this.docCategorySidebar.sectionsConfig;
+      const configs =
+        "items" in BaseCustomSidebarSection.prototype
+          ? sections
+          : sections.flatMap(flattenDocsSection);
+      const names = new Map();
+
+      return configs.map((config) =>
+        prepareDocsSection({ config, router, names })
+      );
     }
 
     get filterable() {
@@ -74,36 +79,55 @@ function flattenDocsSection(section) {
   ];
 }
 
-function prepareDocsSection({ config, router }) {
+function uniqueName(name, names) {
+  const count = (names.get(name) ?? 0) + 1;
+  names.set(name, count);
+  return count === 1 ? name : `${name}--${count}`;
+}
+
+function prepareDocsSection({ config, router, names }) {
+  const name = uniqueName(
+    config.text
+      ? `${SIDEBAR_DOCS_PANEL}__${unicodeSlugify(config.text)}`
+      : `${SIDEBAR_DOCS_PANEL}::root`,
+    names
+  );
+
   return class extends BaseCustomSidebarSection {
-    #config = config;
-
-    get sectionLinks() {
-      return this.#config.links;
-    }
-
-    get name() {
-      return this.text
-        ? `${SIDEBAR_DOCS_PANEL}__${unicodeSlugify(this.text)}`
-        : `${SIDEBAR_DOCS_PANEL}::root`;
-    }
+    name = name;
 
     get title() {
-      return this.#config.text;
+      return config.text;
     }
 
     get text() {
-      return this.#config.text;
+      return config.text;
+    }
+
+    get items() {
+      const sectionNames = new Map();
+      const linkNames = new Map();
+
+      return config.items?.map((item) => {
+        if (item.type === "section") {
+          return {
+            type: "section",
+            section: prepareDocsSection({
+              config: item,
+              router,
+              names: sectionNames,
+            }),
+          };
+        }
+
+        return { type: "link", link: this.#buildLink(item, linkNames) };
+      });
     }
 
     get links() {
-      return this.sectionLinks.map(
-        (sectionLinkData) =>
-          new DocCategorySidebarSectionLink({
-            data: sectionLinkData,
-            panelName: this.name,
-            router,
-          })
+      const linkNames = new Map();
+      return (config.links ?? []).map((link) =>
+        this.#buildLink(link, linkNames)
       );
     }
 
@@ -118,19 +142,32 @@ function prepareDocsSection({ config, router }) {
     get collapsedByDefault() {
       return false;
     }
+
+    #buildLink(data, linkNames) {
+      const linkName = uniqueName(
+        `${this.name}___${unicodeSlugify(data.text)}`,
+        linkNames
+      );
+      return new DocCategorySidebarSectionLink({
+        data,
+        name: linkName,
+        router,
+      });
+    }
   };
 }
 
 class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
+  name;
+
   #data;
-  #panelName;
   #router;
 
-  constructor({ data, panelName, router }) {
+  constructor({ data, name, router }) {
     super(...arguments);
 
     this.#data = data;
-    this.#panelName = panelName;
+    this.name = name;
     this.#router = router;
   }
 
@@ -139,7 +176,7 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
       return false;
     }
 
-    const currentTopicRouteInfo = this.#router.currentRoute.find(
+    const currentTopicRouteInfo = this.#router.currentRoute?.find(
       (route) => route.name === "topic"
     );
 
@@ -155,10 +192,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
       path === `/t/${slug}` ||
       path === `/t/${id}`
     );
-  }
-
-  get name() {
-    return `${this.#panelName}___${unicodeSlugify(this.#data.text)}`;
   }
 
   get classNames() {

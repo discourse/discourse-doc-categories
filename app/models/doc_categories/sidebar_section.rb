@@ -54,6 +54,6 @@ end
 #
 # Indexes
 #
-#  idx_doc_categories_sections_on_parent_and_position          (index_id,parent_section_id,position) UNIQUE
+#  idx_doc_categories_sections_on_parent_and_position          (index_id,parent_section_id,position) UNIQUE NULLS NOT DISTINCT
 #  index_doc_categories_sidebar_sections_on_parent_section_id  (parent_section_id)
 #
