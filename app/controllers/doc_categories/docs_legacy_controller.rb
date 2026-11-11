@@ -40,14 +40,10 @@ module ::DocCategories
     end
 
     def prepare_url_query_params
-      query_parameters_list = request.query_parameters.except(:topic)
+      query_parameters = request.query_parameters.except(:topic)
+      return "" if query_parameters.empty?
 
-      return "" if query_parameters_list.empty?
-
-      query_parameters_string =
-        query_parameters_list.map { |name, value| "#{name}=#{value}" }.join("&")
-
-      "?#{query_parameters_string}"
+      "?#{Rack::Utils.build_nested_query(query_parameters)}"
     end
   end
 end
