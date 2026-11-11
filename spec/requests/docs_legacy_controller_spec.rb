@@ -29,6 +29,13 @@ RSpec.describe ::DocCategories::DocsLegacyController do
           expect(response.status).to eq(302)
         end
 
+        it "re-encodes query parameters that would otherwise produce an invalid URL" do
+          get "/docs?topic=#{topic.id}&tl=en%20t%22x&q=a%26b%3Dc"
+
+          expect(response).to redirect_to("#{topic.relative_url}?tl=en+t%22x&q=a%26b%3Dc")
+          expect(response.status).to eq(302)
+        end
+
         it "redirects /docs.json?topic=ID to /t/slug/id.json" do
           get "/docs.json?topic=#{topic.id}&test=true"
 
@@ -66,6 +73,13 @@ RSpec.describe ::DocCategories::DocsLegacyController do
           get "/docs?test=true"
 
           expect(response).to redirect_to("/redirect-test?test=true")
+          expect(response.status).to eq(302)
+        end
+
+        it "re-encodes query parameters that would otherwise produce an invalid URL" do
+          get "/docs?tl=d%20%7Cx"
+
+          expect(response).to redirect_to("/redirect-test?tl=d+%7Cx")
           expect(response.status).to eq(302)
         end
 
