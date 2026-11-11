@@ -177,20 +177,20 @@ module PageObjects
       end
 
       def save_category
-        find(".admin-changes-banner .btn-primary").click
+        changes_banner.click_save
         self
       end
 
       def has_pending_changes?
-        has_css?(".admin-changes-banner")
+        changes_banner.visible?
       end
 
       def has_no_pending_changes?
-        has_no_css?(".admin-changes-banner")
+        changes_banner.hidden?
       end
 
       def has_save_banner?
-        has_css?(".admin-changes-banner .btn-primary")
+        changes_banner.visible? && changes_banner.element.has_css?(".btn-primary")
       end
 
       def select_index_topic(topic)
@@ -435,6 +435,13 @@ module PageObjects
       def has_section_order?(titles)
         has_css?(".doc-category-index-editor__section-title-label", count: titles.size) &&
           section_labels == titles
+      end
+
+      private
+
+      # Core's page object tracks the save bar's markup, which core is free to rename.
+      def changes_banner
+        PageObjects::Components::AdminChangesBanner.new
       end
     end
   end
