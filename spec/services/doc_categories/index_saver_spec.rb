@@ -420,7 +420,7 @@ RSpec.describe DocCategories::IndexSaver do
       end
     end
 
-    it "saves icon on links" do
+    it "ignores legacy icon values on links" do
       described_class.call(
         params: {
           category_id: category.id,
@@ -435,7 +435,11 @@ RSpec.describe DocCategories::IndexSaver do
           .first
           .sidebar_links
           .first
-      expect(link.icon).to eq("book")
+      expect(link.attributes).not_to have_key("icon")
+      expect(link.href).to eq("/a")
+      expect(
+        DocCategories::Index.find_by(category_id: category.id).sidebar_structure.first[:links],
+      ).to eq([{ text: "L", href: "/a" }])
     end
 
     context "with auto-index sections" do

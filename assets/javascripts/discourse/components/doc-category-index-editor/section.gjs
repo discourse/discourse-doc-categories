@@ -280,7 +280,6 @@ export class IndexEditorSection extends Component {
         title: "",
         href: "",
         type: "manual",
-        icon: "link",
         isEditing: true,
       })
     );
@@ -311,7 +310,6 @@ export class IndexEditorSection extends Component {
         topic_id: topic.id,
         topicTitle,
         autoTitle: true,
-        icon: "far-file",
       })
     );
     this.topicChooserContent = [];
@@ -672,7 +670,6 @@ export class IndexEditorSection extends Component {
                   @batchMode={{@batchMode}}
                   @controls={{controls}}
                   @duplicateHrefs={{@duplicateHrefs}}
-                  @favoriteIcons={{@favoriteIcons}}
                   @isBatchDraggingItems={{and
                     @isBatchDragging
                     (eq @batchDragType "items")
@@ -698,9 +695,6 @@ export class IndexEditorSection extends Component {
               ></span>
               <div class="doc-category-index-editor__link-card --ghost">
                 <div class="doc-category-index-editor__link-card-header">
-                  <span class="doc-category-index-editor__link-icon">
-                    {{icon "far-file"}}
-                  </span>
                   <span class="doc-category-index-editor__link-label">
                     {{i18n
                       "doc_categories.category_settings.index_editor.auto_index_placeholder"

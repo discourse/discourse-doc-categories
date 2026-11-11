@@ -7,7 +7,6 @@ import { next } from "@ember/runloop";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
-import DIconGridPicker from "discourse/ui-kit/d-icon-grid-picker";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 import icon from "discourse/ui-kit/helpers/d-icon";
 import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
@@ -31,7 +30,6 @@ export class IndexEditorLink extends Component {
 
   @tracked _editTitle;
   @tracked _editHref;
-  @tracked _editIcon;
   @tracked _editType;
   @tracked _editTopicId;
   @tracked _topicOriginalTitle = null;
@@ -198,11 +196,6 @@ export class IndexEditorLink extends Component {
   }
 
   @action
-  updateIcon(value) {
-    this._editIcon = value;
-  }
-
-  @action
   startSwap() {
     this.swapping = true;
   }
@@ -243,7 +236,6 @@ export class IndexEditorLink extends Component {
   #snapshotLink() {
     this._editTitle = this.args.link.title;
     this._editHref = this.args.link.href;
-    this._editIcon = this.args.link.icon;
     this._editType = this.args.link.type;
     this._editTopicId = this.args.link.topic_id;
     this._topicOriginalTitle = this.args.link.topicTitle;
@@ -260,7 +252,6 @@ export class IndexEditorLink extends Component {
       ? this._topicOriginalTitle
       : this._editTitle;
     this.args.link.href = this._editHref;
-    this.args.link.icon = this._editIcon;
     this.args.link.type = this._editType;
     this.args.link.topic_id = this._editTopicId;
     this.args.link.topicTitle = this._topicOriginalTitle;
@@ -325,12 +316,6 @@ export class IndexEditorLink extends Component {
         {{on "keydown" this.onKeydown}}
       >
         <div class="doc-category-index-editor__link-edit-row">
-          <DIconGridPicker
-            @favorites={{@favoriteIcons}}
-            @onChange={{this.updateIcon}}
-            @showSelectedName={{true}}
-            @value={{this._editIcon}}
-          />
           <input
             class="doc-category-index-editor__link-title"
             placeholder={{or
@@ -450,9 +435,6 @@ export class IndexEditorLink extends Component {
         {{on "dblclick" this.enterEdit}}
       >
         <div class="doc-category-index-editor__link-card-header">
-          <span class="doc-category-index-editor__link-icon">
-            {{icon (or @link.icon "far-file")}}
-          </span>
           <span
             class={{dConcatClass
               "doc-category-index-editor__link-label"

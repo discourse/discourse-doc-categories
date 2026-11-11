@@ -125,7 +125,7 @@ module DocCategories
           link[:topic_id].presence&.to_i || DocCategories::Url.extract_topic_id_from_url(href)
         return if title.blank? && topic_id.blank?
 
-        { title:, href:, icon: link[:icon].to_s.strip.first(100).presence, topic_id: }
+        { title:, href:, topic_id: }
       end
     end
 

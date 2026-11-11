@@ -215,14 +215,6 @@ class DocCategorySidebarSectionLink extends BaseCustomSidebarSectionLink {
       navigation: this.#data.text.toLowerCase().split(/\s+/g),
     };
   }
-
-  get prefixType() {
-    return "icon";
-  }
-
-  get prefixValue() {
-    return this.#data.icon || "far-file";
-  }
 }
 
 function assembleCategoryFilter(filter, category, level) {

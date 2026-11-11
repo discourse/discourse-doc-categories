@@ -108,7 +108,6 @@ const SectionRow = <template>
     @controls={{@controls}}
     @duplicateHrefs={{@editor.duplicateHrefs}}
     @duplicateTitles={{@editor.duplicateTitles}}
-    @favoriteIcons={{@editor.favoriteIcons}}
     @group={{@group}}
     @hideResyncToggle={{@editor.subcategorySettingChanged}}
     @invertSelectionInSection={{@editor.invertSelectionInSection}}
@@ -324,19 +323,6 @@ export default class DocCategoryIndexEditor extends Component {
       }
     }
     return dupes;
-  }
-
-  @cached
-  get favoriteIcons() {
-    const icons = new Set(["far-file", "link"]);
-    for (const section of this.allSections) {
-      for (const link of sectionLinks(section)) {
-        if (link.icon) {
-          icons.add(link.icon);
-        }
-      }
-    }
-    return [...icons];
   }
 
   get hasAutoIndexSection() {
@@ -1360,7 +1346,6 @@ export default class DocCategoryIndexEditor extends Component {
             topic_id: item.topic_id ?? null,
             topicTitle: item.topic_title,
             autoTitle: item.topic_id && !item.custom_title,
-            icon: item.icon || "far-file",
             autoIndexed: item.auto_indexed || false,
           });
         })
@@ -1392,7 +1377,6 @@ export default class DocCategoryIndexEditor extends Component {
               topic_id: item.topic_id,
               topicTitle: item.topicTitle,
               autoTitle: item.autoTitle,
-              icon: item.icon,
               autoIndexed: item.autoIndexed || false,
             }
       ),
@@ -1411,7 +1395,6 @@ export default class DocCategoryIndexEditor extends Component {
         title: link.title,
         href: link.href,
         topic_id: link.topic_id,
-        icon: link.icon,
       });
       if (section.items.some(isIndexSection)) {
         data.items = section.items.map((item) =>
@@ -1468,7 +1451,6 @@ export default class DocCategoryIndexEditor extends Component {
       title: topic.title || topic.fancy_title,
       href: `/t/${topic.slug}/${topic.id}`,
       type: "topic",
-      icon: "far-file",
       topic_id: topic.id,
       topicTitle: topic.title || topic.fancy_title,
       autoTitle: true,

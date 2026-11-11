@@ -141,7 +141,6 @@ module DocCategories
       return if text.blank? || href.blank?
 
       result = { text:, href: }
-      result[:icon] = link.icon if link.icon.present?
       if link.topic_id.present?
         result[:topic_id] = link.topic_id
         result[:topic_title] = topic&.title
@@ -174,7 +173,7 @@ module DocCategories
           title = item[:title]
           title = nil if item[:topic_id] && title == topic_titles[item[:topic_id]]
           record.sidebar_links.create!(
-            **item.slice(:href, :icon, :topic_id),
+            **item.slice(:href, :topic_id),
             title:,
             position: item_position,
             auto_indexed:
