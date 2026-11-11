@@ -123,6 +123,72 @@ describe "Doc Category Index Editor | dragging" do
     end
   end
 
+  context "with a nested section" do
+    before do
+      DocCategories::IndexSaver.call(
+        params: {
+          category_id: category.id,
+          sections: [
+            {
+              title: "Guides",
+              items: [
+                { type: "link", title: "Pages", href: "/pages" },
+                {
+                  type: "section",
+                  title: "Docs",
+                  items: [
+                    { type: "link", title: "Create a doc", href: "/create-doc" },
+                    {
+                      type: "section",
+                      title: "Sidebar",
+                      links: [{ title: "Sidebar items", href: "/sidebar-items" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      )
+      editor.visit_doc_index_tab(category)
+    end
+
+    it "drags a section to the root and back into its parent, then reloads the saved tree" do
+      row = ".doc-category-index-editor__section-row"
+      card = ".doc-category-index-editor__section"
+      title = ".doc-category-index-editor__section-title-label"
+      sidebar_grip =
+        "#{row}:has(> #{card} > .doc-category-index-editor__section-header > " \
+          "#{title}:text-is('Sidebar')) > .doc-category-index-editor__drag-handle"
+      root_titles =
+        ".doc-category-index-editor__sections > #{row} > #{card} > " \
+          ".doc-category-index-editor__section-header > #{title}"
+
+      drag_and_drop(
+        source: sidebar_grip,
+        target: "#{root_titles}:text-is('Guides')",
+        target_position: above,
+      )
+      expect(page).to have_css(root_titles, exact_text: "Sidebar")
+
+      drag_and_drop(
+        source: sidebar_grip,
+        target: ".doc-category-index-editor__link:has-text('Create a doc')",
+        target_position: below,
+      )
+      expect(page).to have_no_css(root_titles, exact_text: "Sidebar")
+      expect(editor).to have_link_order(["Pages", "Create a doc", "Sidebar items"])
+
+      editor.click_apply
+      editor.visit_doc_index_tab(category)
+
+      index = DocCategories::Index.find_by!(category:)
+      docs = index.sidebar_sections.find_by!(title: "Docs")
+      expect(index.sidebar_sections.find_by!(title: "Sidebar").parent_section_id).to eq(docs.id)
+      expect(editor).to have_link_order(["Pages", "Create a doc", "Sidebar items"])
+    end
+  end
+
   context "with an empty section" do
     before do
       editor.visit_doc_index_tab(category)

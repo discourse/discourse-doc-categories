@@ -17,6 +17,7 @@ GlobalSetting.add_default :docs_path, "docs"
 register_svg_icon "eraser"
 register_svg_icon "check-double"
 register_svg_icon "bolt"
+register_svg_icon "arrow-turn-up"
 
 module ::DocCategories
   PLUGIN_NAME = "discourse-doc-categories"

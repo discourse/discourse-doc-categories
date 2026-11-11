@@ -8,7 +8,7 @@ import {
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
-import { cancel, next } from "@ember/runloop";
+import { cancel, next, schedule } from "@ember/runloop";
 import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
 import { ajax } from "discourse/lib/ajax";
@@ -29,7 +29,17 @@ import icon from "discourse/ui-kit/helpers/d-icon";
 import dDragAndDropAutoScroll from "discourse/ui-kit/modifiers/d-drag-and-drop-auto-scroll";
 import dDragAndDropSource from "discourse/ui-kit/modifiers/d-drag-and-drop-source";
 import { i18n } from "discourse-i18n";
-import { MAX_LINKS_PER_SECTION, MAX_SECTIONS } from "../../lib/constants.js";
+import {
+  MAX_LINKS_PER_SECTION,
+  MAX_SECTION_DEPTH,
+  MAX_SECTIONS,
+} from "../../lib/constants.js";
+import {
+  isIndexSection,
+  sectionEntries,
+  sectionHeight,
+  sectionLinks,
+} from "../../lib/doc-index-tree.js";
 import {
   draftTopicIds,
   draftTopicReferences,
@@ -42,6 +52,7 @@ import UnindexedTopicsModal from "./unindexed-topics-modal.gjs";
 
 /** The destination that creates a section rather than naming one. */
 const NEW_SECTION = "new";
+const ROOT_LIST = "doc-index-root";
 
 /**
  * A stable string identity per section, for the reorderable group to address
@@ -63,6 +74,79 @@ function sectionUid(section) {
   }
   return uid;
 }
+
+function editorGroup(group, editor) {
+  return {
+    ...group,
+    registerMember(member) {
+      return group.registerMember({
+        ...member,
+        // All lists enter batch mode together. Read that state and the labels
+        // from the editor so a parent never consumes a child's render arguments.
+        disabled: () => editor.batchMode,
+        listLabel: () => editor.listLabel(member.listId),
+      });
+    },
+    neighbour(listId, direction) {
+      const member = group.neighbour(listId, direction);
+      if (member?.listId !== ROOT_LIST) {
+        return member;
+      }
+    },
+  };
+}
+
+const SectionRow = <template>
+  <IndexEditorSection
+    @autoIndexIncludeSubcategories={{@editor.autoIndexIncludeSubcategories}}
+    @batchDragType={{@editor.batchDragType}}
+    @batchMode={{@editor.batchMode}}
+    @canAddChild={{@editor.canAddChild}}
+    @canMoveOut={{@editor.canMoveOut}}
+    @categoryId={{@categoryId}}
+    @clearAllInSection={{@editor.clearAllInSection}}
+    @controls={{@controls}}
+    @duplicateHrefs={{@editor.duplicateHrefs}}
+    @duplicateTitles={{@editor.duplicateTitles}}
+    @group={{@group}}
+    @hideResyncToggle={{@editor.subcategorySettingChanged}}
+    @invertSelectionInSection={{@editor.invertSelectionInSection}}
+    @isBatchDragging={{@editor.isBatchDragging}}
+    @isFirstSection={{@editor.isFirstSection}}
+    @isItemSelected={{@editor.isItemSelected}}
+    @isSectionSelected={{@editor.isSectionSelected}}
+    @onAddSection={{@editor.addSection}}
+    @onBatchItemDrop={{@editor.batchReorderItems}}
+    @onBatchSectionDrop={{@editor.batchReorderSections}}
+    @onBatchSectionDropInside={{@editor.batchMoveSectionsInside}}
+    @onCancelNew={{@editor.cancelNewSection}}
+    @onChange={{@editor._saveToTransientData}}
+    @onMoveOut={{@editor.moveSectionOut}}
+    @onRemoveSection={{@editor.removeSection}}
+    @onReviewUnindexedTopics={{@editor.reviewUnindexedTopics}}
+    @onToggleAutoIndexIncludeSubcategories={{@editor.toggleAutoIndexIncludeSubcategories}}
+    @onToggleResyncAutoIndex={{@editor.toggleResyncAutoIndex}}
+    @pendingResync={{@editor.pendingResync}}
+    @searchFilters={{@editor.searchFilters}}
+    @section={{@section}}
+    @sectionDepth={{@editor.sectionDepth}}
+    @sectionLimitReached={{@editor.sectionLimitReached}}
+    @sectionPath={{@editor.sectionPath}}
+    @sectionUid={{sectionUid @section}}
+    @selectAllInSection={{@editor.selectAllInSection}}
+    @toggleItemSelection={{@editor.toggleItemSelection}}
+    @toggleSectionSelection={{@editor.toggleSectionSelection}}
+    as |child controls|
+  >
+    <SectionRow
+      @categoryId={{@categoryId}}
+      @controls={{controls}}
+      @editor={{@editor}}
+      @group={{@group}}
+      @section={{child}}
+    />
+  </IndexEditorSection>
+</template>;
 
 /* Main index editor */
 export default class DocCategoryIndexEditor extends Component {
@@ -128,8 +212,17 @@ export default class DocCategoryIndexEditor extends Component {
     }
   }
 
+  @cached
+  get entries() {
+    return [...sectionEntries(this.sections)];
+  }
+
+  get allSections() {
+    return this.entries.map(({ section }) => section);
+  }
+
   get allSectionsExpanded() {
-    return this.sections.every((section) => !section.collapsed);
+    return this.allSections.every((section) => !section.collapsed);
   }
 
   get toggleAllSectionsIcon() {
@@ -143,7 +236,7 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get sectionLimitReached() {
-    return this.sections.length >= MAX_SECTIONS;
+    return this.entries.length >= MAX_SECTIONS;
   }
 
   get sectionLimitMessage() {
@@ -166,11 +259,11 @@ export default class DocCategoryIndexEditor extends Component {
 
   get editingCount() {
     let count = 0;
-    for (const section of this.sections) {
+    for (const section of this.allSections) {
       if (section.isEditingTitle) {
         count++;
       }
-      for (const link of section.links) {
+      for (const link of sectionLinks(section)) {
         if (link.isEditing) {
           count++;
         }
@@ -198,8 +291,8 @@ export default class DocCategoryIndexEditor extends Component {
   @cached
   get duplicateHrefs() {
     const counts = new Map();
-    for (const section of this.sections) {
-      for (const link of section.links) {
+    for (const section of this.allSections) {
+      for (const link of sectionLinks(section)) {
         if (link.href) {
           counts.set(link.href, (counts.get(link.href) || 0) + 1);
         }
@@ -217,7 +310,7 @@ export default class DocCategoryIndexEditor extends Component {
   @cached
   get duplicateTitles() {
     const counts = new Map();
-    for (const section of this.sections) {
+    for (const section of this.allSections) {
       const title = section.title?.toLowerCase();
       if (title) {
         counts.set(title, (counts.get(title) || 0) + 1);
@@ -271,7 +364,7 @@ export default class DocCategoryIndexEditor extends Component {
       const section = this.sections.find((candidate) => candidate.autoIndex);
       const available = Math.max(
         0,
-        MAX_LINKS_PER_SECTION - section.links.length
+        MAX_LINKS_PER_SECTION - sectionLinks(section).length
       );
       return available === 0
         ? i18n(
@@ -331,8 +424,8 @@ export default class DocCategoryIndexEditor extends Component {
     }
 
     // Disable when there's only one section with at most one link
-    if (this.sections.length === 1) {
-      return this.sections[0].links.length > 1;
+    if (this.entries.length === 1) {
+      return sectionLinks(this.sections[0]).length > 1;
     }
 
     return true;
@@ -383,6 +476,16 @@ export default class DocCategoryIndexEditor extends Component {
     return this.selectedSections.size > 0 ? SECTION_DRAG_TYPE : LINK_DRAG_TYPE;
   }
 
+  get selectedSubtrees() {
+    return this.entries
+      .filter(
+        ({ section, ancestors }) =>
+          this.selectedSections.has(section) &&
+          !ancestors.some((parent) => this.selectedSections.has(parent))
+      )
+      .map(({ section }) => section);
+  }
+
   @bind
   isFirstSection(section) {
     return this.sections.indexOf(section) === 0;
@@ -390,90 +493,109 @@ export default class DocCategoryIndexEditor extends Component {
 
   @bind
   cancelNewSection(section) {
-    const idx = this.sections.indexOf(section);
-    if (idx !== -1) {
-      this.sections.splice(idx, 1);
-    }
+    this.#removeItem(this.#siblings(section), section);
     this._saveToTransientData();
   }
 
-  /**
-   * Returns the confirmation rather than firing and forgetting it: the list
-   * waits on it before announcing the removal and re-placing focus, so a
-   * cancelled dialog is not spoken as a removal that happened.
-   */
   @bind
   removeSection(section) {
     const remove = () => {
-      const idx = this.sections.indexOf(section);
-      if (idx !== -1) {
-        this.sections.splice(idx, 1);
-      }
+      this.#removeItem(this.#siblings(section), section);
       this._saveToTransientData();
     };
 
-    if (!section.autoIndex && section.links.length === 0) {
+    if (!section.autoIndex && section.items.length === 0) {
       remove();
       return;
     }
 
-    const message = section.autoIndex
-      ? i18n(
-          "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section"
-        )
-      : i18n(
-          "doc_categories.category_settings.index_editor.confirm_remove_section"
-        );
-
+    let message =
+      "doc_categories.category_settings.index_editor.confirm_remove_section";
+    if (section.autoIndex) {
+      message =
+        "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section";
+    } else if (section.items.some(isIndexSection)) {
+      message =
+        "doc_categories.category_settings.index_editor.confirm_remove_section_tree";
+    }
     return this.dialog.yesNoConfirm({
-      message,
+      message: i18n(message),
       didConfirm: remove,
     });
   }
 
-  /**
-   * A section reorder, as the list proposes it.
-   *
-   * @param move - The normalized move; only the proposed order is read, since
-   *   the list has already resolved which row went where.
-   */
   @bind
-  applySectionMove({ proposedFromItems }) {
-    this.sections.splice(0, this.sections.length, ...proposedFromItems);
+  applyItemMove({
+    item,
+    fromList,
+    toList,
+    proposedFromItems,
+    proposedToItems,
+  }) {
+    const from = this.#sectionFor(fromList);
+    const to = this.#sectionFor(toList);
+    if (!this.#canPlaceItems([item], to, proposedToItems)) {
+      return false;
+    }
+
+    const sourceItems = from?.items ?? this.sections;
+    sourceItems.splice(0, sourceItems.length, ...proposedFromItems);
+    if (fromList !== toList) {
+      const targetItems = to?.items ?? this.sections;
+      targetItems.splice(0, targetItems.length, ...proposedToItems);
+      this.#expandDestination(to);
+    }
     this._saveToTransientData();
   }
 
-  /**
-   * A link reorder, within one section or across two of them.
-   *
-   * Both halves are addressed by the group's list id rather than by the link,
-   * because a cross-section move rewrites two sections and the link itself says
-   * nothing about which pair.
-   *
-   * @param move - The normalized move.
-   */
   @bind
-  applyLinkMove({ fromList, toList, proposedFromItems, proposedToItems }) {
-    const from = this.#sectionFor(fromList);
-    if (!from) {
-      return;
-    }
-    if (toList !== fromList && proposedToItems.length > MAX_LINKS_PER_SECTION) {
-      this.#showLinkLimit();
-      return false;
-    }
-    from.links.splice(0, from.links.length, ...proposedFromItems);
+  sectionDepth(section) {
+    return this.#ancestors(section).length + 1;
+  }
 
-    if (toList !== fromList) {
-      const to = this.#sectionFor(toList);
-      if (to) {
-        to.links.splice(0, to.links.length, ...proposedToItems);
-        // A link landing in a collapsed section would otherwise disappear. A
-        // drag opens one by dwelling over it; a keyboard move has no dwell.
-        to.collapsed = false;
-      }
+  @bind
+  canAddChild(section) {
+    return (
+      !!section.title?.trim() &&
+      !section.autoIndex &&
+      this.sectionDepth(section) < MAX_SECTION_DEPTH
+    );
+  }
+
+  @bind
+  canMoveOut(section) {
+    return this.sectionDepth(section) > 1;
+  }
+
+  @bind
+  moveSectionOut(section) {
+    const ancestors = this.#ancestors(section);
+    const parent = ancestors.at(-1);
+    if (parent && this.#moveItems([section], ancestors.at(-2), parent, false)) {
+      schedule("afterRender", () => {
+        const row = document.querySelector(
+          `[data-doc-index-section="${sectionUid(section)}"]`
+        )?.parentElement;
+        row
+          ?.querySelector(":scope > .doc-category-index-editor__drag-handle")
+          ?.focus();
+      });
+      this.a11y.announce(
+        i18n(
+          "doc_categories.category_settings.index_editor.moved_section_out",
+          {
+            section: this.#sectionLabel(section),
+          }
+        )
+      );
     }
-    this._saveToTransientData();
+  }
+
+  @bind
+  sectionPath(section) {
+    return [...this.#ancestors(section), section]
+      .map((entry) => this.#sectionLabel(entry))
+      .join(" / ");
   }
 
   /** What to call a section, for its handle, menu entry and announcements. */
@@ -525,21 +647,21 @@ export default class DocCategoryIndexEditor extends Component {
 
   @bind
   selectAllInSection(section) {
-    for (const link of section.links) {
+    for (const link of sectionLinks(section)) {
       this.selectedItems.add(link);
     }
   }
 
   @bind
   clearAllInSection(section) {
-    for (const link of section.links) {
+    for (const link of sectionLinks(section)) {
       this.selectedItems.delete(link);
     }
   }
 
   @bind
   invertSelectionInSection(section) {
-    for (const link of section.links) {
+    for (const link of sectionLinks(section)) {
       if (this.selectedItems.has(link)) {
         this.selectedItems.delete(link);
       } else {
@@ -550,84 +672,32 @@ export default class DocCategoryIndexEditor extends Component {
 
   @bind
   batchReorderSections(targetSection, isAbove) {
-    // Dropping on a selected section is a no-op
-    if (this.selectedSections.has(targetSection)) {
-      this.isBatchDragging = false;
-      this.batchDragType = null;
-      return;
+    if (!this.selectedSections.has(targetSection)) {
+      this.#moveItems(
+        this.selectedSubtrees,
+        this.#ancestors(targetSection).at(-1),
+        targetSection,
+        isAbove
+      );
     }
+    this.batchDragEnd();
+  }
 
-    const ordered = this.sections.filter((s) => this.selectedSections.has(s));
-    for (const s of ordered) {
-      const idx = this.sections.indexOf(s);
-      if (idx !== -1) {
-        this.sections.splice(idx, 1);
-      }
-    }
-    let targetIdx = this.sections.indexOf(targetSection);
-    if (!isAbove) {
-      targetIdx++;
-    }
-    this.sections.splice(targetIdx, 0, ...ordered);
-    this.isBatchDragging = false;
-    this.batchDragType = null;
-    this._saveToTransientData();
+  @bind
+  batchMoveSectionsInside(targetSection) {
+    this.#moveItems(this.selectedSubtrees, targetSection);
+    this.batchDragEnd();
   }
 
   @bind
   batchReorderItems(targetLink, targetSection, isAbove) {
-    // Dropping on a selected item is a no-op
-    if (targetLink && this.selectedItems.has(targetLink)) {
-      this.isBatchDragging = false;
-      this.batchDragType = null;
-      return;
+    const selected = this.allSections.flatMap((section) =>
+      sectionLinks(section).filter((link) => this.selectedItems.has(link))
+    );
+    if (!this.selectedItems.has(targetLink)) {
+      this.#moveItems(selected, targetSection, targetLink, isAbove);
     }
-
-    // Collect selected items preserving their current order across all sections
-    const ordered = [];
-    for (const section of this.sections) {
-      for (const link of section.links) {
-        if (this.selectedItems.has(link)) {
-          ordered.push(link);
-        }
-      }
-    }
-
-    const incoming = ordered.filter(
-      (link) => !targetSection.links.includes(link)
-    ).length;
-    if (targetSection.links.length + incoming > MAX_LINKS_PER_SECTION) {
-      this.isBatchDragging = false;
-      this.batchDragType = null;
-      this.#showLinkLimit();
-      return false;
-    }
-
-    // Remove selected items from their source sections
-    for (const link of ordered) {
-      for (const section of this.sections) {
-        const idx = section.links.indexOf(link);
-        if (idx !== -1) {
-          section.links.splice(idx, 1);
-          break;
-        }
-      }
-    }
-
-    // Insert at target position (append to end if dropped on section body)
-    if (targetLink) {
-      let targetIdx = targetSection.links.indexOf(targetLink);
-      if (!isAbove) {
-        targetIdx++;
-      }
-      targetSection.links.splice(targetIdx, 0, ...ordered);
-    } else {
-      targetSection.links.push(...ordered);
-    }
-
-    this.isBatchDragging = false;
-    this.batchDragType = null;
-    this._saveToTransientData();
+    this.batchDragEnd();
   }
 
   @action
@@ -635,8 +705,10 @@ export default class DocCategoryIndexEditor extends Component {
     const preferred =
       [section, this.#lastDestination].find(
         (candidate) =>
-          candidate && !candidate.autoIndex && this.sections.includes(candidate)
-      ) ?? this.sections.findLast((candidate) => !candidate.autoIndex);
+          candidate &&
+          !candidate.autoIndex &&
+          this.allSections.includes(candidate)
+      ) ?? this.allSections.findLast((candidate) => !candidate.autoIndex);
 
     this.modal.show(UnindexedTopicsModal, {
       model: {
@@ -660,7 +732,7 @@ export default class DocCategoryIndexEditor extends Component {
   addUnindexedTopics({ topics, destination }) {
     let section = null;
     if (destination === NEW_SECTION) {
-      if (this.sections.length >= MAX_SECTIONS) {
+      if (this.entries.length >= MAX_SECTIONS) {
         return {
           error: i18n(
             "doc_categories.category_settings.index_editor.unindexed_topics.too_many_sections"
@@ -668,7 +740,7 @@ export default class DocCategoryIndexEditor extends Component {
         };
       }
     } else {
-      section = this.sections.find(
+      section = this.allSections.find(
         (candidate) =>
           !candidate.autoIndex &&
           this.#destinationValue(candidate) === destination
@@ -686,7 +758,7 @@ export default class DocCategoryIndexEditor extends Component {
     const topicsToAdd = topics.filter((topic) => !indexed.has(topic.id));
     const room = Math.max(
       0,
-      MAX_LINKS_PER_SECTION - (section?.links.length ?? 0)
+      MAX_LINKS_PER_SECTION - (section ? sectionLinks(section).length : 0)
     );
     if (topicsToAdd.length > room) {
       return {
@@ -711,14 +783,14 @@ export default class DocCategoryIndexEditor extends Component {
     if (!section) {
       section = createdSection = trackedObject({
         title: this.#newSectionTitle(),
-        links: trackedArray([]),
+        items: trackedArray([]),
       });
       this.sections.push(section);
       this.#moveAboveAutoIndex(section);
     }
 
     const links = topicsToAdd.map((topic) => this.#topicToLink(topic));
-    section.links.push(...links);
+    section.items.push(...links);
     section.collapsed = false;
     this.#lastDestination = section;
     this.lastAddition = { links, section, createdSection };
@@ -759,10 +831,10 @@ export default class DocCategoryIndexEditor extends Component {
     }
 
     const added = new Set(addition.links);
-    for (const section of this.sections) {
-      const kept = section.links.filter((link) => !added.has(link));
-      if (kept.length !== section.links.length) {
-        section.links.splice(0, section.links.length, ...kept);
+    for (const section of this.allSections) {
+      const kept = section.items.filter((item) => !added.has(item));
+      if (kept.length !== section.items.length) {
+        section.items.splice(0, section.items.length, ...kept);
       }
     }
     for (const link of addition.links) {
@@ -770,11 +842,8 @@ export default class DocCategoryIndexEditor extends Component {
     }
 
     const created = addition.createdSection;
-    if (created && created.links.length === 0) {
-      const position = this.sections.indexOf(created);
-      if (position !== -1) {
-        this.sections.splice(position, 1);
-      }
+    if (created && created.items.length === 0) {
+      this.#removeItem(this.#siblings(created), created);
       this.selectedSections.delete(created);
     }
 
@@ -797,16 +866,17 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @action
-  addSection() {
-    if (this.sectionLimitReached) {
+  addSection(parent) {
+    if (this.sectionLimitReached || (parent && !this.canAddChild(parent))) {
       return;
     }
     // Non-first sections with empty titles auto-enter edit mode
-    const willAutoEdit = this.sections.length > 0;
-    this.sections.push(
+    const items = parent?.items ?? this.sections;
+    const willAutoEdit = !!parent || this.sections.length > 0;
+    items.push(
       trackedObject({
         title: "",
-        links: trackedArray([]),
+        items: trackedArray([]),
         isEditingTitle: willAutoEdit,
       })
     );
@@ -824,7 +894,7 @@ export default class DocCategoryIndexEditor extends Component {
           "doc_categories.category_settings.index_editor.auto_index_section_title"
         ),
         autoIndex: true,
-        links: trackedArray([]),
+        items: trackedArray([]),
       })
     );
     this._saveToTransientData();
@@ -897,16 +967,7 @@ export default class DocCategoryIndexEditor extends Component {
       force_direct: true,
       auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
       force_sync: this.pendingResync,
-      sections: this.sections.map((section) => ({
-        id: section.id,
-        title: section.title,
-        auto_index: section.autoIndex || false,
-        links: section.links.map((link) => ({
-          title: link.title,
-          href: link.href,
-          topic_id: link.topic_id,
-        })),
-      })),
+      sections: this.#buildPayload(),
     };
 
     this.saveState = "saving";
@@ -961,7 +1022,7 @@ export default class DocCategoryIndexEditor extends Component {
   @action
   toggleAllSections() {
     const collapse = this.allSectionsExpanded;
-    this.sections.forEach((section) => (section.collapsed = collapse));
+    this.allSections.forEach((section) => (section.collapsed = collapse));
   }
 
   @action
@@ -995,12 +1056,12 @@ export default class DocCategoryIndexEditor extends Component {
   @action
   selectAll() {
     if (this.selectedSections.size > 0) {
-      for (const section of this.sections) {
+      for (const section of this.allSections) {
         this.selectedSections.add(section);
       }
     } else {
-      for (const section of this.sections) {
-        for (const link of section.links) {
+      for (const section of this.allSections) {
+        for (const link of sectionLinks(section)) {
           this.selectedItems.add(link);
         }
       }
@@ -1010,7 +1071,7 @@ export default class DocCategoryIndexEditor extends Component {
   @action
   invertSelection() {
     if (this.selectedSections.size > 0) {
-      for (const section of this.sections) {
+      for (const section of this.allSections) {
         if (this.selectedSections.has(section)) {
           this.selectedSections.delete(section);
         } else {
@@ -1018,8 +1079,8 @@ export default class DocCategoryIndexEditor extends Component {
         }
       }
     } else {
-      for (const section of this.sections) {
-        for (const link of section.links) {
+      for (const section of this.allSections) {
+        for (const link of sectionLinks(section)) {
           if (this.selectedItems.has(link)) {
             this.selectedItems.delete(link);
           } else {
@@ -1038,16 +1099,13 @@ export default class DocCategoryIndexEditor extends Component {
       ),
       didConfirm: () => {
         for (const section of this.selectedSections) {
-          const idx = this.sections.indexOf(section);
-          if (idx !== -1) {
-            this.sections.splice(idx, 1);
-          }
+          this.#removeItem(this.#siblings(section), section);
         }
         for (const link of this.selectedItems) {
-          for (const section of this.sections) {
-            const idx = section.links.indexOf(link);
+          for (const section of this.allSections) {
+            const idx = section.items.indexOf(link);
             if (idx !== -1) {
-              section.links.splice(idx, 1);
+              section.items.splice(idx, 1);
               break;
             }
           }
@@ -1093,9 +1151,138 @@ export default class DocCategoryIndexEditor extends Component {
     this.batchDragType = null;
   }
 
-  /** The section a group list id names. */
+  listLabel(listId) {
+    const section = this.#sectionFor(listId);
+    return section ? this.sectionPath(section) : undefined;
+  }
+
   #sectionFor(listId) {
-    return this.sections.find((section) => sectionUid(section) === listId);
+    return this.allSections.find((section) => sectionUid(section) === listId);
+  }
+
+  #ancestors(section) {
+    return (
+      this.entries.find((entry) => entry.section === section)?.ancestors ?? []
+    );
+  }
+
+  #siblings(section) {
+    return this.#ancestors(section).at(-1)?.items ?? this.sections;
+  }
+
+  #removeItem(items, item) {
+    const position = items.indexOf(item);
+    if (position !== -1) {
+      items.splice(position, 1);
+    }
+  }
+
+  #expandDestination(section) {
+    if (section) {
+      for (const entry of [...this.#ancestors(section), section]) {
+        entry.collapsed = false;
+      }
+    }
+  }
+
+  #canPlaceItems(items, destination, proposedItems) {
+    const sections = items.filter(isIndexSection);
+    if (!destination && sections.length !== items.length) {
+      this.#showMoveError("move_link_to_section");
+      return false;
+    }
+
+    if (
+      destination &&
+      proposedItems.filter((item) => !isIndexSection(item)).length >
+        MAX_LINKS_PER_SECTION
+    ) {
+      this.#showLinkLimit();
+      return false;
+    }
+
+    if (destination && sections.length > 0) {
+      const ancestors = [...this.#ancestors(destination), destination];
+      if (
+        !destination.title?.trim() ||
+        destination.autoIndex ||
+        sections.some(
+          (section) =>
+            section.autoIndex ||
+            !section.title?.trim() ||
+            ancestors.includes(section)
+        )
+      ) {
+        this.#showMoveError("invalid_section_destination");
+        return false;
+      }
+      if (
+        sections.some(
+          (section) =>
+            ancestors.length + sectionHeight(section) > MAX_SECTION_DEPTH
+        )
+      ) {
+        this.#showMoveError("section_depth_limit");
+        return false;
+      }
+    }
+
+    if (
+      !destination &&
+      proposedItems.some(
+        (section, position) =>
+          position > 0 && !section.title?.trim() && !section.isEditingTitle
+      )
+    ) {
+      this.#showMoveError("untitled_section_must_be_first");
+      return false;
+    }
+
+    return true;
+  }
+
+  #showMoveError(message) {
+    this.toasts.error({
+      key: "doc-index-section-move",
+      data: {
+        message: i18n(
+          `doc_categories.category_settings.index_editor.${message}`,
+          {
+            count: MAX_SECTION_DEPTH,
+          }
+        ),
+      },
+    });
+  }
+
+  #moveItems(items, destination, target, before) {
+    const targetItems = destination?.items ?? this.sections;
+    const selected = new Set(items);
+    const proposed = targetItems.filter((item) => !selected.has(item));
+    if (target && !proposed.includes(target)) {
+      return false;
+    }
+    const position = target
+      ? proposed.indexOf(target) + (before ? 0 : 1)
+      : proposed.length;
+    proposed.splice(position, 0, ...items);
+    if (!this.#canPlaceItems(items, destination, proposed)) {
+      return false;
+    }
+
+    for (const item of items) {
+      const source = isIndexSection(item)
+        ? this.#siblings(item)
+        : this.allSections.find((section) => section.items.includes(item))
+            ?.items;
+      if (source && source !== targetItems) {
+        this.#removeItem(source, item);
+      }
+    }
+    targetItems.splice(0, targetItems.length, ...proposed);
+    this.#expandDestination(destination);
+    this._saveToTransientData();
+    return true;
   }
 
   /** What to call a section a link has just landed in. */
@@ -1118,67 +1305,56 @@ export default class DocCategoryIndexEditor extends Component {
 
     // Restore from FormKit transient data if available (tab switch recovery)
     const saved = this.args.transientData?._docIndexEditorState;
-    if (saved?.length > 0) {
-      return saved.map((section, idx) =>
-        trackedObject({
-          id: section.id ?? null,
-          title: section.title,
-          autoIndex: section.autoIndex || false,
-          isEditingTitle: idx > 0 && !section.title,
-          links: trackedArray(
-            section.links.map((link) =>
-              trackedObject({
-                title: link.title,
-                href: link.href,
-                type: link.type || "topic",
-                topic_id: link.topic_id,
-                topicTitle: link.topicTitle,
-                autoTitle: link.autoTitle,
-                autoIndexed: link.autoIndexed || false,
-                isEditing: !link.title && !link.href,
-              })
-            )
-          ),
-        })
-      );
-    }
-
-    return this.#initSectionsFromModel();
+    return saved?.length
+      ? this.#readSections(saved, true)
+      : this.#initSectionsFromModel();
   }
 
   #initSectionsFromModel() {
-    return this.#buildSectionsFrom(this.args.indexData);
+    return this.#readSections(this.args.indexData ?? []);
   }
 
-  #buildSectionsFrom(index) {
-    if (!index || index.length === 0) {
-      return [];
-    }
-    return index.map((section, idx) =>
-      trackedObject({
-        id: section.id ?? null,
-        title: section.text,
-        autoIndex: section.auto_index || false,
-        isEditingTitle: idx > 0 && !section.text,
-        links: trackedArray(
-          section.links.map((link) =>
-            trackedObject({
-              title: link.text,
-              href: link.href,
-              type: link.topic_id ? "topic" : "manual",
-              topic_id: link.topic_id ?? null,
-              topicTitle: link.topic_title,
-              autoTitle: link.topic_id && !link.custom_title,
-              autoIndexed: link.auto_indexed || false,
-            })
-          )
-        ),
-      })
+  #readSections(sections, draft = false) {
+    return sections.map((section, index) =>
+      this.#readSection(section, draft, index === 0)
     );
   }
 
+  #readSection(section, draft, first = false) {
+    const title = draft ? section.title : section.text;
+    const items = section.items ?? section.links ?? [];
+    return trackedObject({
+      id: section.id ?? null,
+      title,
+      autoIndex: draft ? section.autoIndex : section.auto_index,
+      isEditingTitle: !first && !title,
+      items: trackedArray(
+        items.map((item) => {
+          if (item.type === "section") {
+            return this.#readSection(item, draft);
+          }
+          if (draft) {
+            return trackedObject({
+              ...item,
+              isEditing: !item.title && !item.href,
+            });
+          }
+          return trackedObject({
+            title: item.text,
+            href: item.href,
+            type: item.topic_id ? "topic" : "manual",
+            topic_id: item.topic_id ?? null,
+            topicTitle: item.topic_title,
+            autoTitle: item.topic_id && !item.custom_title,
+            autoIndexed: item.auto_indexed || false,
+          });
+        })
+      ),
+    });
+  }
+
   #refreshFromServerData(indexStructure) {
-    const newSections = this.#buildSectionsFrom(indexStructure);
+    const newSections = this.#readSections(indexStructure);
     this.sections.splice(0, this.sections.length, ...newSections);
     // The selection holds the objects that were just replaced, so left alone
     // it survives as a count with no rows behind it.
@@ -1187,20 +1363,51 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   #serializeSections() {
-    return this.sections.map((section) => ({
+    const serialize = (section) => ({
       id: section.id,
       title: section.title,
       autoIndex: section.autoIndex || false,
-      links: section.links.map((link) => ({
+      items: section.items.map((item) =>
+        isIndexSection(item)
+          ? { ...serialize(item), type: "section" }
+          : {
+              title: item.title,
+              href: item.href,
+              type: item.type,
+              topic_id: item.topic_id,
+              topicTitle: item.topicTitle,
+              autoTitle: item.autoTitle,
+              autoIndexed: item.autoIndexed || false,
+            }
+      ),
+    });
+    return this.sections.map(serialize);
+  }
+
+  #buildPayload() {
+    const serialize = (section) => {
+      const data = {
+        id: section.id,
+        title: section.title,
+        auto_index: section.autoIndex || false,
+      };
+      const serializeLink = (link) => ({
         title: link.title,
         href: link.href,
-        type: link.type,
         topic_id: link.topic_id,
-        topicTitle: link.topicTitle,
-        autoTitle: link.autoTitle,
-        autoIndexed: link.autoIndexed || false,
-      })),
-    }));
+      });
+      if (section.items.some(isIndexSection)) {
+        data.items = section.items.map((item) =>
+          isIndexSection(item)
+            ? { ...serialize(item), type: "section" }
+            : { ...serializeLink(item), type: "link" }
+        );
+      } else {
+        data.links = section.items.map(serializeLink);
+      }
+      return data;
+    };
+    return this.sections.map(serialize);
   }
 
   async #doIndexAllTopics() {
@@ -1219,7 +1426,7 @@ export default class DocCategoryIndexEditor extends Component {
           title: i18n(
             "doc_categories.category_settings.index_editor.all_topics_section"
           ),
-          links: trackedArray(result.topics.map((t) => this.#topicToLink(t))),
+          items: trackedArray(result.topics.map((t) => this.#topicToLink(t))),
         })
       );
       this._saveToTransientData();
@@ -1275,15 +1482,15 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   #unindexedDestinations() {
-    const destinations = this.sections
+    const destinations = this.allSections
       .filter((section) => !section.autoIndex)
       .map((section) => ({
         value: this.#destinationValue(section),
-        label: this.#sectionLabel(section),
-        linkCount: section.links.length,
+        label: this.sectionPath(section),
+        linkCount: sectionLinks(section).length,
       }));
 
-    if (this.sections.length < MAX_SECTIONS) {
+    if (!this.sectionLimitReached) {
       destinations.push({
         value: NEW_SECTION,
         label: i18n(
@@ -1301,7 +1508,7 @@ export default class DocCategoryIndexEditor extends Component {
       "doc_categories.category_settings.index_editor.all_topics_section"
     );
     const titles = new Set(
-      this.sections.map((section) => section.title?.trim().toLowerCase())
+      this.allSections.map((section) => section.title?.trim().toLowerCase())
     );
     let title = base;
     let count = 1;
@@ -1373,17 +1580,7 @@ export default class DocCategoryIndexEditor extends Component {
       this.autoIndexIncludeSubcategories
     );
 
-    // Convert to snake_case for the backend payload
-    const backendSections = sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      auto_index: section.autoIndex || false,
-      links: section.links.map((link) => ({
-        title: link.title,
-        href: link.href,
-        topic_id: link.topic_id,
-      })),
-    }));
+    const backendSections = this.#buildPayload();
     const serialized =
       backendSections.length > 0 ? JSON.stringify(backendSections) : null;
     this.args.form?.set("doc_index_sections", serialized);
@@ -1550,65 +1747,39 @@ export default class DocCategoryIndexEditor extends Component {
         </div>
       {{/if}}
 
-      {{! One group over every section's links, so a link travels between
-          sections the same way it travels within one. The sections themselves
-          are an ordinary standalone list nested inside it; the two never see
-          each other's drags, since a standalone list carries a private token
-          and a member carries the group's. }}
-      <DReorderableListGroup @onMove={{this.applyLinkMove}} as |group|>
-        <DReorderableList
-          class="doc-category-index-editor__sections"
-          @controls="manual"
-          @disabled={{this.batchMode}}
-          @items={{this.sections}}
-          @itemTag="div"
-          @label={{this.sectionLabel}}
-          @onMove={{this.applySectionMove}}
-          @onRemove={{this.removeSection}}
-          @rowClass="doc-category-index-editor__section-row"
-          @tag="div"
-        >
-          <:empty>
-            <DEmptyState
-              @body={{i18n
-                "doc_categories.category_settings.index_editor.empty"
-              }}
-            />
-          </:empty>
-          <:row as |section controls|>
-            <IndexEditorSection
-              @autoIndexIncludeSubcategories={{this.autoIndexIncludeSubcategories}}
-              @batchDragType={{this.batchDragType}}
-              @batchMode={{this.batchMode}}
-              @categoryId={{@categoryId}}
-              @clearAllInSection={{this.clearAllInSection}}
-              @controls={{controls}}
-              @duplicateHrefs={{this.duplicateHrefs}}
-              @duplicateTitles={{this.duplicateTitles}}
-              @group={{group}}
-              @hideResyncToggle={{this.subcategorySettingChanged}}
-              @invertSelectionInSection={{this.invertSelectionInSection}}
-              @isBatchDragging={{this.isBatchDragging}}
-              @isFirstSection={{this.isFirstSection}}
-              @isItemSelected={{this.isItemSelected}}
-              @isSectionSelected={{this.isSectionSelected}}
-              @onBatchItemDrop={{this.batchReorderItems}}
-              @onBatchSectionDrop={{this.batchReorderSections}}
-              @onCancelNew={{this.cancelNewSection}}
-              @onChange={{this._saveToTransientData}}
-              @onReviewUnindexedTopics={{this.reviewUnindexedTopics}}
-              @onToggleAutoIndexIncludeSubcategories={{this.toggleAutoIndexIncludeSubcategories}}
-              @onToggleResyncAutoIndex={{this.toggleResyncAutoIndex}}
-              @pendingResync={{this.pendingResync}}
-              @searchFilters={{this.searchFilters}}
-              @section={{section}}
-              @sectionUid={{sectionUid section}}
-              @selectAllInSection={{this.selectAllInSection}}
-              @toggleItemSelection={{this.toggleItemSelection}}
-              @toggleSectionSelection={{this.toggleSectionSelection}}
-            />
-          </:row>
-        </DReorderableList>
+      <DReorderableListGroup @onMove={{this.applyItemMove}} as |group|>
+        {{#let (editorGroup group this) as |reorderGroup|}}
+          <DReorderableList
+            class="doc-category-index-editor__sections"
+            @controls="manual"
+            @disabled={{this.batchMode}}
+            @group={{reorderGroup}}
+            @items={{this.sections}}
+            @itemTag="div"
+            @label={{this.sectionLabel}}
+            @listId={{ROOT_LIST}}
+            @onRemove={{this.removeSection}}
+            @rowClass="doc-category-index-editor__section-row"
+            @tag="div"
+          >
+            <:empty>
+              <DEmptyState
+                @body={{i18n
+                  "doc_categories.category_settings.index_editor.empty"
+                }}
+              />
+            </:empty>
+            <:row as |section controls|>
+              <SectionRow
+                @categoryId={{@categoryId}}
+                @controls={{controls}}
+                @editor={{this}}
+                @group={{reorderGroup}}
+                @section={{section}}
+              />
+            </:row>
+          </DReorderableList>
+        {{/let}}
       </DReorderableListGroup>
 
       <DConditionalInElement
@@ -1622,7 +1793,7 @@ export default class DocCategoryIndexEditor extends Component {
               <:default as |combo|>
                 <combo.Button
                   class="btn-default btn-small"
-                  @action={{this.addSection}}
+                  @action={{fn this.addSection null}}
                   @disabled={{this.sectionLimitReached}}
                   @icon="plus"
                   @label="doc_categories.category_settings.index_editor.add_section"

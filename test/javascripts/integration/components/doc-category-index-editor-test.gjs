@@ -1,4 +1,4 @@
-import { click, render, settled } from "@ember/test-helpers";
+import { click, fillIn, render, settled } from "@ember/test-helpers";
 import { module, test } from "qunit";
 import sinon from "sinon";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
@@ -52,7 +52,7 @@ async function renderEditor(data = indexData()) {
 
 /** Every link across every section, in order. */
 function allLinks(editor) {
-  return editor.sections.flatMap((section) => section.links);
+  return editor.sections.flatMap((section) => section.items);
 }
 
 /**
@@ -192,7 +192,7 @@ module(
     test("it refuses to open while a row is being edited", async function (assert) {
       const editor = await renderEditor();
 
-      editor.sections[0].links[0].isEditing = true;
+      editor.sections[0].items[0].isEditing = true;
       await settled();
 
       assert.false(
@@ -346,7 +346,7 @@ module(
 
       editor.toggleBatchMode();
       await settled();
-      editor.selectedItems.add(editor.sections[0].links[0]);
+      editor.selectedItems.add(editor.sections[0].items[0]);
       editor.bulkDelete();
       await settled();
 
@@ -522,7 +522,7 @@ module(
 
       assert.deepEqual(editor.validationErrors, [], "nothing is wrong yet");
 
-      editor.sections[0].links[0].isEditing = true;
+      editor.sections[0].items[0].isEditing = true;
       await settled();
 
       assert.strictEqual(
@@ -548,7 +548,7 @@ module(
       await settled();
       assert.false(editor.applyDisabled, "a pending change enables it");
 
-      editor.sections[0].links[0].isEditing = true;
+      editor.sections[0].items[0].isEditing = true;
       await settled();
 
       assert.true(
@@ -721,8 +721,12 @@ module(
       const requests = stubUnindexedTopics(3);
       const editor = await renderTopicEditor();
 
-      editor.applySectionMove({
+      editor.applyItemMove({
+        item: editor.sections[1],
+        fromList: "doc-index-root",
+        toList: "doc-index-root",
         proposedFromItems: [editor.sections[1], editor.sections[0]],
+        proposedToItems: [editor.sections[1], editor.sections[0]],
       });
       editor.sections[0].title = "Renamed";
       editor._saveToTransientData();
@@ -734,7 +738,7 @@ module(
         "reordering and retitling point at the same topics"
       );
 
-      editor.sections[0].links.splice(1, 1);
+      editor.sections[0].items.splice(1, 1);
       editor._saveToTransientData();
       await settled();
 
@@ -813,7 +817,7 @@ module(
           i18n(`${UNINDEXED}.auto_index_pending`, { count: 1 }),
           "only available slots are promised"
         );
-      editor.sections[0].links.push({
+      editor.sections[0].items.push({
         title: "Last slot",
         href: "/t/last/999",
         topic_id: 999,
@@ -943,7 +947,7 @@ module(
 
       assert.deepEqual(result, { added: 1 }, "1 by id, 5 by its topic URL");
       assert.deepEqual(
-        editor.sections[0].links.map((link) => link.href),
+        editor.sections[0].items.map((link) => link.href),
         ["/t/install/1", "/t/topic-7/7"],
         "the new link goes after the existing ones"
       );
@@ -968,8 +972,8 @@ module(
       });
       await settled();
       // Moved after adding: undo follows the objects, not their old place.
-      const moved = editor.sections[0].links.pop();
-      editor.sections[1].links.push(moved);
+      const moved = editor.sections[0].items.pop();
+      editor.sections[1].items.push(moved);
       await settled();
 
       this.toasts.activeToasts.at(-1).options.data.actions[0].action();
@@ -1104,7 +1108,7 @@ module(
       const editor = await renderTopicEditor([]);
 
       editor.addUnindexedTopics({ topics: [topic(7)], destination: "new" });
-      editor.sections[0].links.push({
+      editor.sections[0].items.push({
         title: "Manual",
         href: "/manual",
         type: "manual",
@@ -1116,7 +1120,7 @@ module(
 
       assert.strictEqual(editor.sections.length, 1, "the section stays");
       assert.deepEqual(
-        editor.sections[0].links.map((link) => link.title),
+        editor.sections[0].items.map((link) => link.title),
         ["Manual"],
         "holding only what was put there by hand"
       );
@@ -1140,7 +1144,7 @@ module(
         i18n(`${UNINDEXED}.section_room`, { section: "Full", count: 1 })
       );
       assert.strictEqual(
-        editor.sections[0].links.length,
+        editor.sections[0].items.length,
         199,
         "nothing is added"
       );
@@ -1164,6 +1168,93 @@ module(
         0,
         "dismisses the addition toast"
       );
+    });
+  }
+);
+
+module(
+  "Integration | Component | doc-category-index-editor | nested sections",
+  function (hooks) {
+    setupRenderingTest(hooks);
+    hooks.beforeEach(() => stubUnindexedTopics());
+
+    test("adds titled subsections up to the three-level limit", async function (assert) {
+      const editor = await renderEditor([{ text: "Guides", links: [] }]);
+      const add = ".doc-category-index-editor__add-subsection";
+      const title = "input.doc-category-index-editor__section-title";
+      const confirm = ".doc-category-index-editor__confirm-title-btn";
+
+      await click(add);
+      assert.dom(title).isFocused();
+      await fillIn(title, "Docs");
+      await click(confirm);
+      await click(
+        `.doc-category-index-editor__section .doc-category-index-editor__section ${add}`
+      );
+      await fillIn(title, "Sidebar");
+      await click(confirm);
+
+      const sidebar = editor.sections[0].items[0].items[0];
+      assert.strictEqual(sidebar.title, "Sidebar");
+      assert.false(editor.canAddChild(sidebar));
+      assert
+        .dom(
+          ".doc-category-index-editor__section .doc-category-index-editor__section .doc-category-index-editor__section"
+        )
+        .includesText(
+          i18n(
+            "doc_categories.category_settings.index_editor.section_depth_limit",
+            { count: 3 }
+          )
+        );
+    });
+
+    test("moves a subsection out and applies the resulting tree", async function (assert) {
+      const editor = await renderEditor([
+        {
+          text: "Guides",
+          items: [
+            { type: "link", text: "Pages", href: "/pages" },
+            {
+              type: "section",
+              text: "Docs",
+              items: [
+                { type: "link", text: "Create a doc", href: "/create" },
+                {
+                  type: "section",
+                  text: "Sidebar",
+                  links: [{ text: "Sidebar items", href: "/sidebar" }],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+      let submitted;
+      pretender.put("/doc-categories/indexes/1", (request) => {
+        submitted = JSON.parse(request.requestBody);
+        return response({ success: true });
+      });
+
+      await click(
+        ".doc-category-index-editor__section .doc-category-index-editor__section .doc-category-index-editor__section .doc-category-index-editor__move-out"
+      );
+      assert.deepEqual(
+        editor.sections[0].items.map((item) => item.title),
+        ["Pages", "Docs", "Sidebar"]
+      );
+      await editor.apply();
+
+      const items = submitted.sections[0].items;
+      assert.deepEqual(
+        items.map((item) => [item.type, item.title]),
+        [
+          ["link", "Pages"],
+          ["section", "Docs"],
+          ["section", "Sidebar"],
+        ]
+      );
+      assert.strictEqual(items[2].links[0].title, "Sidebar items");
     });
   }
 );

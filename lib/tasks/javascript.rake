@@ -5,6 +5,7 @@ task "javascript:update_constants" => :environment do
     "../plugins/discourse-doc-categories/assets/javascripts/discourse/lib/constants.js",
     "update_constants",
     <<~JS,
+      export const MAX_SECTION_DEPTH = #{DocCategories::Index::MAX_SECTION_DEPTH};
       export const MAX_SECTIONS = #{DocCategories::Index::MAX_SECTIONS};
       export const MAX_LINKS_PER_SECTION = #{DocCategories::Index::MAX_LINKS_PER_SECTION};
     JS

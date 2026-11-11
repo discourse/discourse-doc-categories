@@ -99,12 +99,12 @@ module(
       await click(menu);
       assert.dom(".fk-d-menu__inner-content button", document).isDisabled();
 
-      editor.sections[0].links.pop();
+      editor.sections[0].items.pop();
       await settled();
       assert.dom(add).isEnabled();
       await click(".fk-d-menu__inner-content button");
       assert.strictEqual(
-        editor.sections[0].links.length,
+        editor.sections[0].items.length,
         MAX_LINKS_PER_SECTION
       );
       assert.dom(add).isDisabled();
@@ -116,18 +116,18 @@ module(
         { text: "Destination", links: links(MAX_LINKS_PER_SECTION) },
       ]);
       const [source, destination] = editor.sections;
-      const original = [...destination.links];
-      editor.selectedItems.add(source.links[0]);
-      editor.selectedItems.add(destination.links[0]);
+      const original = [...destination.items];
+      editor.selectedItems.add(source.items[0]);
+      editor.selectedItems.add(destination.items[0]);
       editor.batchReorderItems(null, destination, false);
       await settled();
       assert.strictEqual(
-        source.links.length,
+        source.items.length,
         2,
         "refused move preserves the source"
       );
       assert.deepEqual(
-        [...destination.links],
+        [...destination.items],
         original,
         "refused move preserves the destination order"
       );
@@ -138,27 +138,27 @@ module(
       );
       assert.false(editor.hasPendingChanges);
 
-      destination.links.pop();
+      destination.items.pop();
       editor.batchReorderItems(null, destination, false);
       await settled();
-      assert.strictEqual(source.links.length, 1);
+      assert.strictEqual(source.items.length, 1);
       assert.strictEqual(
-        destination.links.length,
+        destination.items.length,
         MAX_LINKS_PER_SECTION,
         "only incoming links consume capacity"
       );
 
       editor.selectedItems.clear();
-      const first = destination.links[0];
+      const first = destination.items[0];
       editor.selectedItems.add(first);
       editor.batchReorderItems(null, destination, false);
       await settled();
       assert.strictEqual(
-        destination.links.at(-1),
+        destination.items.at(-1),
         first,
         "reordering at capacity remains allowed"
       );
-      assert.strictEqual(destination.links.length, MAX_LINKS_PER_SECTION);
+      assert.strictEqual(destination.items.length, MAX_LINKS_PER_SECTION);
     });
 
     test("an oversized restored draft cannot be applied", async function (assert) {

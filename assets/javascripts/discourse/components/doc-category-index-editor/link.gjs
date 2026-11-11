@@ -119,9 +119,9 @@ export class IndexEditorLink extends Component {
     this.validationError = null;
     if (this.#isNew) {
       this.editing = false;
-      const idx = this.args.section.links.indexOf(this.args.link);
+      const idx = this.args.section.items.indexOf(this.args.link);
       if (idx !== -1) {
-        this.args.section.links.splice(idx, 1);
+        this.args.section.items.splice(idx, 1);
       }
       this.args.onChange?.();
       return;
