@@ -9,7 +9,7 @@
 # which is not what any of these tests are about.
 describe "Doc Category Index Editor | batch mode" do
   fab!(:admin)
-  fab!(:category, :category_with_definition)
+  fab!(:category, :documentation_category)
 
   fab!(:index) do
     Fabricate(

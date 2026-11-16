@@ -11,7 +11,7 @@
 # what a reorder changes.
 describe "Doc Category Index Editor | keyboard reordering" do
   fab!(:admin)
-  fab!(:category, :category_with_definition)
+  fab!(:category, :documentation_category)
 
   let(:editor) { PageObjects::Components::DocIndexEditor.new }
 

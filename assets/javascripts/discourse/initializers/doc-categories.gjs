@@ -1,6 +1,7 @@
 import { schedule } from "@ember/runloop";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import DiscourseURL from "discourse/lib/url";
+import DocCategoryIndexSettings from "../components/doc-category-index-settings.gjs";
 import DocCategorySettingsForm from "../components/doc-category-settings-form.gjs";
 import DocSimpleModeToggle from "../components/doc-simple-mode-toggle.gjs";
 import DocUpdatedHeaderCell from "../components/doc-updated-header-cell.gjs";
@@ -15,12 +16,18 @@ import {
 export default {
   name: "doc-categories",
   initialize(container) {
+    // A pending index save must block navigation before FormKit checks for unsaved changes.
+    container.lookup("service:doc-index-save-lock");
     container.lookup("service:doc-category-sidebar");
     const siteSettings = container.lookup("service:site-settings");
 
     withPluginApi((api) => {
       api.registerCategorySaveProperty("doc_index_topic_id");
       api.registerCategorySaveProperty("doc_index_sections");
+      api.renderInOutlet(
+        "edit-category-type-settings",
+        DocCategoryIndexSettings
+      );
       api.renderInOutlet("category-custom-settings", DocCategorySettingsForm);
       api.addSidebarPanel(DocCategorySidebarPanel);
 

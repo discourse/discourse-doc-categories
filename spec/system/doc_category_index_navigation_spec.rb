@@ -2,7 +2,7 @@
 
 RSpec.describe "Doc index unsaved navigation" do
   fab!(:admin)
-  fab!(:category)
+  fab!(:category) { Fabricate(:documentation_category, skip_category_definition: true) }
   fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic_id: -1) }
   fab!(:section) do
     Fabricate(:doc_categories_sidebar_section, index: index, title: "Original section", position: 0)
@@ -22,6 +22,7 @@ RSpec.describe "Doc index unsaved navigation" do
   before do
     SiteSetting.doc_categories_enabled = true
     SiteSetting.doc_categories_index_editor = true
+    SiteSetting.enable_simplified_category_creation = true
     sign_in(admin)
   end
 
@@ -43,7 +44,7 @@ RSpec.describe "Doc index unsaved navigation" do
     expect(page).to have_current_path("/c/#{category.slug}/edit/general")
     expect(page).to have_no_css(".dialog-container")
     expect(page).to have_no_content("You have unsaved changes")
-    switch_tab("doc-index")
+    switch_tab("documentation")
     switch_tab("general")
     expect(page).to have_no_content("You have unsaved changes")
   end
@@ -51,17 +52,17 @@ RSpec.describe "Doc index unsaved navigation" do
   it "supports staying, and discards only index changes when leaving" do
     visit "/c/#{category.slug}/edit/general"
     find("input[name='name']").fill_in(with: "Unrelated category edit")
-    switch_tab("doc-index")
+    switch_tab("documentation")
     edit_title("Unsaved index title")
     switch_tab("general")
     click_button "Stay"
-    expect(page).to have_current_path("/c/#{category.slug}/edit/doc-index")
+    expect(page).to have_current_path("/c/#{category.slug}/edit/documentation")
     expect(page).to have_content("Unsaved index title")
     switch_tab("general")
     click_button "Discard and leave"
     expect(page).to have_current_path("/c/#{category.slug}/edit/general")
     expect(page).to have_field("name", with: "Unrelated category edit")
-    switch_tab("doc-index")
+    switch_tab("documentation")
     expect(page).to have_content("Original section")
     expect(page).to have_no_content("Unsaved index title")
     editor.save_category
@@ -76,7 +77,7 @@ RSpec.describe "Doc index unsaved navigation" do
     click_button I18n.t("js.doc_categories.category_settings.index_editor.add_link"), exact: true
     switch_tab("general")
     click_button "Discard and leave"
-    switch_tab("doc-index")
+    switch_tab("documentation")
     expect(page).to have_no_css(".doc-category-index-editor__link-card.--editing")
     expect(page).to have_css(".doc-category-index-editor__link", count: 1)
     edit_title("Valid later change")
@@ -93,7 +94,7 @@ RSpec.describe "Doc index unsaved navigation" do
     edit_title("Later unsaved title")
     switch_tab("general")
     click_button "Discard and leave"
-    switch_tab("doc-index")
+    switch_tab("documentation")
     expect(page).to have_content("Applied title")
     expect(page).to have_no_content("Later unsaved title")
   end
@@ -115,7 +116,7 @@ RSpec.describe "Doc index unsaved navigation" do
     expect(page).to have_no_css(".doc-category-index-tab button:not(:disabled)")
     expect(page).to have_css(".edit-category-page[inert]")
     find(".sidebar-section-link[href='/latest']").native.click
-    expect(page).to have_current_path("/c/#{category.slug}/edit/doc-index")
+    expect(page).to have_current_path("/c/#{category.slug}/edit/documentation")
     expect(page).to have_no_css(".dialog-container")
 
     release << true

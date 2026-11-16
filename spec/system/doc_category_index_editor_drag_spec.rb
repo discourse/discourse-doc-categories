@@ -16,7 +16,7 @@
 # follow the row it was meant to pin.
 describe "Doc Category Index Editor | dragging" do
   fab!(:admin)
-  fab!(:category, :category_with_definition)
+  fab!(:category, :documentation_category)
 
   let(:editor) { PageObjects::Components::DocIndexEditor.new }
 

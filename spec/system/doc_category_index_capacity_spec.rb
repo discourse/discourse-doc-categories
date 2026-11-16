@@ -2,7 +2,7 @@
 
 RSpec.describe "Doc index capacity" do
   fab!(:admin)
-  fab!(:category)
+  fab!(:category) { Fabricate(:documentation_category, skip_category_definition: true) }
   fab!(:index) do
     Fabricate(
       :doc_categories_index,
@@ -19,6 +19,7 @@ RSpec.describe "Doc index capacity" do
   before do
     SiteSetting.doc_categories_enabled = true
     SiteSetting.doc_categories_index_editor = true
+    SiteSetting.enable_simplified_category_creation = true
     sign_in(admin)
   end
 

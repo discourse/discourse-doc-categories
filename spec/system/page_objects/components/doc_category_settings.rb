@@ -20,11 +20,11 @@ module PageObjects
       end
 
       def has_editor_tab?
-        has_css?(".edit-category-doc-index")
+        has_css?(".edit-category-documentation")
       end
 
       def has_no_editor_tab?
-        has_no_css?(".edit-category-doc-index")
+        has_no_css?(".edit-category-documentation")
       end
 
       def select_index_topic(topic)

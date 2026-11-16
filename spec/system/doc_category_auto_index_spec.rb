@@ -2,7 +2,7 @@
 
 describe "Doc Category Auto-Index" do
   fab!(:admin)
-  fab!(:category)
+  fab!(:category) { Fabricate(:documentation_category, skip_category_definition: true) }
   fab!(:topic_1) { Fabricate(:topic, category: category, title: "Alpha topic for auto-indexing") }
   fab!(:post_1) { Fabricate(:post, topic: topic_1) }
   fab!(:topic_2) { Fabricate(:topic, category: category, title: "Beta topic for auto-indexing") }

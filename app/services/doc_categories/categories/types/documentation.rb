@@ -74,13 +74,6 @@ module DocCategories
             "book"
           end
 
-          def additional_metadata
-            {
-              setup_message:
-                I18n.t("js.doc_categories.category_settings.index_editor.create_category_first"),
-            }
-          end
-
           def svg_icon
             "book"
           end
