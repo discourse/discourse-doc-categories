@@ -194,18 +194,11 @@ export default class DocIndexModeState {
   @bind
   switchToTopicMode(dMenu) {
     dMenu.close();
+
     if (this.isTopicMode) {
       return;
     }
-    if (this.indexData?.length > 0) {
-      this.#dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.mode_switch_warning"
-        ),
-        didConfirm: () => this.#applyTopicMode(),
-      });
-      return;
-    }
+
     this.#applyTopicMode();
   }
 

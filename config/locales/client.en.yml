@@ -41,7 +41,6 @@ en:
           mode_direct: "Editor"
           mode_direct_description: "Build the sidebar structure with a visual editor"
           create_category_first: "Create the category to edit the sidebar structure."
-          mode_switch_warning: "Selecting an index topic will overwrite the current sidebar structure on the next refresh."
           switch_to_direct_warning: "This will disconnect the index topic. Editor changes won't sync back to it."
           add_section: "Add section"
           add_subsection: "Add subsection"
