@@ -25,12 +25,12 @@ const DocIndexModeSelector = <template>
             >
               <div class="doc-category-index-tab__mode-option-texts">
                 <span class="doc-category-index-tab__mode-option-label">{{i18n
-                    "doc_categories.category_settings.index_editor.mode_direct"
+                    "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
                   }}</span>
                 <span
                   class="doc-category-index-tab__mode-option-description"
                 >{{i18n
-                    "doc_categories.category_settings.index_editor.mode_direct_description"
+                    "doc_categories.category_settings.sidebar_structure_editor.mode_direct_description"
                   }}</span>
               </div>
             </DButton>
@@ -43,12 +43,12 @@ const DocIndexModeSelector = <template>
           >
             <div class="doc-category-index-tab__mode-option-texts">
               <span class="doc-category-index-tab__mode-option-label">{{i18n
-                  "doc_categories.category_settings.index_editor.mode_topic"
+                  "doc_categories.category_settings.sidebar_structure_editor.mode_topic"
                 }}</span>
               <span
                 class="doc-category-index-tab__mode-option-description"
               >{{i18n
-                  "doc_categories.category_settings.index_editor.mode_topic_description"
+                  "doc_categories.category_settings.sidebar_structure_editor.mode_topic_description"
                 }}</span>
             </div>
           </DButton>
@@ -60,12 +60,12 @@ const DocIndexModeSelector = <template>
           >
             <div class="doc-category-index-tab__mode-option-texts">
               <span class="doc-category-index-tab__mode-option-label">{{i18n
-                  "doc_categories.category_settings.index_editor.mode_none"
+                  "doc_categories.category_settings.sidebar_structure_editor.mode_none"
                 }}</span>
               <span
                 class="doc-category-index-tab__mode-option-description"
               >{{i18n
-                  "doc_categories.category_settings.index_editor.mode_none_description"
+                  "doc_categories.category_settings.sidebar_structure_editor.mode_none_description"
                 }}</span>
             </div>
           </DButton>

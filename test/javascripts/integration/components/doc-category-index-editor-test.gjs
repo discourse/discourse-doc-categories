@@ -94,7 +94,11 @@ module(
       assert.true(editor.hasPendingChanges);
       assert
         .dom(".empty-state__body")
-        .hasText(i18n("doc_categories.category_settings.index_editor.empty"));
+        .hasText(
+          i18n(
+            "doc_categories.category_settings.sidebar_structure_editor.empty"
+          )
+        );
     });
 
     test("populated and auto-index sections still require confirmation", async function (assert) {
@@ -567,7 +571,7 @@ module(
       assert.true(editor.applyDisabled, "so a double click cannot save twice");
       assert.strictEqual(
         editor.applyLabel,
-        "doc_categories.category_settings.index_editor.applying",
+        "doc_categories.category_settings.sidebar_structure_editor.applying",
         "and the label says so"
       );
     });
@@ -629,7 +633,7 @@ module(
 );
 
 const UNINDEXED =
-  "doc_categories.category_settings.index_editor.unindexed_topics";
+  "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics";
 
 /** Saved sections with topic links, a manual topic URL and an external URL. */
 function topicIndexData() {
@@ -1012,7 +1016,7 @@ module(
         editor.sections.map((section) => section.title),
         [
           i18n(
-            "doc_categories.category_settings.index_editor.all_topics_section"
+            "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
           ),
           "Other topics",
         ]
@@ -1022,7 +1026,7 @@ module(
     test("full destinations offer a new section with a unique title", async function (assert) {
       stubUnindexedTopics(2);
       const base = i18n(
-        "doc_categories.category_settings.index_editor.all_topics_section"
+        "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
       );
       const links = Array.from({ length: 200 }, (_, index) => ({
         text: `Link ${index}`,
@@ -1059,7 +1063,7 @@ module(
     test("new-section capacity errors name the same unique title offered in the picker", async function (assert) {
       stubUnindexedTopics(2);
       const base = i18n(
-        "doc_categories.category_settings.index_editor.all_topics_section"
+        "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
       );
       const editor = await renderTopicEditor([
         { id: 10, text: base, links: [] },
@@ -1203,7 +1207,7 @@ module(
         )
         .includesText(
           i18n(
-            "doc_categories.category_settings.index_editor.section_depth_limit",
+            "doc_categories.category_settings.sidebar_structure_editor.section_depth_limit",
             { count: 3 }
           )
         );

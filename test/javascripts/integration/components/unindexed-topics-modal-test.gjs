@@ -7,7 +7,8 @@ import formKit from "discourse/tests/helpers/form-kit-helper";
 import { i18n } from "discourse-i18n";
 import UnindexedTopicsModal from "discourse/plugins/discourse-doc-categories/discourse/components/doc-category-index-editor/unindexed-topics-modal";
 
-const PREFIX = "doc_categories.category_settings.index_editor.unindexed_topics";
+const PREFIX =
+  "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics";
 
 function topic(id, categoryId = 1) {
   return {

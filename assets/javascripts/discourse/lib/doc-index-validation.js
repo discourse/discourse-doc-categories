@@ -16,9 +16,12 @@ export default function validateDocIndexSections(sections) {
   const entries = [...sectionEntries(sections)];
   if (entries.length > MAX_SECTIONS) {
     errors.add(
-      i18n("doc_categories.category_settings.index_editor.section_limit", {
-        count: MAX_SECTIONS,
-      })
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.section_limit",
+        {
+          count: MAX_SECTIONS,
+        }
+      )
     );
   }
 
@@ -28,7 +31,7 @@ export default function validateDocIndexSections(sections) {
     if (ancestors.length >= MAX_SECTION_DEPTH) {
       errors.add(
         i18n(
-          "doc_categories.category_settings.index_editor.section_depth_limit",
+          "doc_categories.category_settings.sidebar_structure_editor.section_depth_limit",
           {
             count: MAX_SECTION_DEPTH,
           }
@@ -37,23 +40,26 @@ export default function validateDocIndexSections(sections) {
     }
     if (links.length > MAX_LINKS_PER_SECTION) {
       errors.add(
-        i18n("doc_categories.category_settings.index_editor.link_limit", {
-          count: MAX_LINKS_PER_SECTION,
-        })
+        i18n(
+          "doc_categories.category_settings.sidebar_structure_editor.link_limit",
+          {
+            count: MAX_LINKS_PER_SECTION,
+          }
+        )
       );
     }
     // First section is allowed to have an empty title (not collapsible in sidebar)
     if ((section !== sections[0] || hasChildren) && !section.title?.trim()) {
       errors.add(
         i18n(
-          "doc_categories.category_settings.index_editor.validation_empty_section_title"
+          "doc_categories.category_settings.sidebar_structure_editor.validation_empty_section_title"
         )
       );
     }
     if (links.length === 0 && !hasChildren && !section.autoIndex) {
       errors.add(
         i18n(
-          "doc_categories.category_settings.index_editor.validation_empty_section"
+          "doc_categories.category_settings.sidebar_structure_editor.validation_empty_section"
         )
       );
     }
@@ -61,14 +67,14 @@ export default function validateDocIndexSections(sections) {
       if (!link.title?.trim() && link.type !== "topic") {
         errors.add(
           i18n(
-            "doc_categories.category_settings.index_editor.validation_empty_link_title"
+            "doc_categories.category_settings.sidebar_structure_editor.validation_empty_link_title"
           )
         );
       }
       if (!link.href?.trim()) {
         errors.add(
           i18n(
-            "doc_categories.category_settings.index_editor.validation_empty_link_url"
+            "doc_categories.category_settings.sidebar_structure_editor.validation_empty_link_url"
           )
         );
       }

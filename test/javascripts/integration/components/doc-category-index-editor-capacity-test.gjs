@@ -10,7 +10,7 @@ import {
   MAX_SECTIONS,
 } from "discourse/plugins/discourse-doc-categories/discourse/lib/constants";
 
-const PREFIX = "doc_categories.category_settings.index_editor";
+const PREFIX = "doc_categories.category_settings.sidebar_structure_editor";
 
 function links(count) {
   return Array.from({ length: count }, (_, index) => ({

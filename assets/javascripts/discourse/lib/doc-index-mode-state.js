@@ -98,11 +98,17 @@ export default class DocIndexModeState {
 
   get currentModeLabel() {
     if (this.isTopicMode) {
-      return i18n("doc_categories.category_settings.index_editor.mode_topic");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_topic"
+      );
     } else if (this.isDirectMode) {
-      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      );
     }
-    return i18n("doc_categories.category_settings.index_editor.mode_none");
+    return i18n(
+      "doc_categories.category_settings.sidebar_structure_editor.mode_none"
+    );
   }
 
   get searchFilters() {
@@ -163,7 +169,7 @@ export default class DocIndexModeState {
     if (hasData) {
       this.#dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.disable_confirm"
+          "doc_categories.category_settings.sidebar_structure_editor.disable_confirm"
         ),
         didConfirm: () => this.#applyNoneMode(),
       });
@@ -182,7 +188,7 @@ export default class DocIndexModeState {
     if (this.isTopicMode && this.indexTopicId) {
       this.#dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.switch_to_direct_warning"
+          "doc_categories.category_settings.sidebar_structure_editor.switch_to_direct_warning"
         ),
         didConfirm: () => {
           this.mode = MODE_DIRECT;
@@ -204,7 +210,7 @@ export default class DocIndexModeState {
     if (this.indexData?.length > 0) {
       this.#dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.mode_switch_warning"
+          "doc_categories.category_settings.sidebar_structure_editor.mode_switch_warning"
         ),
         didConfirm: () => this.#applyTopicMode(),
       });

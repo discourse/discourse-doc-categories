@@ -78,9 +78,12 @@ export class IndexEditorSection extends Component {
   }
 
   get linkLimitMessage() {
-    return i18n("doc_categories.category_settings.index_editor.link_limit", {
-      count: MAX_LINKS_PER_SECTION,
-    });
+    return i18n(
+      "doc_categories.category_settings.sidebar_structure_editor.link_limit",
+      {
+        count: MAX_LINKS_PER_SECTION,
+      }
+    );
   }
 
   get linkCount() {
@@ -118,7 +121,7 @@ export class IndexEditorSection extends Component {
 
   get depthLimitMessage() {
     return i18n(
-      "doc_categories.category_settings.index_editor.section_depth_limit",
+      "doc_categories.category_settings.sidebar_structure_editor.section_depth_limit",
       {
         count: MAX_SECTION_DEPTH,
       }
@@ -140,7 +143,7 @@ export class IndexEditorSection extends Component {
       return null;
     }
     return i18n(
-      "doc_categories.category_settings.index_editor.validation_empty_section_title"
+      "doc_categories.category_settings.sidebar_structure_editor.validation_empty_section_title"
     );
   }
 
@@ -157,12 +160,12 @@ export class IndexEditorSection extends Component {
 
     if (this.isFirstSection) {
       return i18n(
-        "doc_categories.category_settings.index_editor.first_section_no_title"
+        "doc_categories.category_settings.sidebar_structure_editor.first_section_no_title"
       );
     }
 
     return i18n(
-      "doc_categories.category_settings.index_editor.section_title_placeholder"
+      "doc_categories.category_settings.sidebar_structure_editor.section_title_placeholder"
     );
   }
 
@@ -182,7 +185,7 @@ export class IndexEditorSection extends Component {
   confirmTitleEdit() {
     if (!this._editSectionTitle?.trim() && !this.isFirstSection) {
       this.titleValidationError = i18n(
-        "doc_categories.category_settings.index_editor.validation_empty_section_title"
+        "doc_categories.category_settings.sidebar_structure_editor.validation_empty_section_title"
       );
       return;
     }
@@ -337,7 +340,7 @@ export class IndexEditorSection extends Component {
   removeLink(link) {
     return this.dialog.yesNoConfirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.confirm_remove_link"
+        "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_link"
       ),
       didConfirm: () => {
         const idx = this.args.section.items.indexOf(link);
@@ -358,7 +361,7 @@ export class IndexEditorSection extends Component {
     return (
       link.title ||
       i18n(
-        "doc_categories.category_settings.index_editor.link_title_placeholder"
+        "doc_categories.category_settings.sidebar_structure_editor.link_title_placeholder"
       )
     );
   }
@@ -427,7 +430,7 @@ export class IndexEditorSection extends Component {
       {{#if @section.autoIndex}}
         <DMenu
           title={{i18n
-            "doc_categories.category_settings.index_editor.auto_index_badge_title"
+            "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_title"
           }}
           @identifier="auto-index-badge-menu"
           @triggerClass="doc-category-index-editor__auto-index-badge"
@@ -437,15 +440,15 @@ export class IndexEditorSection extends Component {
             {{if
               @pendingResync
               (i18n
-                "doc_categories.category_settings.index_editor.resync_auto_index"
+                "doc_categories.category_settings.sidebar_structure_editor.resync_auto_index"
               )
               (if
                 @autoIndexIncludeSubcategories
                 (i18n
-                  "doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories"
+                  "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label_with_subcategories"
                 )
                 (i18n
-                  "doc_categories.category_settings.index_editor.auto_index_badge_label"
+                  "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label"
                 )
               )
             }}
@@ -466,7 +469,7 @@ export class IndexEditorSection extends Component {
                     }}
                   />
                   {{i18n
-                    "doc_categories.category_settings.index_editor.include_subcategories"
+                    "doc_categories.category_settings.sidebar_structure_editor.include_subcategories"
                   }}
                 </label>
               </dropdown.item>
@@ -479,8 +482,8 @@ export class IndexEditorSection extends Component {
                     @icon={{if @pendingResync "xmark" "arrows-rotate"}}
                     @label={{if
                       @pendingResync
-                      "doc_categories.category_settings.index_editor.cancel_resync"
-                      "doc_categories.category_settings.index_editor.resync_auto_index"
+                      "doc_categories.category_settings.sidebar_structure_editor.cancel_resync"
+                      "doc_categories.category_settings.sidebar_structure_editor.resync_auto_index"
                     }}
                   />
                 </dropdown.item>
@@ -501,7 +504,7 @@ export class IndexEditorSection extends Component {
           <input
             class="doc-category-index-editor__section-title"
             placeholder={{i18n
-              "doc_categories.category_settings.index_editor.section_title_placeholder"
+              "doc_categories.category_settings.sidebar_structure_editor.section_title_placeholder"
             }}
             type="text"
             value={{this._editSectionTitle}}
@@ -513,7 +516,7 @@ export class IndexEditorSection extends Component {
             class="btn-flat btn-small doc-category-index-editor__confirm-title-btn"
             @action={{this.confirmTitleEdit}}
             @icon="check"
-            @title="doc_categories.category_settings.index_editor.confirm_edit"
+            @title="doc_categories.category_settings.sidebar_structure_editor.confirm_edit"
           />
           <DButton
             class="btn-flat btn-small doc-category-index-editor__cancel-title-btn"
@@ -538,7 +541,7 @@ export class IndexEditorSection extends Component {
           <span
             class="doc-category-index-editor__duplicate-icon"
             title={{i18n
-              "doc_categories.category_settings.index_editor.duplicate_title_warning"
+              "doc_categories.category_settings.sidebar_structure_editor.duplicate_title_warning"
             }}
           >
             {{icon "triangle-exclamation"}}
@@ -550,7 +553,7 @@ export class IndexEditorSection extends Component {
             <span
               class="doc-category-index-editor__duplicate-icon"
               title={{i18n
-                "doc_categories.category_settings.index_editor.duplicate_warning"
+                "doc_categories.category_settings.sidebar_structure_editor.duplicate_warning"
               }}
             >
               {{icon "triangle-exclamation"}}
@@ -566,33 +569,33 @@ export class IndexEditorSection extends Component {
             class="btn-flat btn-small"
             @action={{fn @selectAllInSection @section}}
             @icon="check-double"
-            @title="doc_categories.category_settings.index_editor.batch_select_all"
+            @title="doc_categories.category_settings.sidebar_structure_editor.batch_select_all"
           />
           <DButton
             class="btn-flat btn-small"
             @action={{fn @invertSelectionInSection @section}}
             @icon="right-left"
-            @title="doc_categories.category_settings.index_editor.batch_invert"
+            @title="doc_categories.category_settings.sidebar_structure_editor.batch_invert"
           />
           <DButton
             class="btn-flat btn-small"
             @action={{fn @clearAllInSection @section}}
             @icon="eraser"
-            @title="doc_categories.category_settings.index_editor.batch_clear_selection"
+            @title="doc_categories.category_settings.sidebar_structure_editor.batch_clear_selection"
           />
         {{else}}{{#unless this.editingTitle}}
             <DButton
               class="btn-flat btn-small doc-category-index-editor__edit-btn"
               @action={{this.enterTitleEdit}}
               @icon="pencil"
-              @title="doc_categories.category_settings.index_editor.edit_section_title"
+              @title="doc_categories.category_settings.sidebar_structure_editor.edit_section_title"
             />
             {{#if (@canMoveOut @section)}}
               <DButton
                 class="btn-flat btn-small doc-category-index-editor__move-out"
                 @action={{fn @onMoveOut @section}}
                 @icon="arrow-turn-up"
-                @title="doc_categories.category_settings.index_editor.move_section_out"
+                @title="doc_categories.category_settings.sidebar_structure_editor.move_section_out"
               />
             {{/if}}
             {{#if @controls.remove}}
@@ -641,7 +644,7 @@ export class IndexEditorSection extends Component {
             }}
           >
             {{i18n
-              "doc_categories.category_settings.index_editor.drop_sections_inside"
+              "doc_categories.category_settings.sidebar_structure_editor.drop_sections_inside"
             }}
           </div>
         {{/if}}
@@ -697,7 +700,7 @@ export class IndexEditorSection extends Component {
                 <div class="doc-category-index-editor__link-card-header">
                   <span class="doc-category-index-editor__link-label">
                     {{i18n
-                      "doc_categories.category_settings.index_editor.auto_index_placeholder"
+                      "doc_categories.category_settings.sidebar_structure_editor.auto_index_placeholder"
                     }}
                   </span>
                 </div>
@@ -721,7 +724,7 @@ export class IndexEditorSection extends Component {
                   @onChange={{this.onAddTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
-                    none="doc_categories.category_settings.index_editor.select_topic"
+                    none="doc_categories.category_settings.sidebar_structure_editor.select_topic"
                   }}
                   @value={{null}}
                 />
@@ -743,7 +746,7 @@ export class IndexEditorSection extends Component {
                     @action={{this.showTopicChooser}}
                     @disabled={{this.linkLimitReached}}
                     @icon="plus"
-                    @label="doc_categories.category_settings.index_editor.add_topic"
+                    @label="doc_categories.category_settings.sidebar_structure_editor.add_topic"
                   />
                   <combo.Menu
                     class="btn-default btn-small"
@@ -757,7 +760,7 @@ export class IndexEditorSection extends Component {
                           @action={{this.addManualLink}}
                           @disabled={{this.linkLimitReached}}
                           @icon="link"
-                          @label="doc_categories.category_settings.index_editor.add_link"
+                          @label="doc_categories.category_settings.sidebar_structure_editor.add_link"
                         />
                       </dropdown.item>
                       {{! Auto-index already gathers what the index leaves out
@@ -769,7 +772,7 @@ export class IndexEditorSection extends Component {
                             class="btn-transparent doc-category-index-editor__review-section-topics"
                             @action={{this.reviewUnindexedTopics}}
                             @icon="list-check"
-                            @label="doc_categories.category_settings.index_editor.add_missing_topics"
+                            @label="doc_categories.category_settings.sidebar_structure_editor.add_missing_topics"
                           />
                         </dropdown.item>
                       {{/unless}}
@@ -783,7 +786,7 @@ export class IndexEditorSection extends Component {
                   @action={{fn @onAddSection @section}}
                   @disabled={{@sectionLimitReached}}
                   @icon="plus"
-                  @label="doc_categories.category_settings.index_editor.add_subsection"
+                  @label="doc_categories.category_settings.sidebar_structure_editor.add_subsection"
                 />
               {{else if this.depthLimitReached}}
                 <span class="doc-category-index-editor__capacity-message">

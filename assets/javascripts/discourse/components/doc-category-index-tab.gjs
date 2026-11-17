@@ -63,7 +63,7 @@ export default class DocCategoryIndexTab extends Component {
       if (errors.length > 0 && addError) {
         addError("doc_index_sections", {
           title: i18n(
-            "doc_categories.category_settings.index_editor.mode_direct"
+            "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
           ),
           message: errors.join(" "),
         });
@@ -91,7 +91,9 @@ export default class DocCategoryIndexTab extends Component {
 
   get currentModeLabel() {
     if (this.isPreview) {
-      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      );
     }
     return this.modeState.currentModeLabel;
   }
@@ -153,11 +155,12 @@ export default class DocCategoryIndexTab extends Component {
     this.#confirmingNavigation = true;
     this.dialog.confirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.unsaved_navigation"
+        "doc_categories.category_settings.sidebar_structure_editor.unsaved_navigation"
       ),
       confirmButtonLabel:
-        "doc_categories.category_settings.index_editor.discard_and_leave",
-      cancelButtonLabel: "doc_categories.category_settings.index_editor.stay",
+        "doc_categories.category_settings.sidebar_structure_editor.discard_and_leave",
+      cancelButtonLabel:
+        "doc_categories.category_settings.sidebar_structure_editor.stay",
       didCancel: () => {
         this.#confirmingNavigation = false;
       },
@@ -211,12 +214,12 @@ export default class DocCategoryIndexTab extends Component {
         <p class="doc-category-index-tab__none-help">
           {{#if this.modeState.inheritedIndexCategory}}
             {{i18n
-              "doc_categories.category_settings.index_editor.inherited_mode_help"
+              "doc_categories.category_settings.sidebar_structure_editor.inherited_mode_help"
               category_name=this.modeState.inheritedIndexCategory.name
             }}
           {{else}}
             {{i18n
-              "doc_categories.category_settings.index_editor.none_mode_help"
+              "doc_categories.category_settings.sidebar_structure_editor.none_mode_help"
             }}
           {{/if}}
         </p>
@@ -225,7 +228,7 @@ export default class DocCategoryIndexTab extends Component {
           <p class="doc-category-index-tab__topic-help">
             {{trustHTML
               (i18n
-                "doc_categories.category_settings.index_editor.topic_mode_help"
+                "doc_categories.category_settings.sidebar_structure_editor.topic_mode_help"
               )
             }}
           </p>

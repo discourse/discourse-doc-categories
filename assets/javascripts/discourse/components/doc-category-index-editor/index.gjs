@@ -240,9 +240,12 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   get sectionLimitMessage() {
-    return i18n("doc_categories.category_settings.index_editor.section_limit", {
-      count: MAX_SECTIONS,
-    });
+    return i18n(
+      "doc_categories.category_settings.sidebar_structure_editor.section_limit",
+      {
+        count: MAX_SECTIONS,
+      }
+    );
   }
 
   get serializedSections() {
@@ -279,7 +282,7 @@ export default class DocCategoryIndexEditor extends Component {
     if (this.editingCount > 0) {
       errors.push(
         i18n(
-          "doc_categories.category_settings.index_editor.validation_pending_changes"
+          "doc_categories.category_settings.sidebar_structure_editor.validation_pending_changes"
         )
       );
     }
@@ -357,7 +360,7 @@ export default class DocCategoryIndexEditor extends Component {
   get unindexedTopicsMessage() {
     if (this.#unindexedCounter.isLoading) {
       return i18n(
-        "doc_categories.category_settings.index_editor.unindexed_topics.checking"
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.checking"
       );
     }
     if (this.autoIndexSyncPending) {
@@ -368,10 +371,10 @@ export default class DocCategoryIndexEditor extends Component {
       );
       return available === 0
         ? i18n(
-            "doc_categories.category_settings.index_editor.unindexed_topics.auto_index_full"
+            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.auto_index_full"
           )
         : i18n(
-            "doc_categories.category_settings.index_editor.unindexed_topics.auto_index_pending",
+            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.auto_index_pending",
             { count: Math.min(available, this.#unindexedCounter.count) }
           );
     }
@@ -379,11 +382,11 @@ export default class DocCategoryIndexEditor extends Component {
     const count = this.#unindexedCounter.count;
     return this.unindexedIncludesSubcategories
       ? i18n(
-          "doc_categories.category_settings.index_editor.unindexed_topics.count_with_subcategories",
+          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.count_with_subcategories",
           { count }
         )
       : i18n(
-          "doc_categories.category_settings.index_editor.unindexed_topics.count",
+          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.count",
           { count }
         );
   }
@@ -398,11 +401,11 @@ export default class DocCategoryIndexEditor extends Component {
   get applyLabel() {
     switch (this.saveState) {
       case "saving":
-        return "doc_categories.category_settings.index_editor.applying";
+        return "doc_categories.category_settings.sidebar_structure_editor.applying";
       case "saved":
-        return "doc_categories.category_settings.index_editor.applied";
+        return "doc_categories.category_settings.sidebar_structure_editor.applied";
       default:
-        return "doc_categories.category_settings.index_editor.apply";
+        return "doc_categories.category_settings.sidebar_structure_editor.apply";
     }
   }
 
@@ -452,17 +455,17 @@ export default class DocCategoryIndexEditor extends Component {
     const sections = this.selectedSections.size;
     if (items > 0 && sections > 0) {
       return i18n(
-        "doc_categories.category_settings.index_editor.batch_selected_mixed",
+        "doc_categories.category_settings.sidebar_structure_editor.batch_selected_mixed",
         { items, sections }
       );
     } else if (sections > 0) {
       return i18n(
-        "doc_categories.category_settings.index_editor.batch_selected_sections",
+        "doc_categories.category_settings.sidebar_structure_editor.batch_selected_sections",
         { count: sections }
       );
     }
     return i18n(
-      "doc_categories.category_settings.index_editor.batch_selected_items",
+      "doc_categories.category_settings.sidebar_structure_editor.batch_selected_items",
       { count: items }
     );
   }
@@ -510,13 +513,13 @@ export default class DocCategoryIndexEditor extends Component {
     }
 
     let message =
-      "doc_categories.category_settings.index_editor.confirm_remove_section";
+      "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_section";
     if (section.autoIndex) {
       message =
-        "doc_categories.category_settings.index_editor.confirm_remove_auto_index_section";
+        "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_auto_index_section";
     } else if (section.items.some(isIndexSection)) {
       message =
-        "doc_categories.category_settings.index_editor.confirm_remove_section_tree";
+        "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_section_tree";
     }
     return this.dialog.yesNoConfirm({
       message: i18n(message),
@@ -582,7 +585,7 @@ export default class DocCategoryIndexEditor extends Component {
       });
       this.a11y.announce(
         i18n(
-          "doc_categories.category_settings.index_editor.moved_section_out",
+          "doc_categories.category_settings.sidebar_structure_editor.moved_section_out",
           {
             section: this.#sectionLabel(section),
           }
@@ -735,7 +738,7 @@ export default class DocCategoryIndexEditor extends Component {
       if (this.entries.length >= MAX_SECTIONS) {
         return {
           error: i18n(
-            "doc_categories.category_settings.index_editor.unindexed_topics.too_many_sections"
+            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.too_many_sections"
           ),
         };
       }
@@ -748,7 +751,7 @@ export default class DocCategoryIndexEditor extends Component {
       if (!section) {
         return {
           error: i18n(
-            "doc_categories.category_settings.index_editor.unindexed_topics.destination_missing"
+            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.destination_missing"
           ),
         };
       }
@@ -764,8 +767,8 @@ export default class DocCategoryIndexEditor extends Component {
       return {
         error: i18n(
           room === 0
-            ? "doc_categories.category_settings.index_editor.unindexed_topics.section_full"
-            : "doc_categories.category_settings.index_editor.unindexed_topics.section_room",
+            ? "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.section_full"
+            : "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.section_room",
           {
             section: section
               ? this.#sectionLabel(section)
@@ -803,7 +806,7 @@ export default class DocCategoryIndexEditor extends Component {
         actions: [
           {
             label: i18n(
-              "doc_categories.category_settings.index_editor.unindexed_topics.undo"
+              "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.undo"
             ),
             icon: "arrow-rotate-left",
             class: "btn-flat doc-category-index-editor__undo-add",
@@ -851,7 +854,7 @@ export default class DocCategoryIndexEditor extends Component {
     this._saveToTransientData();
     this.a11y.announce(
       i18n(
-        "doc_categories.category_settings.index_editor.unindexed_topics.undone"
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.undone"
       )
     );
   }
@@ -891,7 +894,7 @@ export default class DocCategoryIndexEditor extends Component {
     this.sections.push(
       trackedObject({
         title: i18n(
-          "doc_categories.category_settings.index_editor.auto_index_section_title"
+          "doc_categories.category_settings.sidebar_structure_editor.auto_index_section_title"
         ),
         autoIndex: true,
         items: trackedArray([]),
@@ -928,7 +931,7 @@ export default class DocCategoryIndexEditor extends Component {
 
     this.dialog.yesNoConfirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.include_subcategories_confirm"
+        "doc_categories.category_settings.sidebar_structure_editor.include_subcategories_confirm"
       ),
       didConfirm: () => {
         this.autoIndexIncludeSubcategories = newValue;
@@ -944,7 +947,7 @@ export default class DocCategoryIndexEditor extends Component {
     if (this.sections.length > 0) {
       this.dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.auto_populate_confirm"
+          "doc_categories.category_settings.sidebar_structure_editor.auto_populate_confirm"
         ),
         didConfirm: () => this.#doIndexAllTopics(),
       });
@@ -1030,7 +1033,7 @@ export default class DocCategoryIndexEditor extends Component {
     if (this.batchMode && this.hasSelection) {
       this.dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.batch_exit_confirm"
+          "doc_categories.category_settings.sidebar_structure_editor.batch_exit_confirm"
         ),
         didConfirm: () => {
           this.batchMode = false;
@@ -1095,7 +1098,7 @@ export default class DocCategoryIndexEditor extends Component {
   bulkDelete() {
     this.dialog.yesNoConfirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.batch_delete_confirm"
+        "doc_categories.category_settings.sidebar_structure_editor.batch_delete_confirm"
       ),
       didConfirm: () => {
         for (const section of this.selectedSections) {
@@ -1125,7 +1128,7 @@ export default class DocCategoryIndexEditor extends Component {
     }
     this.dialog.yesNoConfirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.clear_index_confirm"
+        "doc_categories.category_settings.sidebar_structure_editor.clear_sidebar_confirm"
       ),
       didConfirm: () => {
         this.sections.splice(0, this.sections.length);
@@ -1246,7 +1249,7 @@ export default class DocCategoryIndexEditor extends Component {
       key: "doc-index-section-move",
       data: {
         message: i18n(
-          `doc_categories.category_settings.index_editor.${message}`,
+          `doc_categories.category_settings.sidebar_structure_editor.${message}`,
           {
             count: MAX_SECTION_DEPTH,
           }
@@ -1290,7 +1293,7 @@ export default class DocCategoryIndexEditor extends Component {
     return (
       section.title?.trim() ||
       i18n(
-        "doc_categories.category_settings.index_editor.first_section_no_title"
+        "doc_categories.category_settings.sidebar_structure_editor.first_section_no_title"
       )
     );
   }
@@ -1424,7 +1427,7 @@ export default class DocCategoryIndexEditor extends Component {
         this.sections.length,
         trackedObject({
           title: i18n(
-            "doc_categories.category_settings.index_editor.all_topics_section"
+            "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
           ),
           items: trackedArray(result.topics.map((t) => this.#topicToLink(t))),
         })
@@ -1433,7 +1436,7 @@ export default class DocCategoryIndexEditor extends Component {
       if (result.truncated) {
         this.dialog.alert(
           i18n(
-            "doc_categories.category_settings.index_editor.topics_truncated",
+            "doc_categories.category_settings.sidebar_structure_editor.topics_truncated",
             {
               loaded: result.topics.length,
               total: result.totalCount,
@@ -1472,7 +1475,7 @@ export default class DocCategoryIndexEditor extends Component {
       key: "doc-index-capacity",
       data: {
         message: i18n(
-          "doc_categories.category_settings.index_editor.link_limit",
+          "doc_categories.category_settings.sidebar_structure_editor.link_limit",
           {
             count: MAX_LINKS_PER_SECTION,
           }
@@ -1494,7 +1497,7 @@ export default class DocCategoryIndexEditor extends Component {
       destinations.push({
         value: NEW_SECTION,
         label: i18n(
-          "doc_categories.category_settings.index_editor.unindexed_topics.new_section",
+          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.new_section",
           { title: this.#newSectionTitle() }
         ),
         linkCount: 0,
@@ -1505,7 +1508,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   #newSectionTitle() {
     const base = i18n(
-      "doc_categories.category_settings.index_editor.all_topics_section"
+      "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
     );
     const titles = new Set(
       this.allSections.map((section) => section.title?.trim().toLowerCase())
@@ -1514,7 +1517,7 @@ export default class DocCategoryIndexEditor extends Component {
     let count = 1;
     while (titles.has(title.toLowerCase())) {
       title = i18n(
-        "doc_categories.category_settings.index_editor.unindexed_topics.numbered_section",
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.numbered_section",
         { title: base, count: ++count }
       );
     }
@@ -1549,7 +1552,7 @@ export default class DocCategoryIndexEditor extends Component {
 
   #additionSummary(addition) {
     return i18n(
-      "doc_categories.category_settings.index_editor.unindexed_topics.added",
+      "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.added",
       {
         count: addition.links.length,
         section: this.#sectionLabel(addition.section),
@@ -1619,7 +1622,7 @@ export default class DocCategoryIndexEditor extends Component {
               @action={{this.toggleBatchMode}}
               @disabled={{not this.canToggleBatchMode}}
               @icon="list-check"
-              @label="doc_categories.category_settings.index_editor.batch_edit"
+              @label="doc_categories.category_settings.sidebar_structure_editor.batch_edit"
             />
             <DMenu
               @disabled={{@isPreview}}
@@ -1637,7 +1640,7 @@ export default class DocCategoryIndexEditor extends Component {
                       class="btn-transparent"
                       @action={{fn this.indexAllTopics menuArgs.close}}
                       @icon="arrows-rotate"
-                      @label="doc_categories.category_settings.index_editor.index_all_topics"
+                      @label="doc_categories.category_settings.sidebar_structure_editor.index_all_topics"
                     />
                   </dropdown.item>
                   <dropdown.item>
@@ -1650,7 +1653,7 @@ export default class DocCategoryIndexEditor extends Component {
                         {{on "change" this.toggleIncludeSubcategories}}
                       />
                       {{i18n
-                        "doc_categories.category_settings.index_editor.include_subcategories"
+                        "doc_categories.category_settings.sidebar_structure_editor.include_subcategories"
                       }}
                     </label>
                   </dropdown.item>
@@ -1660,7 +1663,7 @@ export default class DocCategoryIndexEditor extends Component {
                       class="btn-transparent doc-category-index-editor__clear-index-btn"
                       @action={{fn this.clearIndex menuArgs.close}}
                       @icon="trash-can"
-                      @label="doc_categories.category_settings.index_editor.clear_index"
+                      @label="doc_categories.category_settings.sidebar_structure_editor.clear_sidebar"
                     />
                   </dropdown.item>
                 </DDropdownMenu>
@@ -1676,7 +1679,7 @@ export default class DocCategoryIndexEditor extends Component {
             <DDragHandle
               class="doc-category-index-editor__batch-drag-handle"
               @label={{i18n
-                "doc_categories.category_settings.index_editor.drag_selection"
+                "doc_categories.category_settings.sidebar_structure_editor.drag_selection"
               }}
               {{dDragAndDropSource
                 type=this.batchSourceType
@@ -1692,7 +1695,7 @@ export default class DocCategoryIndexEditor extends Component {
               {{this.selectionLabel}}
             {{else}}
               {{i18n
-                "doc_categories.category_settings.index_editor.batch_select_hint"
+                "doc_categories.category_settings.sidebar_structure_editor.batch_select_hint"
               }}
             {{/if}}
           </span>
@@ -1703,32 +1706,32 @@ export default class DocCategoryIndexEditor extends Component {
                 class="btn-flat btn-small doc-category-index-editor__batch-delete-btn"
                 @action={{this.bulkDelete}}
                 @icon="trash-can"
-                @title="doc_categories.category_settings.index_editor.batch_delete"
+                @title="doc_categories.category_settings.sidebar_structure_editor.batch_delete"
               />
             {{/if}}
             <DButton
               class="btn-flat btn-small"
               @action={{this.selectAll}}
               @icon="check-double"
-              @title="doc_categories.category_settings.index_editor.batch_select_all"
+              @title="doc_categories.category_settings.sidebar_structure_editor.batch_select_all"
             />
             <DButton
               class="btn-flat btn-small"
               @action={{this.invertSelection}}
               @icon="right-left"
-              @title="doc_categories.category_settings.index_editor.batch_invert"
+              @title="doc_categories.category_settings.sidebar_structure_editor.batch_invert"
             />
             <DButton
               class="btn-flat btn-small"
               @action={{this.clearSelection}}
               @icon="eraser"
-              @title="doc_categories.category_settings.index_editor.batch_clear_selection"
+              @title="doc_categories.category_settings.sidebar_structure_editor.batch_clear_selection"
             />
             <DButton
               class="btn-flat btn-small"
               @action={{this.toggleBatchMode}}
               @icon="xmark"
-              @title="doc_categories.category_settings.index_editor.batch_close"
+              @title="doc_categories.category_settings.sidebar_structure_editor.batch_close"
             />
           </div>
         </div>
@@ -1743,7 +1746,7 @@ export default class DocCategoryIndexEditor extends Component {
           <DButton
             class="btn-default btn-small doc-category-index-editor__review-topics"
             @action={{this.reviewUnindexedTopics}}
-            @label="doc_categories.category_settings.index_editor.unindexed_topics.review"
+            @label="doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.review"
           />
         </div>
       {{/if}}
@@ -1768,9 +1771,11 @@ export default class DocCategoryIndexEditor extends Component {
                 @body={{if
                   @isPreview
                   (i18n
-                    "doc_categories.category_settings.index_editor.create_category_first"
+                    "doc_categories.category_settings.sidebar_structure_editor.create_category_first"
                   )
-                  (i18n "doc_categories.category_settings.index_editor.empty")
+                  (i18n
+                    "doc_categories.category_settings.sidebar_structure_editor.empty"
+                  )
                 }}
               />
             </:empty>
@@ -1801,7 +1806,7 @@ export default class DocCategoryIndexEditor extends Component {
                   @action={{fn this.addSection null}}
                   @disabled={{or @isPreview this.sectionLimitReached}}
                   @icon="plus"
-                  @label="doc_categories.category_settings.index_editor.add_section"
+                  @label="doc_categories.category_settings.sidebar_structure_editor.add_section"
                 />
                 {{! The menu is gated by @hasMenu, so guarding it here as well
                     would be the same condition written twice. }}
@@ -1817,7 +1822,7 @@ export default class DocCategoryIndexEditor extends Component {
                         @action={{this.addAutoIndexSection}}
                         @disabled={{this.sectionLimitReached}}
                         @icon="bolt"
-                        @label="doc_categories.category_settings.index_editor.add_auto_index_section"
+                        @label="doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section"
                       />
                     </dropdown.item>
                   </DDropdownMenu>

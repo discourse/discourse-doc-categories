@@ -66,7 +66,7 @@ export class IndexEditorLink extends Component {
     return (
       this.args.link.title ||
       i18n(
-        "doc_categories.category_settings.index_editor.link_title_placeholder"
+        "doc_categories.category_settings.sidebar_structure_editor.link_title_placeholder"
       )
     );
   }
@@ -262,12 +262,12 @@ export class IndexEditorLink extends Component {
   #validateLink() {
     if (!this._editHref?.trim()) {
       return i18n(
-        "doc_categories.category_settings.index_editor.validation_empty_link_url"
+        "doc_categories.category_settings.sidebar_structure_editor.validation_empty_link_url"
       );
     }
     if (!this._editTitle?.trim() && this._editType !== "topic") {
       return i18n(
-        "doc_categories.category_settings.index_editor.validation_empty_link_title"
+        "doc_categories.category_settings.sidebar_structure_editor.validation_empty_link_title"
       );
     }
     return null;
@@ -294,7 +294,7 @@ export class IndexEditorLink extends Component {
       <span
         class="doc-category-index-editor__duplicate-icon"
         title={{i18n
-          "doc_categories.category_settings.index_editor.duplicate_warning"
+          "doc_categories.category_settings.sidebar_structure_editor.duplicate_warning"
         }}
       >
         {{icon "triangle-exclamation"}}
@@ -321,7 +321,7 @@ export class IndexEditorLink extends Component {
             placeholder={{or
               this._topicOriginalTitle
               (i18n
-                "doc_categories.category_settings.index_editor.link_title_placeholder"
+                "doc_categories.category_settings.sidebar_structure_editor.link_title_placeholder"
               )
             }}
             type="text"
@@ -347,7 +347,7 @@ export class IndexEditorLink extends Component {
                   @onChange={{this.onSwapTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
-                    none="doc_categories.category_settings.index_editor.select_topic"
+                    none="doc_categories.category_settings.sidebar_structure_editor.select_topic"
                   }}
                   @value={{null}}
                 />
@@ -367,14 +367,14 @@ export class IndexEditorLink extends Component {
                 class="btn-flat btn-small"
                 @action={{this.startSwap}}
                 @icon="arrows-rotate"
-                @label="doc_categories.category_settings.index_editor.replace_topic"
+                @label="doc_categories.category_settings.sidebar_structure_editor.replace_topic"
               />
             {{/if}}
           {{else}}
             <input
               class="doc-category-index-editor__link-url"
               placeholder={{i18n
-                "doc_categories.category_settings.index_editor.link_url_placeholder"
+                "doc_categories.category_settings.sidebar_structure_editor.link_url_placeholder"
               }}
               type="text"
               value={{this._editHref}}
@@ -389,14 +389,14 @@ export class IndexEditorLink extends Component {
               class="btn-flat btn-small"
               @action={{this.switchToManualLink}}
               @icon="link"
-              @label="doc_categories.category_settings.index_editor.switch_to_url"
+              @label="doc_categories.category_settings.sidebar_structure_editor.switch_to_url"
             />
           {{else}}
             <DButton
               class="btn-flat btn-small"
               @action={{this.switchToTopicLink}}
               @icon="file"
-              @label="doc_categories.category_settings.index_editor.switch_to_topic"
+              @label="doc_categories.category_settings.sidebar_structure_editor.switch_to_topic"
             />
           {{/if}}
           <DButton
@@ -404,7 +404,7 @@ export class IndexEditorLink extends Component {
             @action={{this.confirmEdit}}
             @disabled={{not this.canConfirm}}
             @icon="check"
-            @title="doc_categories.category_settings.index_editor.confirm_edit"
+            @title="doc_categories.category_settings.sidebar_structure_editor.confirm_edit"
           />
           <DButton
             class="btn-flat btn-small doc-category-index-editor__cancel-edit-btn"
@@ -445,11 +445,11 @@ export class IndexEditorLink extends Component {
           </span>
           {{#if @link.autoIndexed}}
             <span class="doc-category-index-editor__item-badge">{{i18n
-                "doc_categories.category_settings.index_editor.auto_indexed"
+                "doc_categories.category_settings.sidebar_structure_editor.auto_indexed"
               }}</span>
           {{else if @link.autoTitle}}
             <span class="doc-category-index-editor__item-badge">{{i18n
-                "doc_categories.category_settings.index_editor.auto_title"
+                "doc_categories.category_settings.sidebar_structure_editor.auto_title"
               }}</span>
           {{/if}}
           {{#unless @batchMode}}
@@ -457,7 +457,7 @@ export class IndexEditorLink extends Component {
               class="btn-flat btn-small doc-category-index-editor__edit-btn"
               @action={{this.enterEdit}}
               @icon="pencil"
-              @title="doc_categories.category_settings.index_editor.edit_link"
+              @title="doc_categories.category_settings.sidebar_structure_editor.edit_link"
             />
             {{#if @controls.remove}}
               <@controls.remove

@@ -160,15 +160,21 @@ module("Unit | Lib | doc-index-mode-state", function (hooks) {
   test("the mode label follows the mode", function (assert) {
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: 7 }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_topic")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_topic"
+      )
     );
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: -1 }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_direct")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      )
     );
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: null }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_none")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_none"
+      )
     );
   });
 
