@@ -773,15 +773,6 @@ body.doc-simple-mode {
     font-size: var(--font-down-1);
   }
 
-  &__apply-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-top: 2.5em;
-    padding-top: 1.5em;
-    border-top: 1px solid var(--primary-low);
-  }
-
   &__batch-delete-btn {
     margin-right: 1.5em;
   }

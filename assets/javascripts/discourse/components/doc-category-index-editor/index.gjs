@@ -398,25 +398,6 @@ export default class DocCategoryIndexEditor extends Component {
     );
   }
 
-  get applyLabel() {
-    switch (this.saveState) {
-      case "saving":
-        return "doc_categories.category_settings.sidebar_structure_editor.applying";
-      case "saved":
-        return "doc_categories.category_settings.sidebar_structure_editor.applied";
-      default:
-        return "doc_categories.category_settings.sidebar_structure_editor.apply";
-    }
-  }
-
-  get applyDisabled() {
-    return (
-      this.saveState === "saving" ||
-      !this.hasPendingChanges ||
-      this.validationErrors.length > 0
-    );
-  }
-
   get canToggleBatchMode() {
     if (this.editingCount > 0) {
       return false;
@@ -1836,16 +1817,6 @@ export default class DocCategoryIndexEditor extends Component {
             {{/if}}
           </div>
         {{/unless}}
-
-        <div class="doc-category-index-editor__apply-footer">
-          <DButton
-            class="btn-primary btn-small doc-category-index-editor__apply-btn"
-            @action={{this.apply}}
-            @disabled={{this.applyDisabled}}
-            @icon="check"
-            @label={{this.applyLabel}}
-          />
-        </div>
       </DConditionalInElement>
     </div>
   </template>
