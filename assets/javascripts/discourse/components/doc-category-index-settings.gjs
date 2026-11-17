@@ -13,7 +13,6 @@ export default class DocCategoryIndexSettings extends Component {
   }
 
   <template>
-    <h3>{{i18n "doc_categories.category_settings.tab_title"}}</h3>
     <DocCategoryIndexTab
       @category={{@outletArgs.category}}
       @form={{@outletArgs.form}}

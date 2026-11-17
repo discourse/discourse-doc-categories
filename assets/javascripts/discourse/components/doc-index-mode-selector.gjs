@@ -12,7 +12,10 @@ const DocIndexModeSelector = <template>
     @triggerClass="btn-default doc-category-index-tab__mode-trigger"
   >
     <:trigger>
-      <span>{{@currentModeLabel}}</span>
+      <span><strong>{{i18n
+            "doc_categories.category_settings.sidebar_structure_editor.select_mode"
+          }}</strong>
+        {{@currentModeLabel}}</span>
       {{icon "angle-down"}}
     </:trigger>
     <:content as |dMenu|>

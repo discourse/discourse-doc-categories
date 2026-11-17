@@ -28,6 +28,7 @@ en:
             topic_not_found: "Topic not found! The index won't be displayed"
             mismatched_category: "The sidebar won't be displayed because the topic belongs to a different category: %{category_name}"
         sidebar_structure_editor:
+          select_mode: "Sidebar structure: "
           unsaved_navigation: "You have unsaved changes to the sidebar. Discard them and leave this tab?"
           discard_and_leave: "Discard and leave"
           stay: "Stay"
