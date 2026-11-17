@@ -447,13 +447,27 @@ export class IndexEditorLink extends Component {
             {{this.displayTitle}}
           </span>
           {{#if @link.autoIndexed}}
-            <span class="doc-category-index-editor__item-badge">{{i18n
-                "doc_categories.category_settings.sidebar_structure_editor.auto_indexed"
-              }}</span>
+            <DTooltip
+              class="doc-category-index-editor__item-badge"
+              @content={{i18n
+                "doc_categories.category_settings.sidebar_structure_editor.auto_indexed_tooltip"
+              }}
+            >
+              <:trigger>
+                {{icon "book"}}
+              </:trigger>
+            </DTooltip>
           {{else if @link.autoTitle}}
-            <span class="doc-category-index-editor__item-badge">{{i18n
-                "doc_categories.category_settings.sidebar_structure_editor.auto_title"
-              }}</span>
+            <DTooltip
+              class="doc-category-index-editor__item-badge"
+              @content={{i18n
+                "doc_categories.category_settings.sidebar_structure_editor.auto_title_tooltip"
+              }}
+            >
+              <:trigger>
+                {{icon "discourse-text"}}
+              </:trigger>
+            </DTooltip>
           {{/if}}
           {{#unless @batchMode}}
             <DButton

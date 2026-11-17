@@ -54,6 +54,7 @@ en:
           remove_link: "Remove link"
           link_title_placeholder: "Link title"
           auto_title: "auto-title"
+          auto_title_tooltip: "This title has not been edited from the topic title"
           link_url_placeholder: "URL (e.g. https://example.com)"
           auto_index: "Auto-index"
           include_subcategories: "Include subcategories"
@@ -120,6 +121,7 @@ en:
           auto_index_badge_label_with_subcategories: "Auto-indexed + subcategories"
           auto_index_badge_title: "This sidebar section automatically indexes new topics"
           auto_indexed: "auto-indexed"
+          auto_indexed_tooltip: "This topic has automatically been indexed in the sidebar"
           auto_index_placeholder: "Topics from this category will appear here automatically."
           confirm_remove_auto_index_section: "Removing this section will disable automatic topic indexing on this sidebar. Are you sure?"
           unindexed_topics:
