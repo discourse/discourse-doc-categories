@@ -161,18 +161,8 @@ export default class DocIndexModeState {
   @bind
   switchToNoneMode(dMenu) {
     dMenu.close();
-    if (this.isNoneMode) {
-      return;
-    }
 
-    const hasData = this.indexTopicId || this.indexData?.length > 0;
-    if (hasData) {
-      this.#dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.disable_confirm"
-        ),
-        didConfirm: () => this.#applyNoneMode(),
-      });
+    if (this.isNoneMode) {
       return;
     }
 

@@ -38,7 +38,6 @@ en:
           mode_none_description: "No sidebar structure for this category"
           none_mode_help: "This page is used to organize links to documentation topics into sections in the sidebar. It is currently disabled for this category. Select a mode above to start building structure..."
           inherited_mode_help: "The sidebar index is inherited from %{category_name}. Select a mode above to create one for this category."
-          disable_confirm: "This will permanently remove the current sidebar index. Are you sure?"
           mode_direct: "Editor"
           mode_direct_description: "Build the sidebar structure with a visual editor"
           create_category_first: "Create the category to edit the sidebar structure."
