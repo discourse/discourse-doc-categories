@@ -56,7 +56,7 @@ RSpec.describe "Review unindexed documentation topics" do
     find(".doc-category-unindexed-topics .d-modal-cancel").click
 
     expect(page).to have_no_css(".doc-category-unindexed-topics")
-    expect(page).to have_css(".doc-category-index-editor__apply-btn[disabled]")
+    expect(editor).to have_no_pending_changes
     expect(page).to have_css(
       ".doc-category-index-editor__link-label",
       text: indexed_topic.title,
@@ -95,7 +95,8 @@ RSpec.describe "Review unindexed documentation topics" do
     end
     find(
       "button",
-      text: I18n.t("js.doc_categories.category_settings.index_editor.add_missing_topics"),
+      text:
+        I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_missing_topics"),
       exact_text: true,
     ).click
 
@@ -146,7 +147,7 @@ RSpec.describe "Review unindexed documentation topics" do
     find(".doc-category-unindexed-topics__add").click
 
     expect(editor).to have_section_title(
-      I18n.t("js.doc_categories.category_settings.index_editor.all_topics_section"),
+      I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.all_topics_section"),
     )
     expect(page).to have_css(
       ".doc-category-index-editor__link-label",
@@ -158,15 +159,15 @@ RSpec.describe "Review unindexed documentation topics" do
       text: missing_topic.title,
       count: 1,
     )
-    editor.click_apply
-    expect(editor).to have_applied
+    editor.save_category
+    expect(editor).to have_no_pending_changes
 
     page.refresh
 
     expect(editor).to have_section_title("Start here")
     expect(editor).to have_section_title("Reference")
     expect(editor).to have_section_title(
-      I18n.t("js.doc_categories.category_settings.index_editor.all_topics_section"),
+      I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.all_topics_section"),
     )
     expect(page).to have_css(
       ".doc-category-index-editor__link-label",
@@ -175,7 +176,7 @@ RSpec.describe "Review unindexed documentation topics" do
     )
   end
 
-  it "includes subcategories on request and persists additions only after Apply" do
+  it "includes subcategories on request and persists additions only after saving the category" do
     editor.visit_doc_index_tab(category)
     find(".doc-category-index-editor__review-topics").click
     form = PageObjects::Components::FormKit.new(".doc-category-unindexed-topics .form-kit")
@@ -186,8 +187,10 @@ RSpec.describe "Review unindexed documentation topics" do
     )
     form.field("topic_#{subcategory_topic.id}").check
     find(".doc-category-unindexed-topics__add").click
-    editor.click_apply
-    expect(editor).to have_applied
+    expect(DocCategories::SidebarLink.exists?(topic_id: subcategory_topic.id)).to eq(false)
+
+    editor.save_category
+    expect(editor).to have_no_pending_changes
 
     page.refresh
 

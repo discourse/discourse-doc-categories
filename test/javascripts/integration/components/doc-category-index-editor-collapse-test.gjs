@@ -73,11 +73,17 @@ module(
         serialized,
         "collapse state is not serialized"
       );
-      assert.true(editor.applyDisabled, "collapsing does not enable Apply");
+      assert.false(
+        editor.hasPendingChanges,
+        "collapsing leaves the draft unchanged"
+      );
 
       await click(TOGGLE);
       assert.dom(COLLAPSED).doesNotExist("expands every section");
-      assert.true(editor.applyDisabled, "expanding does not enable Apply");
+      assert.false(
+        editor.hasPendingChanges,
+        "expanding leaves the draft unchanged"
+      );
     });
 
     test("expands all when only some sections are collapsed", async function (assert) {

@@ -53,12 +53,15 @@ RSpec.describe "Doc index capacity" do
     expect(page).to have_button("Add section", disabled: true)
     expect(page).to have_content(
       I18n.t(
-        "js.doc_categories.category_settings.index_editor.section_limit",
+        "js.doc_categories.category_settings.sidebar_structure_editor.section_limit",
         count: DocCategories::Index::MAX_SECTIONS,
       ),
     )
     find(".doc-category-index-editor__footer .d-combo-button-menu").click
-    expect(page).to have_button("Add auto-index section", disabled: true)
+    expect(page).to have_button(
+      I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section"),
+      disabled: true,
+    )
   end
 
   it "rejects moving into a full section and allows moving after making room" do
@@ -80,7 +83,7 @@ RSpec.describe "Doc index capacity" do
       ".fk-d-toast",
       text:
         I18n.t(
-          "js.doc_categories.category_settings.index_editor.link_limit",
+          "js.doc_categories.category_settings.sidebar_structure_editor.link_limit",
           count: DocCategories::Index::MAX_LINKS_PER_SECTION,
         ),
     )
@@ -98,7 +101,7 @@ RSpec.describe "Doc index capacity" do
     expect(editor.links_in_section("Destination")).to include(source_title)
   end
 
-  it "blocks Apply and Save Category for an oversized loaded draft" do
+  it "blocks saving the category with an oversized loaded draft" do
     populate(section, DocCategories::Index::MAX_LINKS_PER_SECTION + 1)
     editor.visit_doc_index_tab(category)
     within ".doc-category-index-editor__section" do
@@ -106,11 +109,10 @@ RSpec.describe "Doc index capacity" do
       find(".doc-category-index-editor__section-title").fill_in(with: "Changed title")
       find(".doc-category-index-editor__confirm-title-btn").click
     end
-    expect(page).to have_button("Apply", disabled: true)
     editor.save_category
     expect(page).to have_content(
       I18n.t(
-        "js.doc_categories.category_settings.index_editor.link_limit",
+        "js.doc_categories.category_settings.sidebar_structure_editor.link_limit",
         count: DocCategories::Index::MAX_LINKS_PER_SECTION,
       ),
     )

@@ -34,7 +34,7 @@ en:
           stay: "Stay"
           mode_topic: "Index topic"
           mode_topic_description: "Use a topic's content to build the sidebar structure"
-          topic_mode_help: 'Select a topic to use as the sidebar structure source. The sidebar will be automatically updated whenever the topic content changes. Format the topic with headings and structure source to define the sidebar structure. <a href="https://meta.discourse.org/t/322376" target="_blank" rel="noopener noreferrer">Learn more</a>.'
+          topic_mode_help: 'Select a topic to use as the sidebar structure source. The sidebar will be automatically updated whenever the topic content changes. Format the topic with headings and links to define the sidebar structure. <a href="https://meta.discourse.org/t/322376" target="_blank" rel="noopener noreferrer">Learn more</a>.'
           mode_none: "Disabled"
           mode_none_description: "No sidebar structure for this category"
           none_mode_help: "This page is used to organize links to documentation topics into sections in the sidebar. It is currently disabled for this category. Select a mode above to start building structure..."
@@ -58,7 +58,7 @@ en:
           link_url_placeholder: "URL (e.g. https://example.com)"
           auto_index: "Auto-index"
           include_subcategories: "Include subcategories"
-          include_subcategories_confirm: "Changing this setting will resync the auto-indexed topics when you apply. Continue?"
+          include_subcategories_confirm: "Changing this setting will resync the auto-indexed topics when you save the category. Continue?"
           resync_auto_index: "Resync topics on next save"
           cancel_resync: "Cancel resync"
           index_all_topics: "Reindex all topics"
@@ -85,9 +85,6 @@ en:
           auto_populate_confirm: "This will replace the current sidebar with all topics from this category. Continue?"
           all_topics_section: "All topics"
           save: "Save"
-          apply: "Apply"
-          applying: "Applying..."
-          applied: "Applied"
           batch_edit: "Batch edit"
           batch_select_hint: "Select items or sections below"
           batch_selected_items:
@@ -132,8 +129,8 @@ en:
               one: "%{count} topic in this category or its subcategories isn’t in the sidebar."
               other: "%{count} topics in this category or its subcategories aren’t in the sidebar."
             auto_index_pending:
-              one: "Auto-index will add up to %{count} topic when you apply."
-              other: "Auto-index will add up to %{count} topics when you apply."
+              one: "Auto-index will add up to %{count} topic when you save the category."
+              other: "Auto-index will add up to %{count} topics when you save the category."
             auto_index_full: "The auto-index sidebar section is full. Move or remove links to make room, or add these topics to another section."
             checking: "Checking for topics that aren’t in the sidebar…"
             review: "Review topics"

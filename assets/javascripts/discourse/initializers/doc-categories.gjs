@@ -16,8 +16,6 @@ import {
 export default {
   name: "doc-categories",
   initialize(container) {
-    // A pending index save must block navigation before FormKit checks for unsaved changes.
-    container.lookup("service:doc-index-save-lock");
     container.lookup("service:doc-category-sidebar");
     const siteSettings = container.lookup("service:site-settings");
 

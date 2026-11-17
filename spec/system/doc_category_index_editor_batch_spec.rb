@@ -86,21 +86,12 @@ describe "Doc Category Index Editor | batch mode" do
     end
   end
 
-  context "when applying with a selection open" do
+  context "when saving with a selection open" do
     before do
       editor.toggle_batch_mode
       expect(editor).to have_batch_bar
     end
 
-    # Apply rebuilds every section and link from the server's response. A
-    # selection held as references to the old objects survives that rebuild as
-    # a count with nothing behind it: the rows all read as unselected while the
-    # bar still claims a selection. Both halves are asserted, because either
-    # one alone passes against the disagreement.
-    #
-    # The move is what leaves the index dirty, since Apply is only reachable
-    # with pending changes. It is asserted on its own so that a regression
-    # there cannot be mistaken for the selection bug below.
     it "leaves no selection behind in the bar or the rows" do
       editor.select_link("First")
       expect(editor).to have_batch_selection_count(1)
@@ -113,9 +104,12 @@ describe "Doc Category Index Editor | batch mode" do
       )
       expect(editor).to have_link_order(%w[Second First])
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
+      expect(editor).to have_link_order(%w[Second First])
+      expect(editor).to have_no_batch_bar
+      editor.toggle_batch_mode
       expect(editor).to have_unchecked_link("First")
       expect(editor).to have_no_batch_selection
     end

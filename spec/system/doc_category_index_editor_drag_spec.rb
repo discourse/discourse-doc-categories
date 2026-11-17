@@ -76,11 +76,13 @@ describe "Doc Category Index Editor | dragging" do
       expect(editor).to have_link_order(%w[Second First])
     end
 
-    it "keeps the reorder after applying" do
+    it "keeps the reorder after saving and reloading" do
       drag_and_drop(source: second_link_grip, target: first_link, target_position: above)
       expect(editor).to have_link_order(%w[Second First])
 
-      editor.click_apply
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+      page.refresh
 
       expect(editor).to have_link_order(%w[Second First])
     end
@@ -179,7 +181,8 @@ describe "Doc Category Index Editor | dragging" do
       expect(page).to have_no_css(root_titles, exact_text: "Sidebar")
       expect(editor).to have_link_order(["Pages", "Create a doc", "Sidebar items"])
 
-      editor.click_apply
+      editor.save_category
+      expect(editor).to have_no_pending_changes
       editor.visit_doc_index_tab(category)
 
       index = DocCategories::Index.find_by!(category:)

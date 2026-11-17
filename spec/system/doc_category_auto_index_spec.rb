@@ -28,8 +28,8 @@ describe "Doc Category Auto-Index" do
       expect(editor).to have_auto_index_placeholder
       expect(editor).to have_no_auto_index_button
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
@@ -38,15 +38,17 @@ describe "Doc Category Auto-Index" do
       section = index.sidebar_sections.first
       expect(section.auto_index).to eq(true)
       expect(section.title).to eq(
-        I18n.t("js.doc_categories.category_settings.index_editor.auto_index_section_title"),
+        I18n.t(
+          "js.doc_categories.category_settings.sidebar_structure_editor.auto_index_section_title",
+        ),
       )
     end
 
-    it "backfills existing topics after applying" do
+    it "backfills existing topics when saving the category" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       editor.add_auto_index_section
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       auto_links = index.auto_index_section.sidebar_links.auto_indexed
@@ -61,8 +63,8 @@ describe "Doc Category Auto-Index" do
       )
       editor.add_auto_index_section
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index.sidebar_sections.count).to eq(2)
@@ -77,7 +79,9 @@ describe "Doc Category Auto-Index" do
       editor.add_auto_index_section
 
       expect(editor).to have_auto_index_badge_with_text(
-        I18n.t("js.doc_categories.category_settings.index_editor.auto_index_badge_label"),
+        I18n.t(
+          "js.doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label",
+        ),
       )
 
       editor.toggle_include_subcategories
@@ -86,30 +90,50 @@ describe "Doc Category Auto-Index" do
 
       expect(editor).to have_auto_index_badge_with_text(
         I18n.t(
-          "js.doc_categories.category_settings.index_editor.auto_index_badge_label_with_subcategories",
+          "js.doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label_with_subcategories",
         ),
       )
     end
 
-    it "shows resync pending state in the badge" do
+    it "resyncs an existing auto-index section when saving the category" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       editor.add_auto_index_section
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+
+      index = DocCategories::Index.find_by!(category:)
+      index.auto_index_section.sidebar_links.find_by!(topic_id: topic_1.id).destroy!
+      page.refresh
 
       editor.click_resync_button
 
       expect(editor).to have_auto_index_badge_with_text(
-        I18n.t("js.doc_categories.category_settings.index_editor.resync_auto_index"),
+        I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.resync_auto_index"),
       )
+
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+      expect(index.reload.auto_index_section.sidebar_links.pluck(:topic_id)).to contain_exactly(
+        topic_1.id,
+        topic_2.id,
+      )
+
+      index.auto_index_section.sidebar_links.find_by!(topic_id: topic_1.id).destroy!
+      editor.switch_to_general_tab
+      find("input[name='name']").fill_in(with: "Renamed documentation category")
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+      expect(index.reload.auto_index_section.sidebar_links.pluck(:topic_id)).to eq([topic_2.id])
     end
 
-    it "includes subcategory topics after enabling and applying" do
+    it "includes subcategory topics after enabling and saving" do
       subcategory = Fabricate(:category, parent_category: category)
       Fabricate(:topic, category: subcategory, title: "Subcategory topic for auto-index")
 
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       editor.add_auto_index_section
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       sub_topic_ids = Topic.where(category_id: subcategory.id).pluck(:id)
@@ -119,8 +143,8 @@ describe "Doc Category Auto-Index" do
       editor.toggle_include_subcategories
       find(".dialog-footer .btn-primary").click
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index.reload
       auto_topic_ids = index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)

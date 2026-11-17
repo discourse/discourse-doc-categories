@@ -33,7 +33,7 @@ function indexData() {
  * keeps these tests about the selection algebra rather than about which button
  * carries which icon.
  */
-async function renderEditor(data = indexData()) {
+async function renderEditor(data = indexData(), form) {
   let editor;
   const capture = (instance) => (editor = instance);
 
@@ -41,6 +41,7 @@ async function renderEditor(data = indexData()) {
     <template>
       <DocCategoryIndexEditor
         @categoryId={{1}}
+        @form={{form}}
         @indexData={{data}}
         @onRegisterEditor={{capture}}
       />
@@ -410,51 +411,6 @@ module(
         "so the next delete cannot act on rows that are already gone"
       );
     });
-
-    test("applying empties the selection it has rebuilt the rows under", async function (assert) {
-      // The server's answer renames a link, so the rebuild is observable and
-      // the cleared selection cannot be mistaken for a refresh that never ran.
-      pretender.put("/doc-categories/indexes/1", () =>
-        response({
-          index_structure: [
-            {
-              text: "Getting started",
-              links: [
-                { text: "Installation", href: "/t/install/1" },
-                { text: "Configure", href: "/t/configure/2" },
-              ],
-            },
-            { text: "Reference", links: [{ text: "API", href: "/t/api/3" }] },
-          ],
-        })
-      );
-
-      const editor = await renderEditor();
-      editor.toggleBatchMode();
-      await settled();
-      editor.selectedItems.add(allLinks(editor)[0]);
-      editor._hasLocalChanges = true;
-      await settled();
-      assert.strictEqual(editor.selectionCount, 1, "a link is selected");
-
-      await editor.apply();
-      await settled();
-
-      assert.deepEqual(
-        allLinks(editor).map((link) => link.title),
-        ["Installation", "Configure", "API"],
-        "the rows are the ones the server sent back, not the selected objects"
-      );
-      assert.strictEqual(
-        editor.selectionCount,
-        0,
-        "so the bar cannot report a selection none of the rows show"
-      );
-      assert.true(
-        editor.batchMode,
-        "and the reader is left in batch mode, just with nothing selected"
-      );
-    });
   }
 );
 
@@ -533,46 +489,6 @@ module(
         editor.validationErrors.length,
         1,
         "an unfinished row blocks the save rather than being silently dropped"
-      );
-    });
-
-    test("Apply stays disabled until something has actually changed", async function (assert) {
-      const editor = await renderEditor();
-
-      assert.true(
-        editor.applyDisabled,
-        "there is nothing to apply on a freshly opened editor"
-      );
-    });
-
-    test("Apply is disabled while a validation error stands", async function (assert) {
-      const editor = await renderEditor();
-
-      editor._hasLocalChanges = true;
-      await settled();
-      assert.false(editor.applyDisabled, "a pending change enables it");
-
-      editor.sections[0].items[0].isEditing = true;
-      await settled();
-
-      assert.true(
-        editor.applyDisabled,
-        "and an open row disables it again, even with changes to save"
-      );
-    });
-
-    test("Apply is disabled while a save is in flight", async function (assert) {
-      const editor = await renderEditor();
-
-      editor._hasLocalChanges = true;
-      editor.saveState = "saving";
-      await settled();
-
-      assert.true(editor.applyDisabled, "so a double click cannot save twice");
-      assert.strictEqual(
-        editor.applyLabel,
-        "doc_categories.category_settings.sidebar_structure_editor.applying",
-        "and the label says so"
       );
     });
 
@@ -657,7 +573,8 @@ function topicIndexData() {
 async function renderTopicEditor(
   data = topicIndexData(),
   category,
-  registerAfterReset
+  registerAfterReset,
+  form
 ) {
   let editor;
   const capture = (instance) => (editor = instance);
@@ -667,6 +584,7 @@ async function renderTopicEditor(
       <DocCategoryIndexEditor
         @category={{category}}
         @categoryId={{1}}
+        @form={{form}}
         @indexData={{data}}
         @onRegisterEditor={{capture}}
         @registerAfterReset={{registerAfterReset}}
@@ -787,7 +705,7 @@ module(
         );
     });
 
-    test("defers to auto-index when Apply will run it", async function (assert) {
+    test("defers to auto-index when saving will run it", async function (assert) {
       stubUnindexedTopics(2);
       const editor = await renderTopicEditor();
 
@@ -798,7 +716,7 @@ module(
         .dom(".doc-category-index-editor__missing-topics")
         .includesText(
           i18n(`${UNINDEXED}.auto_index_pending`, { count: 2 }),
-          "a new auto-index section collects them on Apply"
+          "a new auto-index section collects them on save"
         );
     });
 
@@ -836,26 +754,20 @@ module(
         );
     });
 
-    test("Reset restores auto-index flags before recounting and a later Apply", async function (assert) {
+    test("Reset restores auto-index flags before recounting and later edits", async function (assert) {
       const requests = stubUnindexedTopics(3);
       let reset;
-      let payload;
-      pretender.put("/doc-categories/indexes/1", (request) => {
-        payload = JSON.parse(request.requestBody);
-        return response({ index_structure: topicIndexData() });
-      });
+      const form = { set: sinon.spy() };
       const editor = await renderTopicEditor(
         [
           ...topicIndexData(),
           { id: 12, text: "Other topics", auto_index: true, links: [] },
         ],
-        {
-          doc_category_auto_index_include_subcategories: false,
-          set: sinon.stub(),
-        },
+        { doc_category_auto_index_include_subcategories: false },
         (callback) => {
           reset = callback;
-        }
+        },
+        form
       );
       editor.autoIndexIncludeSubcategories = true;
       editor.pendingResync = true;
@@ -882,13 +794,12 @@ module(
           i18n(`${UNINDEXED}.count`, { count: 3 }),
           "the tip no longer claims a sync is pending"
         );
-      assert.true(
-        editor.applyDisabled,
-        "Reset leaves no local changes to apply"
-      );
+      assert.false(editor.hasPendingChanges, "Reset leaves no local changes");
 
       editor.addUnindexedTopics({ topics: [topic(7)], destination: "10" });
-      await editor.apply();
+      const payload = JSON.parse(
+        form.set.withArgs("doc_index_sections").lastCall.args[1]
+      );
       assert.false(
         payload.auto_index_include_subcategories,
         "later edits do not save the discarded scope"
@@ -958,11 +869,6 @@ module(
       assert.strictEqual(
         this.toasts.activeToasts.at(-1).options.data.message,
         i18n(`${UNINDEXED}.added`, { count: 1, section: "Start here" })
-      );
-      assert.false(
-        this.toasts.activeToasts
-          .at(-1)
-          .options.data.message.includes("Apply to save")
       );
     });
 
@@ -1153,26 +1059,6 @@ module(
         "nothing is added"
       );
     });
-
-    test("Apply ends the chance to undo", async function (assert) {
-      stubUnindexedTopics(2);
-      pretender.put("/doc-categories/indexes/1", () =>
-        response({ index_structure: topicIndexData() })
-      );
-      const editor = await renderTopicEditor();
-
-      editor.addUnindexedTopics({ topics: [topic(7)], destination: "10" });
-      await settled();
-      await editor.apply();
-      await settled();
-
-      assert.strictEqual(editor.lastAddition, null);
-      assert.strictEqual(
-        this.toasts.activeToasts.length,
-        0,
-        "dismisses the addition toast"
-      );
-    });
   }
 );
 
@@ -1213,32 +1099,31 @@ module(
         );
     });
 
-    test("moves a subsection out and applies the resulting tree", async function (assert) {
-      const editor = await renderEditor([
-        {
-          text: "Guides",
-          items: [
-            { type: "link", text: "Pages", href: "/pages" },
-            {
-              type: "section",
-              text: "Docs",
-              items: [
-                { type: "link", text: "Create a doc", href: "/create" },
-                {
-                  type: "section",
-                  text: "Sidebar",
-                  links: [{ text: "Sidebar items", href: "/sidebar" }],
-                },
-              ],
-            },
-          ],
-        },
-      ]);
-      let submitted;
-      pretender.put("/doc-categories/indexes/1", (request) => {
-        submitted = JSON.parse(request.requestBody);
-        return response({ success: true });
-      });
+    test("moves a subsection out and stages the resulting tree", async function (assert) {
+      const form = { set: sinon.spy() };
+      const editor = await renderEditor(
+        [
+          {
+            text: "Guides",
+            items: [
+              { type: "link", text: "Pages", href: "/pages" },
+              {
+                type: "section",
+                text: "Docs",
+                items: [
+                  { type: "link", text: "Create a doc", href: "/create" },
+                  {
+                    type: "section",
+                    text: "Sidebar",
+                    links: [{ text: "Sidebar items", href: "/sidebar" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        form
+      );
 
       await click(
         ".doc-category-index-editor__section .doc-category-index-editor__section .doc-category-index-editor__section .doc-category-index-editor__move-out"
@@ -1247,9 +1132,11 @@ module(
         editor.sections[0].items.map((item) => item.title),
         ["Pages", "Docs", "Sidebar"]
       );
-      await editor.apply();
 
-      const items = submitted.sections[0].items;
+      const payload = JSON.parse(
+        form.set.withArgs("doc_index_sections").lastCall.args[1]
+      );
+      const items = payload.sections[0].items;
       assert.deepEqual(
         items.map((item) => [item.type, item.title]),
         [

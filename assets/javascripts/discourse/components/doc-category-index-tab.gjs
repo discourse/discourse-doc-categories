@@ -9,7 +9,6 @@ import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 import DocIndexModeState from "../lib/doc-index-mode-state.js";
-import docIndexSaveLock from "../modifiers/doc-index-save-lock.js";
 import DocCategoryIndexEditor from "./doc-category-index-editor/index.gjs";
 import DocIndexModeSelector from "./doc-index-mode-selector.gjs";
 
@@ -22,7 +21,6 @@ const INDEX_FIELDS = [
 
 export default class DocCategoryIndexTab extends Component {
   @service dialog;
-  @service docIndexSaveLock;
   @service router;
   @service siteSettings;
 
@@ -46,7 +44,9 @@ export default class DocCategoryIndexTab extends Component {
       return;
     }
 
-    this.captureSavedFormValues();
+    this.#savedFormValues = Object.fromEntries(
+      INDEX_FIELDS.map((name) => [name, this.args.transientData?.[name]])
+    );
     this.router.on("routeWillChange", this.checkUnsavedIndex);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
       if (this.isDestroying || this.#discarding) {
@@ -106,22 +106,8 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   @action
-  captureSavedFormValues(indexStructure) {
-    if (indexStructure !== undefined) {
-      this.args.category.set("doc_category_index", indexStructure);
-    }
-    this.#savedFormValues = Object.fromEntries(
-      INDEX_FIELDS.map((name) => [name, this.args.transientData?.[name]])
-    );
-  }
-
-  @action
   checkUnsavedIndex(transition) {
     if (transition.isAborted) {
-      return;
-    }
-    if (this.docIndexSaveLock.isSaving) {
-      transition.abort();
       return;
     }
     if (this.#discarding) {
@@ -189,8 +175,7 @@ export default class DocCategoryIndexTab extends Component {
   <template>
     <fieldset
       class="doc-category-index-tab"
-      disabled={{or this.isPreview this.docIndexSaveLock.isSaving}}
-      {{docIndexSaveLock this.docIndexSaveLock.isSaving}}
+      disabled={{this.isPreview}}
       {{didInsert this.modeState.loadIndexTopic}}
     >
       <div class="doc-category-index-tab__header">
@@ -253,7 +238,6 @@ export default class DocCategoryIndexTab extends Component {
           @form={{@form}}
           @indexData={{this.modeState.indexData}}
           @isPreview={{this.isPreview}}
-          @onApplied={{this.captureSavedFormValues}}
           @onRegisterEditor={{this.registerEditor}}
           @registerAfterReset={{unless this.isPreview @registerAfterReset}}
           @toolbarElement={{this.toolbarElement}}

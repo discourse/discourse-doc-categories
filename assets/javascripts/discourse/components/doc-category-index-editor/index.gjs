@@ -8,13 +8,12 @@ import {
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
-import { cancel, next, schedule } from "@ember/runloop";
+import { next, schedule } from "@ember/runloop";
 import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
-import discourseLater from "discourse/lib/later";
 import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DComboButton from "discourse/ui-kit/d-combo-button";
@@ -152,12 +151,10 @@ const SectionRow = <template>
 export default class DocCategoryIndexEditor extends Component {
   @service a11y;
   @service dialog;
-  @service docIndexSaveLock;
   @service modal;
   @service toasts;
 
   @tracked sections = trackedArray(this.#initSections());
-  @tracked saveState = null;
   @tracked includeSubcategories = false;
   @tracked
   autoIndexIncludeSubcategories =
@@ -175,7 +172,6 @@ export default class DocCategoryIndexEditor extends Component {
 
   #originalAutoIndexIncludeSubcategories =
     this.args.category?.doc_category_auto_index_include_subcategories ?? false;
-  #saveStateTimer = null;
   #additionToast = null;
   #unindexedCounter = new UnindexedTopicsCounter(this.args.categoryId);
   #lastDestination = null;
@@ -185,7 +181,7 @@ export default class DocCategoryIndexEditor extends Component {
     super(...arguments);
     this.args.onRegisterEditor?.(this);
     this.args.registerAfterReset?.(() => {
-      if (this.isDestroying || this.docIndexSaveLock.isSaving) {
+      if (this.isDestroying) {
         return;
       }
       this.sections = trackedArray(this.#initSectionsFromModel());
@@ -206,10 +202,6 @@ export default class DocCategoryIndexEditor extends Component {
     super.willDestroy();
     this.dismissLastAddition();
     this.#unindexedCounter.teardown();
-    if (this.#saveStateTimer) {
-      cancel(this.#saveStateTimer);
-      this.#saveStateTimer = null;
-    }
   }
 
   @cached
@@ -344,7 +336,7 @@ export default class DocCategoryIndexEditor extends Component {
     return this.hasAutoIndexSection && this.autoIndexIncludeSubcategories;
   }
 
-  /** Mirrors when the server's IndexSaver runs auto-index on Apply. */
+  /** Mirrors when the server's IndexSaver runs auto-index on category save. */
   get autoIndexSyncPending() {
     const section = this.sections.find((s) => s.autoIndex);
     return (
@@ -806,9 +798,6 @@ export default class DocCategoryIndexEditor extends Component {
    */
   @action
   undoLastAddition() {
-    if (this.docIndexSaveLock.isSaving) {
-      return;
-    }
     const addition = this.lastAddition;
     if (!addition) {
       return;
@@ -934,72 +923,6 @@ export default class DocCategoryIndexEditor extends Component {
       });
     } else {
       this.#doIndexAllTopics();
-    }
-  }
-
-  @action
-  async apply() {
-    if (this.docIndexSaveLock.isSaving) {
-      return;
-    }
-    if (this.validationErrors.length > 0) {
-      this.saveState = "error";
-      this.args.onApplyError?.(this.validationErrors.join(" "));
-      return;
-    }
-    const payload = {
-      force_direct: true,
-      auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
-      force_sync: this.pendingResync,
-      sections: this.#buildPayload(),
-    };
-
-    this.saveState = "saving";
-    this.docIndexSaveLock.isSaving = true;
-    try {
-      const response = await ajax(
-        `/doc-categories/indexes/${this.args.categoryId}`,
-        {
-          type: "PUT",
-          data: JSON.stringify(payload),
-          contentType: "application/json",
-        }
-      );
-      if (this.isDestroying) {
-        return;
-      }
-      this.saveState = "saved";
-      this.pendingResync = false;
-      this._hasLocalChanges = false;
-      this.args.form?.set("_docIndexEditorState", null);
-      this.args.form?.commitField("_docIndexEditorState");
-      this.args.form?.commitField("doc_index_sections");
-      this.args.form?.commitField("doc_index_topic_id");
-      this.args.form?.commitField("_docIndexAutoIndexIncludeSubcategories");
-      this.#originalAutoIndexIncludeSubcategories =
-        this.autoIndexIncludeSubcategories;
-      this.args.category?.set("doc_index_sections", null);
-      // Undo would reach into a draft that has just been saved.
-      this.dismissLastAddition();
-
-      if (response.index_structure) {
-        this.#refreshFromServerData(response.index_structure);
-      }
-      this.#refreshUnindexedCount({ force: true, immediate: true });
-      this.args.onApplied?.(response.index_structure);
-      this.#saveStateTimer = discourseLater(() => {
-        if (!this.isDestroying && this.saveState === "saved") {
-          this.saveState = null;
-        }
-      }, 3000);
-    } catch (e) {
-      if (this.isDestroying) {
-        return;
-      }
-      this.saveState = "error";
-      popupAjaxError(e);
-    } finally {
-      this.docIndexSaveLock.isSaving = false;
     }
   }
 
@@ -1337,15 +1260,6 @@ export default class DocCategoryIndexEditor extends Component {
     });
   }
 
-  #refreshFromServerData(indexStructure) {
-    const newSections = this.#readSections(indexStructure);
-    this.sections.splice(0, this.sections.length, ...newSections);
-    // The selection holds the objects that were just replaced, so left alone
-    // it survives as a count with no rows behind it.
-    this.selectedItems.clear();
-    this.selectedSections.clear();
-  }
-
   #serializeSections() {
     const serialize = (section) => ({
       id: section.id,
@@ -1397,7 +1311,7 @@ export default class DocCategoryIndexEditor extends Component {
   async #doIndexAllTopics() {
     try {
       const result = await this.fetchTopics(this.includeSubcategories);
-      if (this.isDestroying || this.docIndexSaveLock.isSaving) {
+      if (this.isDestroying) {
         return;
       }
       if (result.topics.length === 0) {
@@ -1550,9 +1464,6 @@ export default class DocCategoryIndexEditor extends Component {
    *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
    * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
    *   via `registerCategorySaveProperty` when "Save Category" is clicked.
-   *
-   * Both fields must be committed after a successful Apply to clear the
-   * "Save Category" banner.
    */
   @bind
   _saveToTransientData() {
@@ -1564,13 +1475,15 @@ export default class DocCategoryIndexEditor extends Component {
       this.autoIndexIncludeSubcategories
     );
 
-    const backendSections = this.#buildPayload();
-    const serialized =
-      backendSections.length > 0 ? JSON.stringify(backendSections) : null;
-    this.args.form?.set("doc_index_sections", serialized);
-    if (serialized) {
-      this.args.form?.set("doc_index_topic_id", -1);
-    }
+    this.args.form?.set(
+      "doc_index_sections",
+      JSON.stringify({
+        sections: this.#buildPayload(),
+        auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
+        force_sync: this.pendingResync,
+      })
+    );
+    this.args.form?.set("doc_index_topic_id", -1);
     this.#refreshUnindexedCount();
   }
 
@@ -1583,7 +1496,6 @@ export default class DocCategoryIndexEditor extends Component {
         "doc-category-index-editor"
         (if this.batchMode "--batch-mode")
       }}
-      inert={{this.docIndexSaveLock.isSaving}}
       {{! Untyped: the reorderable lists keep their drag tokens to themselves,
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}

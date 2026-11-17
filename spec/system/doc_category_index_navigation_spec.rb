@@ -74,7 +74,8 @@ RSpec.describe "Doc index unsaved navigation" do
   it "warns about unfinished links and discards their validation state" do
     editor.visit_doc_index_tab(category)
     find(".doc-category-index-editor__section-actions .d-combo-button-menu").click
-    click_button I18n.t("js.doc_categories.category_settings.index_editor.add_link"), exact: true
+    click_button I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_link"),
+                 exact: true
     switch_tab("general")
     click_button "Discard and leave"
     switch_tab("documentation")
@@ -86,79 +87,16 @@ RSpec.describe "Doc index unsaved navigation" do
     expect(index.reload.sidebar_sections.first.title).to eq("Valid later change")
   end
 
-  it "uses the last applied index as the discard baseline" do
+  it "uses the last saved index as the discard baseline" do
     editor.visit_doc_index_tab(category)
-    edit_title("Applied title")
-    editor.click_apply
-    expect(editor).to have_applied
+    edit_title("Saved title")
+    editor.save_category
+    expect(editor).to have_no_pending_changes
     edit_title("Later unsaved title")
     switch_tab("general")
     click_button "Discard and leave"
     switch_tab("documentation")
-    expect(page).to have_content("Applied title")
+    expect(page).to have_content("Saved title")
     expect(page).to have_no_content("Later unsaved title")
-  end
-
-  it "locks editing, reset, category saving, and navigation until Apply succeeds" do
-    release = Queue.new
-    allow(DocCategories::IndexSaver).to receive(
-      :call,
-    ).and_wrap_original do |original, *args, &block|
-      release.pop(timeout: 15) if block
-      original.call(*args, &block)
-    end
-
-    editor.visit_doc_index_tab(category)
-    edit_title("Saved under lock")
-    find(".doc-category-index-editor__apply-btn").native.click
-    expect(page).to have_button("Applying...", disabled: true)
-    expect(page).to have_css(".doc-category-index-tab[disabled]")
-    expect(page).to have_no_css(".doc-category-index-tab button:not(:disabled)")
-    expect(page).to have_css(".edit-category-page[inert]")
-    find(".sidebar-section-link[href='/latest']").native.click
-    expect(page).to have_current_path("/c/#{category.slug}/edit/documentation")
-    expect(page).to have_no_css(".dialog-container")
-
-    release << true
-    expect(editor).to have_applied
-    expect(page).to have_no_css(".edit-category-page[inert]")
-    expect(page).to have_button("Add section", disabled: false)
-    expect(page).to have_content("Saved under lock")
-    switch_tab("general")
-    expect(page).to have_current_path("/c/#{category.slug}/edit/general")
-  ensure
-    release << true
-  end
-
-  it "unlocks after an Apply failure and preserves the draft for retry" do
-    release = Queue.new
-    fail_save = true
-    allow(DocCategories::IndexSaver).to receive(
-      :call,
-    ).and_wrap_original do |original, *args, &block|
-      release.pop(timeout: 15) if block
-      raise Discourse::InvalidParameters.new(:sections) if fail_save
-      original.call(*args, &block)
-    end
-
-    editor.visit_doc_index_tab(category)
-    edit_title("Retained after failure")
-    find(".doc-category-index-editor__apply-btn").native.click
-    expect(page).to have_css(".edit-category-page[inert]")
-    release << true
-    expect(page).to have_button("OK")
-    click_button "OK"
-    expect(page).to have_no_css(".edit-category-page[inert]")
-    expect(page).to have_content("Retained after failure")
-    expect(page).to have_button("Apply", disabled: false)
-    expect(section.reload.title).to eq("Original section")
-
-    fail_save = false
-    release << true
-    find(".doc-category-index-editor__apply-btn").native.click
-    expect(editor).to have_applied
-    expect(index.reload.sidebar_sections.first.title).to eq("Retained after failure")
-  ensure
-    release << true
   end
 end

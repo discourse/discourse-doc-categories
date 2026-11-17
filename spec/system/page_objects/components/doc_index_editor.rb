@@ -13,7 +13,7 @@ module PageObjects
         find(".doc-category-index-tab__mode-selector .fk-d-menu__trigger").click
         find(
           ".doc-category-index-tab__mode-option-label",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.#{mode_key}"),
         ).click
         self
       end
@@ -26,14 +26,14 @@ module PageObjects
       def has_mode_option?(mode_key)
         has_css?(
           ".doc-category-index-tab__mode-option-label",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.#{mode_key}"),
         )
       end
 
       def has_no_mode_option?(mode_key)
         has_no_css?(
           ".doc-category-index-tab__mode-option-label",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.#{mode_key}"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.#{mode_key}"),
         )
       end
 
@@ -56,7 +56,7 @@ module PageObjects
       def add_section(title:)
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.add_section"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_section"),
         ).click
 
         within all(".doc-category-index-editor__section").last do
@@ -88,7 +88,7 @@ module PageObjects
 
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.add_section"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_section"),
         ).click
         has_css?(".doc-category-index-editor__section", count: expected)
 
@@ -105,7 +105,7 @@ module PageObjects
       def add_section_without_title
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.add_section"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_section"),
         ).click
         self
       end
@@ -121,7 +121,10 @@ module PageObjects
       def has_first_section_placeholder?
         has_css?(
           ".doc-category-index-editor__section-title-label.--placeholder",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.first_section_no_title"),
+          text:
+            I18n.t(
+              "js.doc_categories.category_settings.sidebar_structure_editor.first_section_no_title",
+            ),
         )
       end
 
@@ -136,7 +139,7 @@ module PageObjects
         end
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.add_link"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_link"),
         ).click
 
         within all(".doc-category-index-editor__section").last do
@@ -147,33 +150,12 @@ module PageObjects
         self
       end
 
-      def click_apply
-        find(".doc-category-index-editor__apply-btn").click
-        self
-      end
-
-      def has_apply_disabled?
-        has_css?(".doc-category-index-editor__apply-btn[disabled]")
-      end
-
-      def has_no_apply_disabled?
-        has_no_css?(".doc-category-index-editor__apply-btn[disabled]")
-      end
-
       def has_section_validation_error?
         has_css?(".doc-category-index-editor__validation-error")
       end
 
       def has_no_section_validation_error?
         has_no_css?(".doc-category-index-editor__validation-error")
-      end
-
-      def has_applied?
-        has_button?(
-          I18n.t("js.doc_categories.category_settings.index_editor.applied"),
-          disabled: true,
-          wait: 5,
-        )
       end
 
       def save_category
@@ -211,13 +193,17 @@ module PageObjects
       def toggle_batch_mode
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.batch_edit"),
+          text: I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.batch_edit"),
         ).click
         self
       end
 
       def has_batch_bar?
         has_css?(".doc-category-index-editor__batch-bar")
+      end
+
+      def has_no_batch_bar?
+        has_no_css?(".doc-category-index-editor__batch-bar")
       end
 
       def select_link(title)
@@ -238,7 +224,7 @@ module PageObjects
           ".doc-category-index-editor__batch-count",
           text:
             I18n.t(
-              "js.doc_categories.category_settings.index_editor.batch_selected_items",
+              "js.doc_categories.category_settings.sidebar_structure_editor.batch_selected_items",
               count: count,
             ),
         )
@@ -247,7 +233,10 @@ module PageObjects
       def has_no_batch_selection?
         has_css?(
           ".doc-category-index-editor__batch-count",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.batch_select_hint"),
+          text:
+            I18n.t(
+              "js.doc_categories.category_settings.sidebar_structure_editor.batch_select_hint",
+            ),
         )
       end
 
@@ -279,7 +268,10 @@ module PageObjects
         find(".doc-category-index-editor__footer .d-combo-button-menu").click
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.add_auto_index_section"),
+          text:
+            I18n.t(
+              "js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section",
+            ),
         ).click
         self
       end
@@ -298,7 +290,9 @@ module PageObjects
 
       def has_no_auto_index_button?
         has_no_button?(
-          I18n.t("js.doc_categories.category_settings.index_editor.add_auto_index_section"),
+          I18n.t(
+            "js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section",
+          ),
         )
       end
 
@@ -321,7 +315,10 @@ module PageObjects
         click_auto_index_badge
         find(
           "button",
-          text: I18n.t("js.doc_categories.category_settings.index_editor.resync_auto_index"),
+          text:
+            I18n.t(
+              "js.doc_categories.category_settings.sidebar_structure_editor.resync_auto_index",
+            ),
         ).click
         self
       end

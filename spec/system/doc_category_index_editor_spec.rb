@@ -7,7 +7,6 @@ describe "Doc Category Index Editor" do
   fab!(:post_1) { Fabricate(:post, topic: topic_1) }
 
   let(:editor) { PageObjects::Components::DocIndexEditor.new }
-  let(:dialog) { PageObjects::Components::Dialog.new }
 
   before do
     SiteSetting.doc_categories_enabled = true
@@ -50,7 +49,6 @@ describe "Doc Category Index Editor" do
       expect(page).to have_no_css(".edit-category-security")
 
       editor.switch_to_mode("mode_none")
-      dialog.click_yes
       editor.save_category
       expect(editor).to have_no_pending_changes
 
@@ -137,25 +135,6 @@ describe "Doc Category Index Editor" do
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("My Link")
     end
 
-    it "saves doc-index sections via the Apply button" do
-      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
-      expect(editor).to have_editor
-
-      editor.add_section(title: "Applied Section").add_manual_link(
-        title: "Applied Link",
-        url: "https://example.com/applied",
-      )
-
-      editor.click_apply
-      expect(editor).to have_applied
-      expect(editor).to have_no_pending_changes
-
-      index = DocCategories::Index.find_by(category_id: category.id)
-      expect(index).to be_present
-      expect(index.sidebar_sections.count).to eq(1)
-      expect(index.sidebar_sections.first.title).to eq("Applied Section")
-    end
-
     it "saves auto-index section via Save Category" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
@@ -171,7 +150,7 @@ describe "Doc Category Index Editor" do
       expect(index.sidebar_sections.first.auto_index).to eq(true)
     end
 
-    it "preserves applied doc-index state across tab switches" do
+    it "preserves saved doc-index state across tab switches" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
 
@@ -179,8 +158,8 @@ describe "Doc Category Index Editor" do
         title: "Persistent Link",
         url: "https://example.com/persistent",
       )
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       editor.switch_to_general_tab
       expect(editor).to have_no_editor
@@ -221,15 +200,15 @@ describe "Doc Category Index Editor" do
       expect(editor).to have_first_section_placeholder
     end
 
-    it "saves a first section with empty title via Apply" do
+    it "saves a first section with empty title via Save Category" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
 
       editor.add_section_without_title
       editor.add_manual_link(title: "My Link", url: "https://example.com")
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
@@ -238,16 +217,26 @@ describe "Doc Category Index Editor" do
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("My Link")
     end
 
-    it "disables Apply when there are validation errors" do
+    it "blocks saving an empty section until a link is added" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
 
       # A section without links triggers "must contain at least one item"
       editor.add_section(title: "Empty Section")
-      expect(editor).to have_apply_disabled
+      editor.save_category
+      expect(page).to have_content(
+        I18n.t(
+          "js.doc_categories.category_settings.sidebar_structure_editor.validation_empty_section",
+        ),
+      )
+      expect(category.reload.doc_categories_index).to be_nil
 
       editor.add_manual_link(title: "Link", url: "https://example.com")
-      expect(editor).to have_no_apply_disabled
+      editor.save_category
+      expect(editor).to have_no_pending_changes
+      expect(category.reload.doc_categories_index.sidebar_sections.first.title).to eq(
+        "Empty Section",
+      )
     end
   end
 
@@ -287,18 +276,15 @@ describe "Doc Category Index Editor" do
         url: "https://example.com/delete",
       )
 
-      editor.click_apply
-      expect(editor).to have_applied
+      editor.save_category
+      expect(editor).to have_no_pending_changes
 
       index = DocCategories::Index.find_by(category_id: category.id)
       expect(index).to be_present
 
       editor.switch_to_mode("mode_none")
-      expect(dialog).to have_content(
-        I18n.t("js.doc_categories.category_settings.index_editor.disable_confirm"),
-      )
-      dialog.click_yes
       expect(editor).to have_none_help
+      expect(index.reload).to be_mode_direct
 
       editor.save_category
       expect(editor).to have_no_pending_changes

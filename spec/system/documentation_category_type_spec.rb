@@ -42,11 +42,10 @@ RSpec.describe "Documentation category type" do
     editor.switch_to_doc_index_tab
 
     expect(page).to have_content(
-      I18n.t("js.doc_categories.category_settings.index_editor.create_category_first"),
+      I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.create_category_first"),
     )
-    expect(page).to have_button("Editor", disabled: true)
+    expect(page).to have_css(".doc-category-index-tab__mode-trigger[disabled]", text: "Editor")
     expect(page).to have_button("Add section", disabled: true)
-    expect(page).to have_button("Apply", disabled: true)
     expect(page).to have_no_css(".doc-category-index-tab button:not([disabled])")
   end
 
