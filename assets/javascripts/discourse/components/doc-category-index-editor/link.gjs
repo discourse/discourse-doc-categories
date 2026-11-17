@@ -4,6 +4,7 @@ import { hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { next } from "@ember/runloop";
+import DTooltip from "discourse/float-kit/components/d-tooltip";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
@@ -291,14 +292,16 @@ export class IndexEditorLink extends Component {
     {{/if}}
 
     {{#if this.isDuplicate}}
-      <span
+      <DTooltip
         class="doc-category-index-editor__duplicate-icon"
-        title={{i18n
+        @content={{i18n
           "doc_categories.category_settings.sidebar_structure_editor.duplicate_warning"
         }}
       >
-        {{icon "triangle-exclamation"}}
-      </span>
+        <:trigger>
+          {{icon "triangle-exclamation"}}
+        </:trigger>
+      </DTooltip>
     {{/if}}
 
     {{#if this.editing}}
@@ -466,11 +469,6 @@ export class IndexEditorLink extends Component {
             {{/if}}
           {{/unless}}
         </div>
-        {{#if @link.href}}
-          <span class="doc-category-index-editor__link-href-preview">
-            {{@link.href}}
-          </span>
-        {{/if}}
       </div>
     {{/if}}
   </template>
