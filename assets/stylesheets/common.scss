@@ -416,9 +416,10 @@ body.doc-simple-mode {
     }
 
     &.--empty-drop-target {
-      min-height: 2.5em;
+      min-height: 2px;
       padding: 0.25em;
-      margin-bottom: 0.25em;
+      margin-bottom: 0;
+      border: 0;
       font-size: var(--font-down-1);
     }
   }
