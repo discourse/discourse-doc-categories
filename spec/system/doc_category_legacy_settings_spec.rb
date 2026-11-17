@@ -50,7 +50,7 @@ describe "Doc category legacy settings" do
 
   it "keeps the legacy chooser hidden when the editor is enabled" do
     SiteSetting.doc_categories_index_editor = true
-    category_page.visit_settings(category)
+    category_page.visit_settings(Fabricate(:documentation_category))
 
     expect(settings).to have_editor_tab
     expect(settings).to have_no_index_topic_chooser
@@ -80,10 +80,8 @@ describe "Doc category legacy settings" do
     page.refresh
     expect(settings).to have_no_index_topic
 
-    editor = PageObjects::Components::DocIndexEditor.new
-    editor.visit_doc_index_tab(category.reload)
-    expect(editor).to have_editor
-    expect(editor).to have_section_title(section.title)
-    expect(editor).to have_link_order([link.title])
+    expect(index.reload).to be_mode_direct
+    expect(index.sidebar_sections).to contain_exactly(section)
+    expect(section.sidebar_links).to contain_exactly(link)
   end
 end

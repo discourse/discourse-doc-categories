@@ -6,6 +6,7 @@ import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { service } from "@ember/service";
 import { trustHTML } from "@ember/template";
 import TopicChooser from "discourse/select-kit/components/topic-chooser";
+import { and, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 import DocIndexModeState from "../lib/doc-index-mode-state.js";
 import docIndexSaveLock from "../modifiers/doc-index-save-lock.js";
@@ -41,6 +42,10 @@ export default class DocCategoryIndexTab extends Component {
 
   constructor() {
     super(...arguments);
+    if (this.isPreview) {
+      return;
+    }
+
     this.captureSavedFormValues();
     this.router.on("routeWillChange", this.checkUnsavedIndex);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
@@ -75,7 +80,20 @@ export default class DocCategoryIndexTab extends Component {
 
   willDestroy() {
     super.willDestroy();
-    this.router.off("routeWillChange", this.checkUnsavedIndex);
+    if (!this.isPreview) {
+      this.router.off("routeWillChange", this.checkUnsavedIndex);
+    }
+  }
+
+  get isPreview() {
+    return !this.args.category.id;
+  }
+
+  get currentModeLabel() {
+    if (this.isPreview) {
+      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+    }
+    return this.modeState.currentModeLabel;
   }
 
   get showEditorOption() {
@@ -111,9 +129,9 @@ export default class DocCategoryIndexTab extends Component {
     const to = transition.to;
     if (
       !from?.name?.startsWith("editCategory.tabs") ||
-      from.params.tab !== "doc-index" ||
+      from.params.tab !== "documentation" ||
       (to?.name === from.name &&
-        to.params.tab === "doc-index" &&
+        to.params.tab === "documentation" &&
         JSON.stringify(to.parent?.params) ===
           JSON.stringify(from.parent?.params))
     ) {
@@ -168,14 +186,15 @@ export default class DocCategoryIndexTab extends Component {
   <template>
     <fieldset
       class="doc-category-index-tab"
-      disabled={{this.docIndexSaveLock.isSaving}}
+      disabled={{or this.isPreview this.docIndexSaveLock.isSaving}}
       {{docIndexSaveLock this.docIndexSaveLock.isSaving}}
       {{didInsert this.modeState.loadIndexTopic}}
     >
       <div class="doc-category-index-tab__header">
         <div class="doc-category-index-tab__mode-selector">
           <DocIndexModeSelector
-            @currentModeLabel={{this.modeState.currentModeLabel}}
+            @currentModeLabel={{this.currentModeLabel}}
+            @disabled={{this.isPreview}}
             @onSwitchToDirect={{this.modeState.switchToDirectMode}}
             @onSwitchToNone={{this.modeState.switchToNoneMode}}
             @onSwitchToTopic={{this.modeState.switchToTopicMode}}
@@ -188,7 +207,7 @@ export default class DocCategoryIndexTab extends Component {
         ></div>
       </div>
 
-      {{#if this.modeState.isNoneMode}}
+      {{#if (and (not this.isPreview) this.modeState.isNoneMode)}}
         <p class="doc-category-index-tab__none-help">
           {{#if this.modeState.inheritedIndexCategory}}
             {{i18n
@@ -224,15 +243,16 @@ export default class DocCategoryIndexTab extends Component {
         </div>
       {{/if}}
 
-      {{#if this.modeState.isDirectMode}}
+      {{#if (or this.isPreview this.modeState.isDirectMode)}}
         <DocCategoryIndexEditor
           @category={{this.modeState.category}}
           @categoryId={{this.modeState.category.id}}
           @form={{@form}}
           @indexData={{this.modeState.indexData}}
+          @isPreview={{this.isPreview}}
           @onApplied={{this.captureSavedFormValues}}
           @onRegisterEditor={{this.registerEditor}}
-          @registerAfterReset={{@registerAfterReset}}
+          @registerAfterReset={{unless this.isPreview @registerAfterReset}}
           @toolbarElement={{this.toolbarElement}}
           @transientData={{@transientData}}
         />

@@ -7,6 +7,7 @@ import { i18n } from "discourse-i18n";
 
 const DocIndexModeSelector = <template>
   <DMenu
+    @disabled={{@disabled}}
     @identifier="doc-index-mode-selector"
     @triggerClass="btn-default doc-category-index-tab__mode-trigger"
   >

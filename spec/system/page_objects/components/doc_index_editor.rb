@@ -4,7 +4,7 @@ module PageObjects
   module Components
     class DocIndexEditor < PageObjects::Components::Base
       def visit_doc_index_tab(category)
-        page.visit("/c/#{category.slug}/edit/doc-index")
+        page.visit("/c/#{category.slug}/edit/documentation")
         has_css?(".doc-category-index-tab")
         self
       end
@@ -340,7 +340,7 @@ module PageObjects
       end
 
       def switch_to_doc_index_tab
-        find("li.edit-category-doc-index a").click
+        find("li.edit-category-documentation a").click
         self
       end
 

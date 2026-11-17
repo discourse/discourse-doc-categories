@@ -4,7 +4,7 @@ describe "Doc Category Sidebar" do
   fab!(:admin)
   fab!(:category, :category_with_definition)
   fab!(:topic) { Fabricate(:topic_with_op, category: category) }
-  fab!(:documentation_category, :category_with_definition)
+  fab!(:documentation_category, :documentation_category)
   fab!(:documentation_subcategory) do
     Fabricate(:category_with_definition, parent_category_id: documentation_category.id)
   end
@@ -217,6 +217,7 @@ describe "Doc Category Sidebar" do
     before do
       Jobs.run_immediately!
       SiteSetting.enable_simplified_category_creation = true
+      SiteSetting.doc_categories_index_editor = true
       sign_in(admin)
     end
 

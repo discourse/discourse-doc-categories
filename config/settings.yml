@@ -20,6 +20,8 @@ doc_categories:
       status: "experimental"
       impact: "feature,admins"
       learn_more_url: "https://meta.discourse.org/t/-/415945"
+      # The Documentation setup card lets admins enable the plugin.
+      requires_plugin_enabled: false
       allow_enabled_for:
         - everyone
   doc_categories_homepage:

@@ -2,7 +2,7 @@
 
 RSpec.describe "Review unindexed documentation topics" do
   fab!(:admin)
-  fab!(:category, :category_with_definition)
+  fab!(:category, :documentation_category)
   fab!(:indexed_topic) do
     Fabricate(:topic_with_op, category: category, title: "Getting started guide")
   end

@@ -18,6 +18,7 @@ register_svg_icon "eraser"
 register_svg_icon "check-double"
 register_svg_icon "bolt"
 register_svg_icon "arrow-turn-up"
+register_svg_icon "book"
 
 module ::DocCategories
   PLUGIN_NAME = "discourse-doc-categories"
@@ -63,7 +64,14 @@ after_initialize do
     include_condition: -> { DocCategories.legacy_mode? },
   ) { GlobalSetting.docs_path }
 
-  reloadable_patch { Category.prepend ::DocCategories::Initializers::CategoryExtension }
+  documentation_field = DocCategories::Categories::Types::Documentation::CUSTOM_FIELD
+  register_category_custom_field_type(documentation_field, :boolean)
+  register_preloaded_category_custom_fields(documentation_field)
+
+  reloadable_patch do
+    Category.prepend ::DocCategories::Initializers::CategoryExtension
+    register_category_type(DocCategories::Categories::Types::Documentation)
+  end
 
   DocCategories::Initializers.apply(self)
 

@@ -15,7 +15,7 @@ import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import discourseLater from "discourse/lib/later";
-import { not } from "discourse/truth-helpers";
+import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DComboButton from "discourse/ui-kit/d-combo-button";
 import DConditionalInElement from "discourse/ui-kit/d-conditional-in-element";
@@ -1622,6 +1622,7 @@ export default class DocCategoryIndexEditor extends Component {
               @label="doc_categories.category_settings.index_editor.batch_edit"
             />
             <DMenu
+              @disabled={{@isPreview}}
               @identifier="index-options-menu"
               @placement="bottom-end"
               @triggerClass="btn-default doc-category-index-editor__options-trigger"
@@ -1764,8 +1765,12 @@ export default class DocCategoryIndexEditor extends Component {
           >
             <:empty>
               <DEmptyState
-                @body={{i18n
-                  "doc_categories.category_settings.index_editor.empty"
+                @body={{if
+                  @isPreview
+                  (i18n
+                    "doc_categories.category_settings.index_editor.create_category_first"
+                  )
+                  (i18n "doc_categories.category_settings.index_editor.empty")
                 }}
               />
             </:empty>
@@ -1794,7 +1799,7 @@ export default class DocCategoryIndexEditor extends Component {
                 <combo.Button
                   class="btn-default btn-small"
                   @action={{fn this.addSection null}}
-                  @disabled={{this.sectionLimitReached}}
+                  @disabled={{or @isPreview this.sectionLimitReached}}
                   @icon="plus"
                   @label="doc_categories.category_settings.index_editor.add_section"
                 />
@@ -1802,6 +1807,7 @@ export default class DocCategoryIndexEditor extends Component {
                     would be the same condition written twice. }}
                 <combo.Menu
                   class="btn-default btn-small"
+                  @disabled={{@isPreview}}
                   @identifier="add-section-menu"
                 >
                   <DDropdownMenu as |dropdown|>

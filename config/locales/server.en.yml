@@ -1,4 +1,8 @@
 en:
+  category_types:
+    documentation:
+      name: "Documentation"
+      description: "Organize documentation topics with a sidebar editor."
   reports:
     doc_categories_missing_topics:
       title: "Docs - Topics not indexed"

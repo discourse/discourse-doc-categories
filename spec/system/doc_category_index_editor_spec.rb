@@ -2,7 +2,7 @@
 
 describe "Doc Category Index Editor" do
   fab!(:admin)
-  fab!(:category, :category_with_definition)
+  fab!(:category, :documentation_category)
   fab!(:topic_1) { Fabricate(:topic, category: category, title: "Alpha topic for testing") }
   fab!(:post_1) { Fabricate(:post, topic: topic_1) }
 
@@ -19,14 +19,20 @@ describe "Doc Category Index Editor" do
   context "with the advanced settings toggle" do
     let(:category_page) { PageObjects::Pages::Category.new }
 
-    it "keeps an unconfigured doc index behind advanced settings" do
+    it "shows the Documentation tab without advanced settings when the source is disabled" do
       category_page.visit_general(category)
 
-      expect(page).to have_no_css(".edit-category-doc-index")
+      expect(page).to have_css(".edit-category-documentation")
+      expect(page).to have_no_css(".edit-category-security")
+    end
 
-      category_page.toggle_advanced_settings
+    it "hides the Documentation tab for a category with an existing index and no Documentation type" do
+      discussion = Fabricate(:category_with_definition)
+      Fabricate(:doc_categories_index, category: discussion, index_topic_id: -1)
 
-      expect(page).to have_css(".edit-category-doc-index")
+      category_page.visit_settings(discussion)
+
+      expect(page).to have_no_css(".edit-category-documentation")
     end
 
     it "keeps the selected tab visible after disabling its index" do
@@ -38,7 +44,7 @@ describe "Doc Category Index Editor" do
         href: "https://example.com/docs",
       )
       category_page.visit_general(category)
-      find(".edit-category-doc-index a").click
+      find(".edit-category-documentation a").click
       expect(page).to have_css(".edit-category-security")
       category_page.toggle_advanced_settings
       expect(page).to have_no_css(".edit-category-security")
@@ -48,7 +54,7 @@ describe "Doc Category Index Editor" do
       editor.save_category
       expect(editor).to have_no_pending_changes
 
-      expect(page).to have_css(".edit-category-doc-index.active")
+      expect(page).to have_css(".edit-category-documentation.active")
       expect(page).to have_css(".edit-category-general")
       expect(editor).to have_none_help
     end
@@ -63,15 +69,15 @@ describe "Doc Category Index Editor" do
         category_page.visit_general(category)
 
         expect(page).to have_no_css(".edit-category-security")
-        find(".edit-category-doc-index a").click
+        find(".edit-category-documentation a").click
 
         expect(page).to have_css(".doc-category-index-tab")
         expect(page).to have_css(".edit-category-security")
-        expect(page).to have_css(".edit-category-doc-index", count: 1)
+        expect(page).to have_css(".edit-category-documentation", count: 1)
 
         category_page.toggle_advanced_settings
 
-        expect(page).to have_current_path("/c/#{category.slug}/edit/doc-index")
+        expect(page).to have_current_path("/c/#{category.slug}/edit/documentation")
         expect(page).to have_css(".doc-category-index-tab")
         expect(page).to have_no_css(".edit-category-security")
 
@@ -91,33 +97,22 @@ describe "Doc Category Index Editor" do
       category_page = PageObjects::Pages::Category.new
       category_page.visit_general(category)
 
-      expect(page).to have_no_css(".edit-category-doc-index")
+      expect(page).to have_no_css(".edit-category-documentation")
 
       category_page.toggle_advanced_settings
 
       expect(page).to have_css(".edit-category-security")
-      expect(page).to have_no_css(".edit-category-doc-index")
+      expect(page).to have_no_css(".edit-category-documentation")
     end
 
-    it "hides the editor mode option from the mode selector" do
-      editor.visit_doc_index_tab(category)
-      editor.open_mode_selector
-      expect(editor).to have_no_mode_option("mode_direct")
-      expect(editor).to have_mode_option("mode_topic")
-      expect(editor).to have_mode_option("mode_none")
-    end
-
-    it "still shows the editor option when the category is already in direct mode" do
+    it "keeps the editor hidden on a direct visit to the Documentation tab" do
       DocCategories::Index.create!(
         category: category,
         index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
       )
 
-      editor.visit_doc_index_tab(category)
-      expect(editor).to have_editor
-
-      editor.open_mode_selector
-      expect(editor).to have_mode_option("mode_direct")
+      visit "/c/#{category.slug}/edit/documentation"
+      expect(editor).to have_no_editor
     end
   end
 
