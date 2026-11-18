@@ -331,25 +331,13 @@ export class IndexEditorSection extends Component {
     this.args.onReviewUnindexedTopics?.(this.args.section);
   }
 
-  /**
-   * Returned rather than fired and forgotten: the list waits on it before
-   * announcing the removal and re-placing focus, so cancelling is not spoken as
-   * a removal that happened.
-   */
   @action
   removeLink(link) {
-    return this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_link"
-      ),
-      didConfirm: () => {
-        const idx = this.args.section.items.indexOf(link);
-        if (idx !== -1) {
-          this.args.section.items.splice(idx, 1);
-        }
-        this.args.onChange?.();
-      },
-    });
+    const idx = this.args.section.items.indexOf(link);
+    if (idx !== -1) {
+      this.args.section.items.splice(idx, 1);
+    }
+    this.args.onChange?.();
   }
 
   /** What to call a link: its own title, or the placeholder standing for one. */
