@@ -10,13 +10,12 @@ ro:
       simple_mode:
         updated: "Actualizat"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           mode_none: "Dezactivate"
           mode_direct: "Editor"
           remove_link: "Elimină legătură"
           edit_link: "Editează legătură"
-          save: "Salvează"
-          apply: "Aplică"
+          save: "Salvare"
           batch_select_all: "Selectează tot"
           batch_delete: "Șterge selecția"
           unindexed_topics:

@@ -10,7 +10,7 @@ zh_TW:
       simple_mode:
         updated: "更新時間"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "保留"
           mode_none: "已禁用"
           mode_direct: "編輯"
@@ -19,7 +19,6 @@ zh_TW:
           edit_link: "編輯連結"
           all_topics_section: "所有話題"
           save: "保存"
-          apply: "應用"
           batch_select_all: "全選"
           batch_delete: "刪除所選項目"
           unindexed_topics:

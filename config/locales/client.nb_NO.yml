@@ -10,11 +10,10 @@ nb_NO:
       simple_mode:
         updated: "Oppdatert"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           mode_none: "Deaktivert"
           mode_direct: "Tekstbehandler"
           save: "Lagre"
-          apply: "Bruk"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Søk"

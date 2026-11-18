@@ -27,8 +27,7 @@ cs:
           label: "Téma s obsahem"
           errors:
             topic_not_found: "Téma nebylo nalezeno! Obsah se nezobrazí."
-            mismatched_category: "Obsah se nezobrazí, protože téma patří do jiné kategorie: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Stay"
           mode_none: "Vypnuto"
           mode_direct: "Uživatel"
@@ -37,7 +36,6 @@ cs:
           edit_link: "Upravit odkaz"
           all_topics_section: "Všechna témata"
           save: "Uložit"
-          apply: "Použít"
           batch_select_all: "Vybrat vše"
           batch_delete: "Smazat vybrané"
           unindexed_topics:

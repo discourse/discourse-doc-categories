@@ -10,7 +10,7 @@ it:
       simple_mode:
         updated: "Aggiornamento"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Resta"
           mode_none: "Disabilitati"
           mode_direct: "Redattore"
@@ -19,7 +19,6 @@ it:
           edit_link: "Modifica link"
           all_topics_section: "Tutti gli argomenti"
           save: "Salva"
-          apply: "Applica"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Cerca"

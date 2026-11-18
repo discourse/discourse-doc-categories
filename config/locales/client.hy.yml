@@ -10,12 +10,11 @@ hy:
       simple_mode:
         updated: "Թարմացված"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Մնալ"
           mode_none: "Անջատված"
           mode_direct: "Խմբագրիչ"
           save: "Պահպանել"
-          apply: "Կիրառել"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Որոնում"

@@ -31,8 +31,7 @@ nl:
           label: "Indextopic"
           errors:
             topic_not_found: "Topic niet gevonden! De index wordt niet weergegeven."
-            mismatched_category: "De index wordt niet weergegeven omdat het topic tot een andere categorie behoort: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Blijven"
           mode_none: "Uitgeschakeld"
           mode_direct: "Bewerker"
@@ -41,7 +40,6 @@ nl:
           edit_link: "Link bewerken"
           all_topics_section: "Alle topics"
           save: "Opslaan"
-          apply: "Toepassen"
           batch_select_all: "Selecteer alles"
           batch_delete: "Geselecteerde verwijderen"
           unindexed_topics:

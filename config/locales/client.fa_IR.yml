@@ -10,7 +10,7 @@ fa_IR:
       simple_mode:
         updated: "به روز شده"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "ماندن"
           mode_none: "ازکاراندازی"
           mode_direct: "ویرایشگر"
@@ -18,7 +18,6 @@ fa_IR:
           add_link: "افزودن پیوند"
           all_topics_section: "همه موضوعات"
           save: "ذخیره"
-          apply: "اعمال کردن"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "جستجو"

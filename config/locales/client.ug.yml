@@ -10,7 +10,7 @@ ug:
       simple_mode:
         updated: "يېڭىلاندى"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "قال"
           mode_none: "چەكلەندى"
           mode_direct: "تەھرىر"
@@ -19,7 +19,6 @@ ug:
           edit_link: "ئۇلانما تەھرىر"
           all_topics_section: "بارلىق تېما"
           save: "ساقلا"
-          apply: "قوللان"
           batch_select_all: "ھەممىنى تاللا"
           batch_delete: "تاللانغاننى ئۆچۈر"
           unindexed_topics:

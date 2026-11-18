@@ -10,7 +10,7 @@ da:
       simple_mode:
         updated: "Opdateret"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Bliv"
           mode_none: "Deaktiveret"
           mode_direct: "Redaktør"
@@ -18,7 +18,6 @@ da:
           edit_link: "Rediger link"
           all_topics_section: "Alle emner"
           save: "Gem"
-          apply: "Anvend"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Søg"

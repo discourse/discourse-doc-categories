@@ -10,7 +10,7 @@ fi:
       simple_mode:
         updated: "Päivitetty"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Jää"
           mode_none: "Pois käytöstä"
           mode_direct: "Muokkaaja"
@@ -19,7 +19,6 @@ fi:
           edit_link: "Muokkaa linkkiä"
           all_topics_section: "Kaikki ketjut"
           save: "Tallenna"
-          apply: "Käytä"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Hae"

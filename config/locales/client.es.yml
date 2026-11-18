@@ -27,8 +27,7 @@ es:
           label: "Tema del índice"
           errors:
             topic_not_found: "Tema no encontrado. No se mostrará el índice."
-            mismatched_category: "El índice no se mostrará porque el tema pertenece a una categoría diferente: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Permanecer"
           mode_none: "Desactivado"
           mode_direct: "Editor"
@@ -37,7 +36,6 @@ es:
           edit_link: "Editar enlace"
           all_topics_section: "Todos los temas"
           save: "Guardar"
-          apply: "Aplicar"
           batch_select_all: "Seleccionar todo"
           batch_delete: "Eliminar selección"
           unindexed_topics:

@@ -8,12 +8,11 @@ be:
   js:
     doc_categories:
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           mode_none: "Адключаныя"
           mode_direct: "Рэдактар"
           all_topics_section: "Усе тэмы"
-          save: "Захаваць"
-          apply: "Прымяніць"
+          save: "захаваць"
           unindexed_topics:
             search_field: "Пошук"
             undo: "Адрабіць"
