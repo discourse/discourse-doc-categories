@@ -31,8 +31,7 @@ tr_TR:
           label: "Dizin Konusu"
           errors:
             topic_not_found: "Konu bulunamadı! Dizin görüntülenmeyecek."
-            mismatched_category: "Konu farklı bir kategoriye ait olduğu için dizin görüntülenmeyecektir: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Kal"
           mode_none: "Devre Dışı"
           mode_direct: "Düzenleyici"
@@ -41,7 +40,6 @@ tr_TR:
           edit_link: "Bağlantıyı düzenle"
           all_topics_section: "Tüm konular"
           save: "Kaydet"
-          apply: "Uygula"
           batch_select_all: "Tümünü seç"
           batch_delete: "Seçilenleri sil"
           unindexed_topics:

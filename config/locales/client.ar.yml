@@ -35,8 +35,7 @@ ar:
           label: "موضوع الفهرس"
           errors:
             topic_not_found: "لم يتم العثور على الموضوع! لن يتم عرض الفهرس"
-            mismatched_category: "لن يتم عرض الفهرس لأن الموضوع ينتمي إلى فئة مختلفة: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "البقاء"
           mode_none: "متوقفة"
           mode_direct: "المحرِّر"
@@ -46,7 +45,6 @@ ar:
           edit_link: "تعديل الرابط"
           all_topics_section: "كل الموضوعات"
           save: "حفظ"
-          apply: "تطبيق"
           batch_select_all: "تحديد الكل"
           batch_delete: "احذف المحدّد"
           unindexed_topics:

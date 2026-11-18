@@ -10,7 +10,7 @@ hr:
       simple_mode:
         updated: "Ažurirano"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Ostanite"
           mode_none: "Onemogućeno"
           mode_direct: "Urednik"
@@ -19,7 +19,6 @@ hr:
           edit_link: "Uredite poveznicu"
           all_topics_section: "Sve teme"
           save: "Spremi"
-          apply: "Primijeni"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Pretraživanje"

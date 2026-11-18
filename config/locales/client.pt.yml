@@ -10,13 +10,12 @@ pt:
       simple_mode:
         updated: "Atualizado"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           mode_none: "Desativado"
           mode_direct: "Editor"
           remove_link: "Remover hiperligação"
           edit_link: "Editar hiperligação"
           save: "Guardar"
-          apply: "Aplicar"
           batch_select_all: "Selecionar tudo"
           batch_delete: "Eliminar seleção"
           unindexed_topics:

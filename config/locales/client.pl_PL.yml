@@ -10,7 +10,7 @@ pl_PL:
       simple_mode:
         updated: "Zaktualizowane"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Zostań"
           mode_none: "Wyłączone"
           mode_direct: "Edytor"
@@ -20,7 +20,6 @@ pl_PL:
           edit_link: "Edytuj link"
           all_topics_section: "Wszystkie tematy"
           save: "Zapisz"
-          apply: "Zastosuj"
           batch_select_all: "Zaznacz wszystkie"
           batch_delete: "Usuń wybrane"
           unindexed_topics:

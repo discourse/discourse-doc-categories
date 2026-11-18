@@ -10,12 +10,11 @@ ca:
       simple_mode:
         updated: "Actualitzat"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Roman"
           mode_none: "Desactivat"
           mode_direct: "Editor"
           save: "Desa"
-          apply: "Aplica"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Cerca"

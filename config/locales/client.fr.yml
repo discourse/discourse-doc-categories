@@ -31,8 +31,7 @@ fr:
           label: "Sujet d'index"
           errors:
             topic_not_found: "Sujet introuvable ! L'index ne sera pas affiché"
-            mismatched_category: "L'index ne sera pas affiché, car le sujet appartient à une autre catégorie : %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Rester"
           mode_none: "Désactivées"
           mode_direct: "Éditeur"
@@ -41,7 +40,6 @@ fr:
           edit_link: "Modifier le lien"
           all_topics_section: "Tous les sujets"
           save: "Enregistrer"
-          apply: "Appliquer"
           batch_select_all: "Tout sélectionner"
           batch_delete: "Supprimer la sélection"
           unindexed_topics:

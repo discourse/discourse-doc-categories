@@ -10,7 +10,7 @@ lt:
       simple_mode:
         updated: "Atnaujinta"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Likti"
           mode_none: "Išjungta"
           mode_direct: "Redaguotojas"
@@ -19,7 +19,6 @@ lt:
           edit_link: "Redaguoti nuorodą"
           all_topics_section: "Visos temos"
           save: "Išsaugoti"
-          apply: "Kandidatuoti"
           batch_select_all: "Pasirinkti viską"
           batch_delete: "Ištrinti pasirinktus"
           unindexed_topics:

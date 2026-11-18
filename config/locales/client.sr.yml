@@ -8,12 +8,11 @@ sr:
   js:
     doc_categories:
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           mode_none: "Isključeno"
           mode_direct: "Urednik"
           include_subcategories: "Uključi potkategorije"
           save: "Sačuvaj"
-          apply: "Primeni"
           unindexed_topics:
             search_field: "Pretraži"
             selected:

@@ -10,7 +10,7 @@ hu:
       simple_mode:
         updated: "Frissítve"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Marad"
           mode_none: "Kikapcsolva"
           mode_direct: "Szerkesztő"
@@ -19,7 +19,6 @@ hu:
           edit_link: "Hivatkozás szerkesztése"
           all_topics_section: "Minden téma"
           save: "Mentés"
-          apply: "Alkalmaz"
           batch_select_all: "Összes kiválasztása"
           batch_delete: "Kiválasztottak törlése"
           unindexed_topics:

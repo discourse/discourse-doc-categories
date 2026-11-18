@@ -10,7 +10,7 @@ ru:
       simple_mode:
         updated: "Обновлена"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Остаться"
           mode_none: "Отключен"
           mode_direct: "Редактор"
@@ -19,7 +19,6 @@ ru:
           edit_link: "Редактировать ссылку"
           all_topics_section: "Все темы"
           save: "Сохранить"
-          apply: "Применить"
           batch_select_all: "Выбрать все"
           batch_delete: "Удалить выбранное"
           unindexed_topics:

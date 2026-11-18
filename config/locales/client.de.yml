@@ -31,8 +31,7 @@ de:
           label: "Indexthema"
           errors:
             topic_not_found: "Thema nicht gefunden! Der Index wird nicht angezeigt"
-            mismatched_category: "Der Index wird nicht angezeigt, weil das Thema zu einer anderen Kategorie gehört: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Bleiben"
           mode_none: "Deaktiviert"
           mode_direct: "Bearbeiter"
@@ -42,7 +41,6 @@ de:
           edit_link: "Link bearbeiten"
           all_topics_section: "Alle Themen"
           save: "Speichern"
-          apply: "Anwenden"
           batch_select_all: "Alle auswählen"
           batch_delete: "Ausgewählte löschen"
           unindexed_topics:

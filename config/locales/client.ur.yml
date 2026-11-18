@@ -19,7 +19,7 @@ ur:
       simple_mode:
         updated: "اپ ڈیٹ"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "ادھر رہیں"
           mode_none: "غیر فعال"
           mode_direct: "ایڈیٹر"
@@ -28,10 +28,9 @@ ur:
           include_subcategories: "ذیلی زمروں کو شامل کریں"
           edit_link: "رابطہ میں ترمیم"
           all_topics_section: "تمام موضوعات"
-          save: "محفوظ کریں"
-          apply: "لاگو کریں"
+          save: "محفوظ"
           batch_select_all: "سبھی منتخب کریں"
-          batch_delete: "منتخب کردہ کو حذف کر دیں"
+          batch_delete: "منتخب کردہ کو مٹائیں"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "تلاش کریں"

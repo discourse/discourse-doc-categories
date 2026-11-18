@@ -27,8 +27,7 @@ ja:
           label: "トピックのインデックス"
           errors:
             topic_not_found: "トピックが見つかりません！インデックスは表示されません"
-            mismatched_category: "トピックが別のカテゴリに属しているため、インデックスは表示されません: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "移動しない"
           mode_none: "無効"
           mode_direct: "編集者"
@@ -37,7 +36,6 @@ ja:
           edit_link: "リンクの編集"
           all_topics_section: "すべてのトピック"
           save: "保存"
-          apply: "適用"
           batch_select_all: "すべて選択"
           batch_delete: "選択項目を削除"
           unindexed_topics:

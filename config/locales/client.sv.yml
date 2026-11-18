@@ -10,7 +10,7 @@ sv:
       simple_mode:
         updated: "Uppdaterade"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Stanna"
           mode_none: "Inaktiverad"
           mode_direct: "Redigerare"
@@ -18,7 +18,6 @@ sv:
           add_link: "Lägg till länk"
           all_topics_section: "Alla ämnen"
           save: "Spara"
-          apply: "Tillämpa"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Sök"

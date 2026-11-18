@@ -27,8 +27,7 @@ pt_BR:
           label: "Tópico do índice"
           errors:
             topic_not_found: "Tópico não encontrado! O índice não será exibido"
-            mismatched_category: "O índice não será exibido porque o tópico pertence a uma categoria diferente: %{category_name}"
-        index_editor:
+        sidebar_structure_editor:
           stay: "Permanecer"
           mode_none: "Desativados"
           mode_direct: "Editor(a)"
@@ -37,7 +36,6 @@ pt_BR:
           edit_link: "Editar link"
           all_topics_section: "Todos os tópicos"
           save: "Salvar"
-          apply: "Aplicar"
           batch_select_all: "Selecionar tudo"
           batch_delete: "Excluir selecionados"
           unindexed_topics:

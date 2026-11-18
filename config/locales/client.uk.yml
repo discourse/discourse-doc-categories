@@ -10,7 +10,7 @@ uk:
       simple_mode:
         updated: "Оновлено"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "залишитися"
           mode_none: "Вимкнено"
           mode_direct: "Редактор"
@@ -20,7 +20,6 @@ uk:
           edit_link: "Редагувати посилання"
           all_topics_section: "Всі теми"
           save: "Зберегти"
-          apply: "Застосувати"
           batch_select_all: "Вибрати все"
           batch_delete: "Видалити вибране"
           unindexed_topics:

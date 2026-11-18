@@ -10,7 +10,7 @@ sk:
       simple_mode:
         updated: "Aktualizované"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "Ponechať"
           mode_none: "Vypnuté"
           mode_direct: "Editor"
@@ -19,7 +19,6 @@ sk:
           edit_link: "Upraviť odkaz"
           all_topics_section: "Všetky témy"
           save: "Uložiť"
-          apply: "Použi"
           unindexed_topics:
             numbered_section: "%{title} (%{count})"
             search_field: "Hľadať"

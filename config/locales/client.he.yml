@@ -27,7 +27,7 @@ he:
         hide_comments: "הסתרת תגובות"
         updated: "עודכן"
       category_settings:
-        index_editor:
+        sidebar_structure_editor:
           stay: "להישאר"
           mode_none: "כבוי"
           mode_direct: "עורכים"
@@ -36,7 +36,6 @@ he:
           edit_link: "עריכת קישור"
           all_topics_section: "כל הנושאים"
           save: "שמירה"
-          apply: "החלה"
           batch_select_all: "בחירה בהכול"
           batch_delete: "מחיקת הנבחרים"
           unindexed_topics:
