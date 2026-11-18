@@ -1,6 +1,5 @@
 import { click, render, settled } from "@ember/test-helpers";
 import { module, test } from "qunit";
-import sinon from "sinon";
 import { setupRenderingTest } from "discourse/tests/helpers/component-test";
 import pretender, { response } from "discourse/tests/helpers/create-pretender";
 import { i18n } from "discourse-i18n";
@@ -10,7 +9,7 @@ import {
   MAX_SECTIONS,
 } from "discourse/plugins/discourse-doc-categories/discourse/lib/constants";
 
-const PREFIX = "doc_categories.category_settings.index_editor";
+const PREFIX = "doc_categories.category_settings.sidebar_structure_editor";
 
 function links(count) {
   return Array.from({ length: count }, (_, index) => ({
@@ -161,12 +160,7 @@ module(
       assert.strictEqual(destination.items.length, MAX_LINKS_PER_SECTION);
     });
 
-    test("an oversized restored draft cannot be applied", async function (assert) {
-      const save = sinon.spy();
-      pretender.put("/doc-categories/indexes/1", () => {
-        save();
-        return response({});
-      });
+    test("reports a validation error for an oversized restored draft", async function (assert) {
       const editor = await renderEditor([
         { text: "Oversized", links: links(MAX_LINKS_PER_SECTION + 1) },
       ]);
@@ -175,11 +169,6 @@ module(
           i18n(`${PREFIX}.link_limit`, { count: MAX_LINKS_PER_SECTION })
         )
       );
-      editor.addSection();
-      await settled();
-      assert.dom(".doc-category-index-editor__apply-btn").isDisabled();
-      await editor.apply();
-      assert.false(save.called, "no invalid request reaches the server");
     });
   }
 );

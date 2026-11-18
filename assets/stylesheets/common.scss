@@ -416,9 +416,10 @@ body.doc-simple-mode {
     }
 
     &.--empty-drop-target {
-      min-height: 2.5em;
+      min-height: 2px;
       padding: 0.25em;
-      margin-bottom: 0.25em;
+      margin-bottom: 0;
+      border: 0;
       font-size: var(--font-down-1);
     }
   }
@@ -445,7 +446,7 @@ body.doc-simple-mode {
 
     &.--duplicate {
       .doc-category-index-editor__link-card {
-        border-left: 3px solid var(--highlight);
+        border-left: 3px solid var(--primary);
       }
     }
 
@@ -522,7 +523,7 @@ body.doc-simple-mode {
   &__item-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.05em 0.4em;
+    padding: 0.4em;
     border-radius: var(--d-border-radius);
     background: var(--tertiary-low);
     color: var(--tertiary-hover);
@@ -596,15 +597,6 @@ body.doc-simple-mode {
     cursor: pointer;
   }
 
-  &__link-href-preview {
-    color: var(--primary-medium);
-    font-size: var(--font-down-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-left: 1.75em;
-  }
-
   &__link-edit-row {
     display: flex;
     align-items: center;
@@ -635,8 +627,8 @@ body.doc-simple-mode {
   }
 
   &__duplicate-icon {
-    color: var(--highlight);
     flex-shrink: 0;
+    margin-top: calc(var(--space-2) + var(--space-1) / 2);
   }
 
   &__link-title,
@@ -701,12 +693,12 @@ body.doc-simple-mode {
 
     /* Align with section header icons (section padding + border + header button padding) */
     .doc-category-index-editor__section-row > & {
-      margin-top: calc(0.75em + 0.25em);
+      margin-top: var(--space-2);
     }
 
     /* Align with link card icons (link padding + card border + card padding) */
     .doc-category-index-editor__link > & {
-      margin-top: calc(0.15em + 0.35em);
+      margin-top: var(--space-2);
     }
   }
 
@@ -771,15 +763,6 @@ body.doc-simple-mode {
   &__capacity-message {
     color: var(--primary-medium);
     font-size: var(--font-down-1);
-  }
-
-  &__apply-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-top: 2.5em;
-    padding-top: 1.5em;
-    border-top: 1px solid var(--primary-low);
   }
 
   &__batch-delete-btn {

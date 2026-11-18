@@ -74,7 +74,7 @@ module("Unit | Lib | doc-index-unindexed-topics", function (hooks) {
     );
   });
 
-  test("URL-only references match Apply's character limit before server resolution", function (assert) {
+  test("URL-only references match the saving character limit before server resolution", function (assert) {
     const href = `/t/manual/4?tracking=${"x".repeat(2500)}`;
     const unicodeHref = `/t/manual/5?tracking=${"😀".repeat(2000)}`;
     const references = draftTopicReferences(
@@ -84,7 +84,7 @@ module("Unit | Lib | doc-index-unindexed-topics", function (hooks) {
     assert.deepEqual(
       references.hrefs,
       [href.slice(0, 2000), [...unicodeHref].slice(0, 2000).join("")],
-      "hrefs use the same 2000-character prefix as Apply"
+      "hrefs use the same 2000-character prefix as the save"
     );
     assert.strictEqual(
       topicIdFromHref(href),

@@ -25,12 +25,18 @@ module("Unit | Lib | doc-index-validation", function () {
     assert.deepEqual(
       validateDocIndexSections(sections),
       [
-        i18n("doc_categories.category_settings.index_editor.section_limit", {
-          count: MAX_SECTIONS,
-        }),
-        i18n("doc_categories.category_settings.index_editor.link_limit", {
-          count: MAX_LINKS_PER_SECTION,
-        }),
+        i18n(
+          "doc_categories.category_settings.sidebar_structure_editor.section_limit",
+          {
+            count: MAX_SECTIONS,
+          }
+        ),
+        i18n(
+          "doc_categories.category_settings.sidebar_structure_editor.link_limit",
+          {
+            count: MAX_LINKS_PER_SECTION,
+          }
+        ),
       ],
       "reports both limits and deduplicates overflowing sections"
     );

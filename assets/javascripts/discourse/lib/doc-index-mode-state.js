@@ -98,11 +98,17 @@ export default class DocIndexModeState {
 
   get currentModeLabel() {
     if (this.isTopicMode) {
-      return i18n("doc_categories.category_settings.index_editor.mode_topic");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_topic"
+      );
     } else if (this.isDirectMode) {
-      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      );
     }
-    return i18n("doc_categories.category_settings.index_editor.mode_none");
+    return i18n(
+      "doc_categories.category_settings.sidebar_structure_editor.mode_none"
+    );
   }
 
   get searchFilters() {
@@ -155,18 +161,8 @@ export default class DocIndexModeState {
   @bind
   switchToNoneMode(dMenu) {
     dMenu.close();
-    if (this.isNoneMode) {
-      return;
-    }
 
-    const hasData = this.indexTopicId || this.indexData?.length > 0;
-    if (hasData) {
-      this.#dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.index_editor.disable_confirm"
-        ),
-        didConfirm: () => this.#applyNoneMode(),
-      });
+    if (this.isNoneMode) {
       return;
     }
 
@@ -182,7 +178,7 @@ export default class DocIndexModeState {
     if (this.isTopicMode && this.indexTopicId) {
       this.#dialog.yesNoConfirm({
         message: i18n(
-          "doc_categories.category_settings.index_editor.switch_to_direct_warning"
+          "doc_categories.category_settings.sidebar_structure_editor.switch_to_direct_warning"
         ),
         didConfirm: () => {
           this.mode = MODE_DIRECT;
@@ -198,18 +194,11 @@ export default class DocIndexModeState {
   @bind
   switchToTopicMode(dMenu) {
     dMenu.close();
+
     if (this.isTopicMode) {
       return;
     }
-    if (this.indexData?.length > 0) {
-      this.#dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.index_editor.mode_switch_warning"
-        ),
-        didConfirm: () => this.#applyTopicMode(),
-      });
-      return;
-    }
+
     this.#applyTopicMode();
   }
 

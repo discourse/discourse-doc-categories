@@ -16,6 +16,10 @@ module ::DocCategories
           object&.doc_categories_index&.index_topic_id
         end
 
+        # Category saves reuse the client model. Clear the submitted draft so
+        # an unrelated save can't replay the sidebar changes or resync request.
+        plugin.add_to_serializer(:category, :doc_index_sections) { nil }
+
         plugin.register_category_update_param_with_callback(
           :doc_index_topic_id,
         ) do |category, value|
@@ -31,7 +35,7 @@ module ::DocCategories
           :doc_index_sections,
         ) do |category, value|
           begin
-            sections = value.present? ? JSON.parse(value) : nil
+            data = value.present? ? JSON.parse(value) : nil
           rescue JSON::ParserError
             raise Discourse::InvalidParameters.new(:doc_index_sections)
           end
@@ -41,11 +45,23 @@ module ::DocCategories
           # doc_index_sections. Calling IndexSaver here would fail with the
           # not_topic_managed policy since the index was just switched to topic
           # mode by the doc_index_topic_id callback.
-          next if sections.nil?
+          next if data.nil?
 
-          if sections.present? && !sections.is_a?(::Array)
-            raise Discourse::InvalidParameters.new(:doc_index_sections)
+          save_params = { category_id: category.id }
+          if data.is_a?(::Hash)
+            sections = data["sections"]
+            %w[auto_index_include_subcategories force_sync].each do |option|
+              next if !data.key?(option)
+              value = data[option]
+              if ![true, false].include?(value)
+                raise Discourse::InvalidParameters.new(:doc_index_sections)
+              end
+              save_params[option.to_sym] = value
+            end
+          else
+            sections = data
           end
+          raise Discourse::InvalidParameters.new(:doc_index_sections) if !sections.is_a?(::Array)
 
           # Gate: require the index editor setting unless the category is already in direct mode
           if !SiteSetting.doc_categories_index_editor && sections.present?
@@ -53,8 +69,7 @@ module ::DocCategories
             raise Discourse::InvalidAccess if index.nil? || !index.mode_direct?
           end
 
-          result =
-            DocCategories::IndexSaver.call(params: { category_id: category.id, sections: sections })
+          result = DocCategories::IndexSaver.call(params: save_params.merge(sections: sections))
 
           if result.failure?
             if result["result.policy.not_topic_managed"]&.failure?

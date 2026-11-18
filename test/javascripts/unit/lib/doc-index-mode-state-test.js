@@ -5,10 +5,9 @@ import DocIndexModeState from "discourse/plugins/discourse-doc-categories/discou
 
 /**
  * The collaborators the state writes through. `form` records what it would send
- * to FormKit; `dialog` records whether it asked before destroying anything, and
- * answers yes only when `confirm` is set.
+ * to FormKit; `dialog` records requests for confirmation.
  */
-function buildCollaborators({ confirm = false } = {}) {
+function buildCollaborators() {
   const form = {
     writes: [],
     set: (key, value) => form.writes.push([key, value]),
@@ -17,9 +16,6 @@ function buildCollaborators({ confirm = false } = {}) {
     asked: [],
     yesNoConfirm(options) {
       dialog.asked.push(options);
-      if (confirm) {
-        options.didConfirm();
-      }
     },
   };
   return { form, dialog };
@@ -31,8 +27,8 @@ function buildMenu() {
   return menu;
 }
 
-function buildState(category, { transientData = {}, ...options } = {}) {
-  const { form, dialog } = buildCollaborators(options);
+function buildState(category, { transientData = {} } = {}) {
+  const { form, dialog } = buildCollaborators();
   const state = new DocIndexModeState({
     category,
     form,
@@ -160,15 +156,21 @@ module("Unit | Lib | doc-index-mode-state", function (hooks) {
   test("the mode label follows the mode", function (assert) {
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: 7 }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_topic")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_topic"
+      )
     );
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: -1 }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_direct")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      )
     );
     assert.strictEqual(
       buildState({ id: 1, doc_index_topic_id: null }).currentModeLabel,
-      i18n("doc_categories.category_settings.index_editor.mode_none")
+      i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_none"
+      )
     );
   });
 
@@ -231,37 +233,13 @@ module("Unit | Lib | doc-index-mode-state", function (hooks) {
     assert.deepEqual(state.dialog.asked, [], "and nothing is asked");
   });
 
-  test("switching to disabled with nothing to lose does not ask", function (assert) {
-    const state = buildState({ id: 1, doc_index_topic_id: -1 });
-    const menu = buildMenu();
-
-    state.switchToDirectMode(menu);
-    state.form.writes.length = 0;
-    state.switchToNoneMode(buildMenu());
-
-    assert.deepEqual(state.dialog.asked, [], "there is no index to destroy");
-    assert.true(state.isNoneMode);
-  });
-
-  test("switching to disabled with an index asks first and holds", function (assert) {
+  test("switching to disabled stages clearing an existing index without confirmation", function (assert) {
     const state = buildState({ id: 1, doc_index_topic_id: 7 });
 
     state.switchToNoneMode(buildMenu());
 
-    assert.strictEqual(state.dialog.asked.length, 1, "it asks");
-    assert.true(state.isTopicMode, "and stays put until answered");
-    assert.deepEqual(state.form.writes, [], "writing nothing meanwhile");
-  });
-
-  test("confirming the switch to disabled clears both fields", function (assert) {
-    const state = buildState(
-      { id: 1, doc_index_topic_id: 7 },
-      { confirm: true }
-    );
-
-    state.switchToNoneMode(buildMenu());
-
     assert.true(state.isNoneMode);
+    assert.deepEqual(state.dialog.asked, []);
     assert.deepEqual(
       state.form.writes,
       [
@@ -295,41 +273,17 @@ module("Unit | Lib | doc-index-mode-state", function (hooks) {
     assert.true(state.isTopicMode, "and holds until answered");
   });
 
-  test("switching to a topic asks only when sections would be overwritten", function (assert) {
-    const withSections = buildState({
+  test("switching to a topic stages clearing the inline index without confirmation", function (assert) {
+    const state = buildState({
       id: 1,
       doc_index_topic_id: -1,
       doc_category_index: [{ text: "Section" }],
     });
-    withSections.switchToTopicMode(buildMenu());
-
-    assert.strictEqual(
-      withSections.dialog.asked.length,
-      1,
-      "sections are at risk"
-    );
-    assert.true(withSections.isDirectMode, "so it holds");
-
-    const empty = buildState({
-      id: 1,
-      doc_index_topic_id: -1,
-      doc_category_index: [],
-    });
-    empty.switchToTopicMode(buildMenu());
-
-    assert.deepEqual(empty.dialog.asked, [], "an empty index is not at risk");
-    assert.true(empty.isTopicMode, "so it switches straight away");
-  });
-
-  test("confirming the switch to a topic clears the inline index", function (assert) {
-    const state = buildState(
-      { id: 1, doc_index_topic_id: -1, doc_category_index: [{ text: "S" }] },
-      { confirm: true }
-    );
 
     state.switchToTopicMode(buildMenu());
 
     assert.true(state.isTopicMode);
+    assert.deepEqual(state.dialog.asked, []);
     assert.deepEqual(
       state.form.writes,
       [

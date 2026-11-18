@@ -9,7 +9,6 @@ import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, not, or } from "discourse/truth-helpers";
 import { i18n } from "discourse-i18n";
 import DocIndexModeState from "../lib/doc-index-mode-state.js";
-import docIndexSaveLock from "../modifiers/doc-index-save-lock.js";
 import DocCategoryIndexEditor from "./doc-category-index-editor/index.gjs";
 import DocIndexModeSelector from "./doc-index-mode-selector.gjs";
 
@@ -22,7 +21,6 @@ const INDEX_FIELDS = [
 
 export default class DocCategoryIndexTab extends Component {
   @service dialog;
-  @service docIndexSaveLock;
   @service router;
   @service siteSettings;
 
@@ -46,7 +44,9 @@ export default class DocCategoryIndexTab extends Component {
       return;
     }
 
-    this.captureSavedFormValues();
+    this.#savedFormValues = Object.fromEntries(
+      INDEX_FIELDS.map((name) => [name, this.args.transientData?.[name]])
+    );
     this.router.on("routeWillChange", this.checkUnsavedIndex);
     this.args.registerValidator((data, { addError, removeError } = {}) => {
       if (this.isDestroying || this.#discarding) {
@@ -63,7 +63,7 @@ export default class DocCategoryIndexTab extends Component {
       if (errors.length > 0 && addError) {
         addError("doc_index_sections", {
           title: i18n(
-            "doc_categories.category_settings.index_editor.mode_direct"
+            "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
           ),
           message: errors.join(" "),
         });
@@ -91,7 +91,9 @@ export default class DocCategoryIndexTab extends Component {
 
   get currentModeLabel() {
     if (this.isPreview) {
-      return i18n("doc_categories.category_settings.index_editor.mode_direct");
+      return i18n(
+        "doc_categories.category_settings.sidebar_structure_editor.mode_direct"
+      );
     }
     return this.modeState.currentModeLabel;
   }
@@ -104,22 +106,8 @@ export default class DocCategoryIndexTab extends Component {
   }
 
   @action
-  captureSavedFormValues(indexStructure) {
-    if (indexStructure !== undefined) {
-      this.args.category.set("doc_category_index", indexStructure);
-    }
-    this.#savedFormValues = Object.fromEntries(
-      INDEX_FIELDS.map((name) => [name, this.args.transientData?.[name]])
-    );
-  }
-
-  @action
   checkUnsavedIndex(transition) {
     if (transition.isAborted) {
-      return;
-    }
-    if (this.docIndexSaveLock.isSaving) {
-      transition.abort();
       return;
     }
     if (this.#discarding) {
@@ -153,11 +141,12 @@ export default class DocCategoryIndexTab extends Component {
     this.#confirmingNavigation = true;
     this.dialog.confirm({
       message: i18n(
-        "doc_categories.category_settings.index_editor.unsaved_navigation"
+        "doc_categories.category_settings.sidebar_structure_editor.unsaved_navigation"
       ),
       confirmButtonLabel:
-        "doc_categories.category_settings.index_editor.discard_and_leave",
-      cancelButtonLabel: "doc_categories.category_settings.index_editor.stay",
+        "doc_categories.category_settings.sidebar_structure_editor.discard_and_leave",
+      cancelButtonLabel:
+        "doc_categories.category_settings.sidebar_structure_editor.stay",
       didCancel: () => {
         this.#confirmingNavigation = false;
       },
@@ -186,8 +175,7 @@ export default class DocCategoryIndexTab extends Component {
   <template>
     <fieldset
       class="doc-category-index-tab"
-      disabled={{or this.isPreview this.docIndexSaveLock.isSaving}}
-      {{docIndexSaveLock this.docIndexSaveLock.isSaving}}
+      disabled={{this.isPreview}}
       {{didInsert this.modeState.loadIndexTopic}}
     >
       <div class="doc-category-index-tab__header">
@@ -211,12 +199,12 @@ export default class DocCategoryIndexTab extends Component {
         <p class="doc-category-index-tab__none-help">
           {{#if this.modeState.inheritedIndexCategory}}
             {{i18n
-              "doc_categories.category_settings.index_editor.inherited_mode_help"
+              "doc_categories.category_settings.sidebar_structure_editor.inherited_mode_help"
               category_name=this.modeState.inheritedIndexCategory.name
             }}
           {{else}}
             {{i18n
-              "doc_categories.category_settings.index_editor.none_mode_help"
+              "doc_categories.category_settings.sidebar_structure_editor.none_mode_help"
             }}
           {{/if}}
         </p>
@@ -225,7 +213,7 @@ export default class DocCategoryIndexTab extends Component {
           <p class="doc-category-index-tab__topic-help">
             {{trustHTML
               (i18n
-                "doc_categories.category_settings.index_editor.topic_mode_help"
+                "doc_categories.category_settings.sidebar_structure_editor.topic_mode_help"
               )
             }}
           </p>
@@ -250,7 +238,6 @@ export default class DocCategoryIndexTab extends Component {
           @form={{@form}}
           @indexData={{this.modeState.indexData}}
           @isPreview={{this.isPreview}}
-          @onApplied={{this.captureSavedFormValues}}
           @onRegisterEditor={{this.registerEditor}}
           @registerAfterReset={{unless this.isPreview @registerAfterReset}}
           @toolbarElement={{this.toolbarElement}}

@@ -90,12 +90,12 @@ export default class UnindexedTopicsModal extends Component {
     const section = this.destinationOption?.label;
     if (this.availableSlots === 0) {
       return i18n(
-        "doc_categories.category_settings.index_editor.unindexed_topics.section_full",
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.section_full",
         { section }
       );
     }
     return i18n(
-      "doc_categories.category_settings.index_editor.unindexed_topics.section_room",
+      "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.section_room",
       { section, count: this.availableSlots }
     );
   }
@@ -111,11 +111,11 @@ export default class UnindexedTopicsModal extends Component {
   get addLabel() {
     if (this.selected.size === 0) {
       return i18n(
-        "doc_categories.category_settings.index_editor.unindexed_topics.add_none"
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.add_none"
       );
     }
     return i18n(
-      "doc_categories.category_settings.index_editor.unindexed_topics.add",
+      "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.add",
       { count: this.selected.size }
     );
   }
@@ -123,10 +123,10 @@ export default class UnindexedTopicsModal extends Component {
   get emptyMessage() {
     return this._search
       ? i18n(
-          "doc_categories.category_settings.index_editor.unindexed_topics.none_match"
+          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.none_match"
         )
       : i18n(
-          "doc_categories.category_settings.index_editor.unindexed_topics.none_found"
+          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.none_found"
         );
   }
 
@@ -325,10 +325,10 @@ export default class UnindexedTopicsModal extends Component {
       @flashType="error"
       @inline={{@inline}}
       @subtitle={{i18n
-        "doc_categories.category_settings.index_editor.unindexed_topics.modal_subtitle"
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.modal_subtitle"
       }}
       @title={{i18n
-        "doc_categories.category_settings.index_editor.unindexed_topics.modal_title"
+        "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.modal_title"
       }}
     >
       <:body>
@@ -342,7 +342,7 @@ export default class UnindexedTopicsModal extends Component {
             @name="section_id"
             @onSet={{this.updateDestination}}
             @title={{i18n
-              "doc_categories.category_settings.index_editor.unindexed_topics.section_field"
+              "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.section_field"
             }}
             @type="select"
             @validation="required"
@@ -362,7 +362,7 @@ export default class UnindexedTopicsModal extends Component {
             @name="search"
             @onSet={{this.updateSearch}}
             @title={{i18n
-              "doc_categories.category_settings.index_editor.unindexed_topics.search_field"
+              "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.search_field"
             }}
             @type="input"
             as |field|
@@ -370,7 +370,7 @@ export default class UnindexedTopicsModal extends Component {
             <field.Control
               maxlength={{MAX_SEARCH_LENGTH}}
               placeholder={{i18n
-                "doc_categories.category_settings.index_editor.unindexed_topics.search_placeholder"
+                "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.search_placeholder"
               }}
             />
           </form.Field>
@@ -380,7 +380,7 @@ export default class UnindexedTopicsModal extends Component {
               @name="include_subcategories"
               @onSet={{this.updateScope}}
               @title={{i18n
-                "doc_categories.category_settings.index_editor.include_subcategories"
+                "doc_categories.category_settings.sidebar_structure_editor.include_subcategories"
               }}
               @type="checkbox"
               as |field|
@@ -391,7 +391,7 @@ export default class UnindexedTopicsModal extends Component {
 
           <form.CheckboxGroup
             @title={{i18n
-              "doc_categories.category_settings.index_editor.unindexed_topics.topics_title"
+              "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.topics_title"
             }}
             as |group|
           >
@@ -415,7 +415,7 @@ export default class UnindexedTopicsModal extends Component {
                 </field.Control>
                 <a
                   aria-label={{i18n
-                    "doc_categories.category_settings.index_editor.unindexed_topics.open_topic"
+                    "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.open_topic"
                     title=topic.title
                   }}
                   class="doc-category-unindexed-topics__topic-link"
@@ -423,7 +423,7 @@ export default class UnindexedTopicsModal extends Component {
                   rel="noopener noreferrer"
                   target="_blank"
                   title={{i18n
-                    "doc_categories.category_settings.index_editor.unindexed_topics.open_topic"
+                    "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.open_topic"
                     title=topic.title
                   }}
                 >
@@ -448,7 +448,7 @@ export default class UnindexedTopicsModal extends Component {
               <span class="doc-category-unindexed-topics__counts">
                 {{#if this.topics.length}}
                   {{i18n
-                    "doc_categories.category_settings.index_editor.unindexed_topics.shown"
+                    "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.shown"
                     shown=this.topics.length
                     total=this.totalCount
                   }}
@@ -458,7 +458,7 @@ export default class UnindexedTopicsModal extends Component {
                     ·
                   {{/if}}
                   {{i18n
-                    "doc_categories.category_settings.index_editor.unindexed_topics.selected"
+                    "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.selected"
                     count=this.selected.size
                   }}
                 {{/if}}
@@ -467,14 +467,14 @@ export default class UnindexedTopicsModal extends Component {
                 <DButton
                   class="btn-flat btn-small doc-category-unindexed-topics__select-shown"
                   @action={{this.selectShown}}
-                  @label="doc_categories.category_settings.index_editor.unindexed_topics.select_shown"
+                  @label="doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.select_shown"
                 />
               {{/if}}
               {{#if this.selected.size}}
                 <DButton
                   class="btn-flat btn-small doc-category-unindexed-topics__clear-selection"
                   @action={{this.clearSelection}}
-                  @label="doc_categories.category_settings.index_editor.unindexed_topics.clear_selection"
+                  @label="doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.clear_selection"
                 />
               {{/if}}
             </div>
@@ -484,7 +484,7 @@ export default class UnindexedTopicsModal extends Component {
             <DButton
               class="btn-default btn-small doc-category-unindexed-topics__retry"
               @action={{this.retry}}
-              @label="doc_categories.category_settings.index_editor.unindexed_topics.retry"
+              @label="doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.retry"
             />
           {{/if}}
 
@@ -493,7 +493,7 @@ export default class UnindexedTopicsModal extends Component {
               class="btn-default btn-small doc-category-unindexed-topics__load-more"
               @action={{this.loadMore}}
               @isLoading={{this.isLoading}}
-              @label="doc_categories.category_settings.index_editor.unindexed_topics.load_more"
+              @label="doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.load_more"
             />
           {{/if}}
         </Form>

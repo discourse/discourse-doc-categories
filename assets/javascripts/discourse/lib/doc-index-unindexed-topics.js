@@ -16,7 +16,7 @@ function sameSiteDraftHref(href) {
     return null;
   }
 
-  // Apply truncates hrefs before resolving their topic IDs.
+  // IndexSaver truncates hrefs before resolving their topic IDs.
   const normalized = [...href.trim()].slice(0, MAX_HREF_LENGTH).join("");
   try {
     const url = new URL(normalized, DiscourseURL.origin);
@@ -42,7 +42,7 @@ export function topicIdFromHref(href) {
 
 /**
  * The topic ids the draft's links carry, and the hrefs of links without one
- * for the server to resolve the way Apply does. Sorted and unique, so equal
+ * for the server to resolve the same way it does on save. Sorted and unique, so equal
  * drafts compare equal. A link still being edited has no settled href yet.
  */
 export function draftTopicReferences(sections) {
