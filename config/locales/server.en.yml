@@ -19,6 +19,7 @@ en:
         reason: "Reason"
   doc_categories:
     errors:
+      private_topic: "Topics in other private categories cannot be included in this index."
       only_one_auto_index_section: "Only one auto-index section is allowed per index."
       index_topic_managed: "This index is managed by a topic. Clear the index topic first to edit directly."
       section_depth_limit: "Sections can be nested up to %{max} levels deep."

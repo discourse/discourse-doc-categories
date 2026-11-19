@@ -1487,6 +1487,11 @@ export default class DocCategoryIndexEditor extends Component {
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}
     >
+      <p class="doc-category-index-editor__private-topics-help">
+        {{i18n
+          "doc_categories.category_settings.sidebar_structure_editor.private_topics_help"
+        }}
+      </p>
       <DConditionalInElement @append={{true}} @element={{@toolbarElement}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">

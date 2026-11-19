@@ -4,9 +4,7 @@ import { fn, hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
-import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
-import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { and, eq, not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DComboButton from "discourse/ui-kit/d-combo-button";
@@ -23,14 +21,13 @@ import {
   MAX_SECTION_DEPTH,
 } from "../../lib/constants.js";
 import { isIndexSection, sectionLinks } from "../../lib/doc-index-tree.js";
+import DocCategoryTopicChooser from "../doc-category-topic-chooser.js";
 import { IndexEditorLink, LINK_DRAG_TYPE } from "./link.gjs";
 
 /** What a dragged batch selection of sections publishes. */
 export const SECTION_DRAG_TYPE = "doc-index-section";
 
 export class IndexEditorSection extends Component {
-  @service dialog;
-
   @tracked titleValidationError = null;
 
   @tracked showingTopicChooser = false;
@@ -659,6 +656,7 @@ export class IndexEditorSection extends Component {
               {{else}}
                 <IndexEditorLink
                   @batchMode={{@batchMode}}
+                  @categoryId={{@categoryId}}
                   @controls={{controls}}
                   @duplicateHrefs={{@duplicateHrefs}}
                   @isBatchDraggingItems={{and
@@ -707,11 +705,12 @@ export class IndexEditorSection extends Component {
           }}
             <div class="doc-category-index-editor__inline-topic-chooser">
               <div class="doc-category-index-editor__link-card --adding">
-                <TopicChooser
+                <DocCategoryTopicChooser
                   @content={{this.topicChooserContent}}
                   @onChange={{this.onAddTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
+                    docCategoryId=@categoryId
                     none="doc_categories.category_settings.sidebar_structure_editor.select_topic"
                   }}
                   @value={{null}}

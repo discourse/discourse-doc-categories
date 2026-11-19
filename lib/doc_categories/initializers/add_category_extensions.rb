@@ -76,6 +76,8 @@ module ::DocCategories
               raise Discourse::InvalidAccess
             elsif result["result.step.parse_and_validate_sections"]&.failure?
               raise Discourse::InvalidParameters.new(:doc_index_sections)
+            elsif result["result.step.validate_topic_visibility"]&.failure?
+              raise Discourse::InvalidParameters.new(I18n.t("doc_categories.errors.private_topic"))
             end
           end
         end

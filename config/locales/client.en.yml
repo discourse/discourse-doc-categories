@@ -58,6 +58,7 @@ en:
           link_url_placeholder: "URL (e.g. https://example.com)"
           auto_index: "Auto-index"
           include_subcategories: "Include subcategories"
+          private_topics_help: "Topics in other private categories cannot be included in this index."
           include_subcategories_confirm: "Changing this setting will resync the auto-indexed topics when you save the category. Continue?"
           resync_auto_index: "Resync topics on next save"
           cancel_resync: "Cancel resync"

@@ -36,6 +36,66 @@ RSpec.describe "Review unindexed documentation topics" do
     sign_in(admin)
   end
 
+  context "when a private subcategory contains documentation topics" do
+    fab!(:group)
+    fab!(:private_subcategory) do
+      Fabricate(:private_category, parent_category: category, group: group)
+    end
+    fab!(:private_topic) do
+      Fabricate(:topic_with_op, category: private_subcategory, title: "Private integration guide")
+    end
+
+    it "excludes private topics from the bulk picker even for an admin" do
+      editor.visit_doc_index_tab(category)
+      find(".doc-category-index-editor__review-topics").click
+      form = PageObjects::Components::FormKit.new(".doc-category-unindexed-topics .form-kit")
+      form.field("include_subcategories").toggle
+
+      expect(page).to have_css(
+        ".doc-category-unindexed-topics [data-topic-id='#{subcategory_topic.id}']",
+      )
+      expect(page).to have_no_css(
+        ".doc-category-unindexed-topics [data-topic-id='#{private_topic.id}']",
+      )
+    end
+
+    it "blocks private topic IDs when adding and private topic URLs when replacing" do
+      editor.visit_doc_index_tab(category)
+      first(
+        ".doc-category-index-editor__section-actions button",
+        text: "Add topic",
+        exact_text: true,
+      ).click
+      chooser =
+        PageObjects::Components::SelectKit.new(
+          ".doc-category-index-editor__inline-topic-chooser .topic-chooser",
+        )
+      chooser.expand
+      chooser.search(private_topic.id.to_s)
+      expect(page).to have_css(".doc-category-index-editor__inline-topic-chooser .no-content")
+
+      chooser.search(missing_topic.id.to_s)
+      chooser.select_row_by_value(missing_topic.id)
+      expect(page).to have_css(".doc-category-index-editor__link-label", text: missing_topic.title)
+
+      within find(".doc-category-index-editor__link-card", text: indexed_topic.title) do
+        find(".doc-category-index-editor__edit-btn").click
+      end
+      find("button", text: "Replace topic", exact_text: true).click
+      replacement =
+        PageObjects::Components::SelectKit.new(
+          ".doc-category-index-editor__swap-chooser .topic-chooser",
+        )
+      replacement.expand
+      replacement.search(private_topic.relative_url)
+      expect(page).to have_css(".doc-category-index-editor__swap-chooser .no-content")
+      expect(page).to have_no_css(
+        ".doc-category-index-editor__link-label",
+        text: private_topic.title,
+      )
+    end
+  end
+
   it "reviews truly missing topics without changing the draft on cancel" do
     editor.visit_doc_index_tab(category)
 

@@ -199,6 +199,35 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
         end
       end
 
+      context "when subcategory indexing includes a private category" do
+        fab!(:group)
+        fab!(:subcategory) { Fabricate(:private_category, parent_category: category, group: group) }
+        fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
+
+        let(:params) { { topic_id: sub_topic.id } }
+
+        before { index.update!(auto_index_include_subcategories: true) }
+
+        it "leaves private subcategory topics unindexed" do
+          expect(result).to run_successfully
+          expect(auto_section.sidebar_links).to be_empty
+        end
+      end
+
+      context "when the index belongs to a private category" do
+        fab!(:group)
+
+        before do
+          category.set_permissions(group.name => :full)
+          category.save!
+        end
+
+        it "indexes the category's own topics" do
+          expect(result).to run_successfully
+          expect(auto_section.sidebar_links.pluck(:topic_id)).to eq([topic.id])
+        end
+      end
+
       context "when subcategory indexing is disabled" do
         fab!(:subcategory) { Fabricate(:category, parent_category: category) }
         fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
