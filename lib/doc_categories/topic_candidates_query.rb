@@ -11,6 +11,7 @@ module DocCategories
     def scope
       category_ids =
         @include_subcategories ? ::Category.subcategory_ids(@category.id) : [@category.id]
+      category_ids = TopicEligibility.categories(@category.id).where(id: category_ids).select(:id)
 
       ::Topic
         .secured(@user.guardian)

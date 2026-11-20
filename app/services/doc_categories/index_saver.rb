@@ -24,6 +24,19 @@ module DocCategories
         build_sections(sections || [])
       end
 
+      def referenced_topic_ids
+        links = ->(items) do
+          items.flat_map do |item|
+            if item.key?(:items)
+              links.call(item[:items])
+            else
+              [item[:topic_id], DocCategories::Url.extract_topic_id_from_url(item[:href])]
+            end
+          end
+        end
+        links.call(built_sections).compact.uniq
+      end
+
       private
 
       def invalid_sections
@@ -133,6 +146,7 @@ module DocCategories
     model :index, optional: true
     policy :not_topic_managed
     step :parse_and_validate_sections
+    step :validate_topic_visibility
     step :determine_sync_needed
 
     transaction do
@@ -165,6 +179,13 @@ module DocCategories
       error = params.sections_error
       fail!(error) if error
       context[:built_sections] = params.built_sections
+    end
+
+    def validate_topic_visibility(params:, category:)
+      topics = ::Topic.with_deleted.where(id: params.referenced_topic_ids).includes(:category)
+      unless topics.all? { |topic| TopicEligibility.allowed?(topic, category_id: category.id) }
+        fail!(I18n.t("doc_categories.errors.private_topic"))
+      end
     end
 
     def determine_sync_needed(params:, index:, built_sections:)

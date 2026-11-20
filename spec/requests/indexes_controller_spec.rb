@@ -362,6 +362,56 @@ RSpec.describe ::DocCategories::IndexesController do
 
     before { SiteSetting.doc_categories_index_editor = true }
 
+    context "when a submitted link references a private subcategory topic" do
+      fab!(:group)
+      fab!(:private_subcategory) do
+        Fabricate(:private_category, parent_category: category, group: group)
+      end
+      fab!(:private_topic) { Fabricate(:topic, category: private_subcategory) }
+      fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic_id: -1) }
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index: index, title: "Existing") }
+
+      let(:sections) do
+        [{ title: "Replacement", links: [{ title: "Private", href: private_topic.relative_url }] }]
+      end
+
+      before { sign_in(admin) }
+
+      it "returns a clear validation error without replacing the index" do
+        put "/doc-categories/indexes/#{category.id}.json",
+            params: { sections: sections }.to_json,
+            headers: {
+              "CONTENT_TYPE" => "application/json",
+            }
+
+        expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"]).to eq(
+          [I18n.t("doc_categories.errors.private_topic")],
+        )
+        expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
+      end
+
+      it "rejects the category save with the same explanation and leaves its data unchanged" do
+        original_name = category.name
+
+        put "/categories/#{category.id}.json",
+            params: {
+              name: "Changed category name",
+              color: category.color,
+              text_color: category.text_color,
+              doc_index_topic_id: -1,
+              doc_index_sections: sections.to_json,
+            }
+
+        expect(response.status).to eq(400)
+        expect(response.parsed_body["errors"].join).to include(
+          I18n.t("doc_categories.errors.private_topic"),
+        )
+        expect(category.reload.name).to eq(original_name)
+        expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
+      end
+    end
+
     it "returns 403 for anonymous users" do
       put "/doc-categories/indexes/#{category.id}.json",
           params: {

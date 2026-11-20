@@ -155,6 +155,62 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
         end
       end
 
+      context "when subcategory indexing includes a private category" do
+        fab!(:group)
+        fab!(:subcategory) { Fabricate(:private_category, parent_category: category, group: group) }
+        fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
+
+        before { index.update!(auto_index_include_subcategories: true) }
+
+        it "does not add private subcategory topics" do
+          expect(result).to run_successfully
+          expect(auto_section.sidebar_links.pluck(:topic_id)).to contain_exactly(
+            topic_1.id,
+            topic_2.id,
+          )
+        end
+
+        context "when a private topic was already automatically indexed" do
+          fab!(:stale_link) do
+            Fabricate(
+              :doc_categories_sidebar_link,
+              sidebar_section: auto_section,
+              topic: sub_topic,
+              href: sub_topic.relative_url,
+              auto_indexed: true,
+              position: 0,
+            )
+          end
+
+          it "removes the private topic and reclaims its capacity" do
+            stale_link_id = stale_link.id
+            stub_const(DocCategories::Index, :MAX_LINKS_PER_SECTION, 1) do
+              expect(result).to run_successfully
+              expect(DocCategories::SidebarLink.exists?(id: stale_link_id)).to eq(false)
+              expect(auto_section.sidebar_links.count).to eq(1)
+              expect(auto_section.sidebar_links.first.topic_id).to be_in([topic_1.id, topic_2.id])
+            end
+          end
+        end
+      end
+
+      context "when the index belongs to a private category" do
+        fab!(:group)
+
+        before do
+          category.set_permissions(group.name => :full)
+          category.save!
+        end
+
+        it "keeps indexing the category's own topics" do
+          expect(result).to run_successfully
+          expect(auto_section.sidebar_links.pluck(:topic_id)).to contain_exactly(
+            topic_1.id,
+            topic_2.id,
+          )
+        end
+      end
+
       context "when subcategory indexing is disabled" do
         fab!(:subcategory) { Fabricate(:category, parent_category: category) }
         fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }

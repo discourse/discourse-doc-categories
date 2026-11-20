@@ -27,6 +27,85 @@ describe DocCategories::Initializers::HandleAutoIndex do
     Jobs::DocCategoriesAutoIndex.jobs.clear
   end
 
+  describe "index eligibility changes" do
+    fab!(:group)
+    fab!(:subcategory) { Fabricate(:category, parent_category: category) }
+    fab!(:sub_topic) { Fabricate(:topic, category: subcategory) }
+
+    before { index.update!(auto_index_include_subcategories: true) }
+
+    it "resyncs the parent index when a subcategory becomes private" do
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "sync",
+          index_id: index.id,
+        },
+      ) do
+        subcategory.set_permissions(group.name => :full)
+        subcategory.save!
+      end
+    end
+
+    it "resyncs the parent index when a subcategory becomes public" do
+      subcategory.set_permissions(group.name => :full)
+      subcategory.save!
+      Jobs::DocCategoriesAutoIndex.jobs.clear
+
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "sync",
+          index_id: index.id,
+        },
+      ) do
+        subcategory.set_permissions(everyone: :full)
+        subcategory.save!
+      end
+    end
+
+    it "resyncs the old parent index when a topic moves out of its descendants" do
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "sync",
+          index_id: index.id,
+        },
+      ) { sub_topic.update!(category_id: other_category.id) }
+    end
+
+    it "resyncs the new parent index when a topic moves into its descendants" do
+      topic.update_columns(category_id: other_category.id)
+
+      expect_enqueued_with(
+        job: :doc_categories_auto_index,
+        args: {
+          action: "sync",
+          index_id: index.id,
+        },
+      ) { topic.update!(category_id: subcategory.id) }
+    end
+
+    it "does not resync an index that excludes subcategories" do
+      index.update!(auto_index_include_subcategories: false)
+      Jobs::DocCategoriesAutoIndex.jobs.clear
+
+      subcategory.set_permissions(group.name => :full)
+      subcategory.save!
+
+      expect(Jobs::DocCategoriesAutoIndex.jobs).to be_empty
+    end
+
+    it "does not resync when a topic move is rolled back" do
+      Topic.transaction(requires_new: true) do
+        sub_topic.update!(category_id: other_category.id)
+        raise ActiveRecord::Rollback
+      end
+
+      expect(Jobs::DocCategoriesAutoIndex.jobs).to be_empty
+    end
+  end
+
   describe "topic lifecycle events" do
     it "enqueues an add job when a topic is created" do
       expect_enqueued_with(job: :doc_categories_auto_index, args: { action: "add" }) do

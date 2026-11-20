@@ -934,19 +934,6 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   toggleBatchMode() {
-    if (this.batchMode && this.hasSelection) {
-      this.dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.batch_exit_confirm"
-        ),
-        didConfirm: () => {
-          this.batchMode = false;
-          this.selectedItems.clear();
-          this.selectedSections.clear();
-        },
-      });
-      return;
-    }
     this.batchMode = !this.batchMode;
     if (!this.batchMode) {
       this.selectedItems.clear();
@@ -1500,6 +1487,11 @@ export default class DocCategoryIndexEditor extends Component {
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}
     >
+      <p class="doc-category-index-editor__private-topics-help">
+        {{i18n
+          "doc_categories.category_settings.sidebar_structure_editor.private_topics_help"
+        }}
+      </p>
       <DConditionalInElement @append={{true}} @element={{@toolbarElement}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">

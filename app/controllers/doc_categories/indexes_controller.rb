@@ -53,6 +53,9 @@ module ::DocCategories
         on_failed_step(:parse_and_validate_sections) do |step|
           render json: failed_json.merge(errors: [step.error]), status: :bad_request
         end
+        on_failed_step(:validate_topic_visibility) do |step|
+          render json: failed_json.merge(errors: [step.error]), status: :unprocessable_entity
+        end
         on_failure { render json: failed_json, status: :unprocessable_entity }
       end
     end

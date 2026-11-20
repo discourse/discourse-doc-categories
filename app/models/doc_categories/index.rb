@@ -55,11 +55,9 @@ module DocCategories
 
     # Returns an array of category IDs to source topics from for auto-indexing.
     def matching_category_ids
-      if auto_index_include_subcategories
-        ::Category.subcategory_ids(category_id)
-      else
-        [category_id]
-      end
+      ids =
+        auto_index_include_subcategories ? ::Category.subcategory_ids(category_id) : [category_id]
+      TopicEligibility.categories(category_id).where(id: ids).pluck(:id)
     end
 
     def valid_topic(topic)
@@ -184,8 +182,7 @@ module DocCategories
     end
 
     def topic_category_visible?(topic)
-      !topic.private_message? &&
-        (topic.category_id == category_id || topic.category&.read_restricted? == false)
+      TopicEligibility.allowed?(topic, category_id: category_id)
     end
 
     def index_topic_matches_category

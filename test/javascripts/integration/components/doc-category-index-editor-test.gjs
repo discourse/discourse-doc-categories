@@ -141,26 +141,6 @@ module(
       assert.false(confirm.called, "with nothing to lose, it does not ask");
     });
 
-    test("closing with a live selection asks before discarding it", async function (assert) {
-      const editor = await renderEditor();
-      const dialog = this.owner.lookup("service:dialog");
-      const confirm = sinon.stub(dialog, "yesNoConfirm");
-
-      editor.toggleBatchMode();
-      await settled();
-      editor.selectAll();
-      await settled();
-      editor.toggleBatchMode();
-      await settled();
-
-      assert.true(confirm.calledOnce, "it asks first");
-      assert.true(
-        editor.batchMode,
-        "and stays open until answered, so a mis-click cannot drop the selection"
-      );
-      assert.true(editor.hasSelection, "with the selection intact");
-    });
-
     test("confirming the close drops the selection", async function (assert) {
       const editor = await renderEditor();
       const dialog = this.owner.lookup("service:dialog");

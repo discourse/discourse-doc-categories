@@ -107,6 +107,44 @@ RSpec.describe DocCategories::UnindexedTopicsList do
       end
     end
 
+    context "when subcategories include private topics visible to the admin" do
+      fab!(:group)
+      fab!(:public_subcategory) { Fabricate(:category, parent_category: category) }
+      fab!(:public_topic) { Fabricate(:topic, category: public_subcategory) }
+      fab!(:private_subcategory) do
+        Fabricate(:private_category, parent_category: category, group: group)
+      end
+      fab!(:private_topic) { Fabricate(:topic, category: private_subcategory) }
+
+      let(:params) { { category_id: category.id, include_subcategories: true } }
+
+      it "excludes private topics from both the page and its count" do
+        expect(acting_user.guardian.can_see?(private_topic)).to eq(true)
+        expect(result).to run_successfully
+        expect(result[:topics].map(&:id)).to contain_exactly(
+          topic.id,
+          other_topic.id,
+          public_topic.id,
+        )
+        expect(result[:total_count]).to eq(3)
+      end
+    end
+
+    context "when listing a private category's own topics" do
+      fab!(:group)
+
+      before do
+        category.set_permissions(group.name => :full)
+        category.save!
+      end
+
+      it "keeps the category's topics available" do
+        expect(result).to run_successfully
+        expect(result[:topics].map(&:id)).to contain_exactly(topic.id, other_topic.id)
+        expect(result[:total_count]).to eq(2)
+      end
+    end
+
     context "when every candidate is already indexed" do
       let(:params) { { category_id: category.id, exclude_topic_ids: [topic.id, other_topic.id] } }
 

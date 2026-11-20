@@ -35,6 +35,100 @@ RSpec.describe DocCategories::IndexSaver do
       it { is_expected.to fail_to_find_a_model(:category) }
     end
 
+    context "when a link references a private subcategory topic" do
+      fab!(:group)
+      fab!(:private_category) do
+        Fabricate(:private_category, parent_category: category, group: group)
+      end
+      fab!(:private_topic) { Fabricate(:topic, category: private_category) }
+      fab!(:public_topic) { Fabricate(:topic, category: category) }
+      fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic_id: -1) }
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index: index, title: "Existing") }
+      fab!(:link) do
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: section,
+          topic: public_topic,
+          href: public_topic.relative_url,
+        )
+      end
+
+      let(:sections_data) do
+        [
+          {
+            title: "Private",
+            links: [{ title: "Private guide", href: private_topic.relative_url }],
+          },
+        ]
+      end
+
+      it "rejects the save without replacing the existing index" do
+        expect(result).to fail_a_step(:validate_topic_visibility)
+        expect(result["result.step.validate_topic_visibility"].error).to eq(
+          I18n.t("doc_categories.errors.private_topic"),
+        )
+        expect(index.reload.sidebar_sections.pluck(:id)).to eq([section.id])
+        expect(section.sidebar_links.pluck(:id)).to eq([link.id])
+      end
+
+      context "when an explicit public topic ID is paired with a private topic URL" do
+        let(:sections_data) do
+          [
+            {
+              title: "Private",
+              links: [
+                { title: "Guide", href: private_topic.relative_url, topic_id: public_topic.id },
+              ],
+            },
+          ]
+        end
+
+        it { is_expected.to fail_a_step(:validate_topic_visibility) }
+      end
+
+      context "when the private topic is referenced in a nested section" do
+        let(:sections_data) do
+          [
+            {
+              title: "Root",
+              items: [
+                {
+                  type: "section",
+                  title: "Nested",
+                  items: [
+                    { type: "link", title: "Guide", href: "/guide", topic_id: private_topic.id },
+                  ],
+                },
+              ],
+            },
+          ]
+        end
+
+        it { is_expected.to fail_a_step(:validate_topic_visibility) }
+      end
+
+      context "when the referenced subcategory becomes public" do
+        before do
+          private_category.set_permissions(everyone: :full)
+          private_category.save!
+        end
+
+        it { is_expected.to run_successfully }
+      end
+    end
+
+    context "when a private category indexes its own topic" do
+      fab!(:group)
+      fab!(:category) { Fabricate(:private_category, group: group) }
+      fab!(:topic) { Fabricate(:topic, category: category) }
+
+      let(:sections_data) do
+        [{ title: "Private docs", links: [{ title: topic.title, href: topic.relative_url }] }]
+      end
+
+      it { is_expected.to run_successfully }
+    end
+
     context "when the index is in topic mode" do
       before do
         topic = Fabricate(:topic, category: category)
