@@ -16,7 +16,6 @@ const INDEX_FIELDS = [
   "doc_index_topic_id",
   "doc_index_sections",
   "_docIndexEditorState",
-  "_docIndexAutoIndexIncludeSubcategories",
 ];
 
 export default class DocCategoryIndexTab extends Component {

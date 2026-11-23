@@ -167,42 +167,13 @@ describe DocCategories::Index do
       expect(link[:custom_title]).to eq(false)
     end
 
-    it "includes auto_indexed flag on links that are auto-indexed" do
-      topic = Fabricate(:topic, category: category)
-      section =
-        direct_index.sidebar_sections.create!(position: 0, title: "Topics", auto_index: true)
-      section.sidebar_links.create!(
-        position: 0,
-        topic: topic,
-        href: topic.relative_url,
-        auto_indexed: true,
-      )
-
-      structure = direct_index.sidebar_structure
-      link = structure.first[:links].first
-
-      expect(link[:auto_indexed]).to eq(true)
-    end
-
-    it "does not include auto_indexed key for manually added links" do
-      section = direct_index.sidebar_sections.create!(position: 0, title: "Docs")
-      section.sidebar_links.create!(position: 0, title: "Manual", href: "/t/slug/1")
-
-      structure = direct_index.sidebar_structure
-      link = structure.first[:links].first
-
-      expect(link).not_to have_key(:auto_indexed)
-    end
-
     it "keeps an auto-index section even when it has no valid links" do
-      section =
-        direct_index.sidebar_sections.create!(position: 0, title: "Topics", auto_index: true)
+      direct_index.sidebar_sections.create!(position: 0, title: "Topics", auto_index: true)
 
       structure = direct_index.sidebar_structure
 
       expect(structure.length).to eq(1)
       expect(structure.first[:text]).to eq("Topics")
-      expect(structure.first[:auto_index]).to eq(true)
       expect(structure.first[:links]).to be_empty
     end
 

@@ -79,13 +79,16 @@ module DocCategories
     def replace_sidebar_sections!(sections)
       topic_ids = section_topic_ids(sections).uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h
-      auto_indexed_topic_ids =
-        DocCategories::SidebarLink
-          .auto_indexed
-          .joins(:sidebar_section)
-          .where(sidebar_section: { index_id: id })
-          .pluck(:topic_id)
-          .to_set
+      auto_indexed_topic_ids = Set.new
+      if sections.any? { |section| section[:auto_index] }
+        auto_indexed_topic_ids =
+          DocCategories::SidebarLink
+            .auto_indexed
+            .joins(:sidebar_section)
+            .where(sidebar_section: { index_id: id })
+            .pluck(:topic_id)
+            .to_set
+      end
 
       sidebar_sections.destroy_all
       sections.each_with_index do |section, position|
@@ -115,7 +118,6 @@ module DocCategories
         next if children.empty? && links.empty? && !section.auto_index?
 
         data = { id: section.id, text: section.title }
-        data[:auto_index] = true if section.auto_index?
         if children.empty?
           data[:links] = links.map(&:last)
         else
@@ -144,7 +146,6 @@ module DocCategories
         result[:topic_title] = topic&.title
         result[:custom_title] = link.title.present?
       end
-      result[:auto_indexed] = true if link.auto_indexed?
       result
     end
 

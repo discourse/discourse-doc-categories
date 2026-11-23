@@ -4,7 +4,6 @@ import { fn, hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { trackedObject } from "@ember/reactive/collections";
-import DMenu from "discourse/float-kit/components/d-menu";
 import { and, eq, not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DComboButton from "discourse/ui-kit/d-combo-button";
@@ -95,11 +94,7 @@ export class IndexEditorSection extends Component {
    * leaving a live target nothing can be dropped onto.
    */
   get showsBatchDropSlot() {
-    return (
-      this.args.batchMode &&
-      this.linkCount === 0 &&
-      !this.args.section.autoIndex
-    );
+    return this.args.batchMode && this.linkCount === 0;
   }
 
   get hasDuplicateLinks() {
@@ -412,72 +407,6 @@ export class IndexEditorSection extends Component {
             over it opens it. The dwell owns the wait and the cancelling. }}
       {{dDragDwell types=@group.token onDwell=this.expandForDrag}}
     >
-      {{#if @section.autoIndex}}
-        <DMenu
-          title={{i18n
-            "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_title"
-          }}
-          @identifier="auto-index-badge-menu"
-          @triggerClass="doc-category-index-editor__auto-index-badge"
-        >
-          <:trigger>
-            {{icon (if @pendingResync "arrows-rotate" "bolt")}}
-            {{if
-              @pendingResync
-              (i18n
-                "doc_categories.category_settings.sidebar_structure_editor.resync_auto_index"
-              )
-              (if
-                @autoIndexIncludeSubcategories
-                (i18n
-                  "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label_with_subcategories"
-                )
-                (i18n
-                  "doc_categories.category_settings.sidebar_structure_editor.auto_index_badge_label"
-                )
-              )
-            }}
-            {{icon "angle-down"}}
-          </:trigger>
-          <:content as |args|>
-            <DDropdownMenu as |dropdown|>
-              <dropdown.item>
-                <label
-                  class="doc-category-index-editor__auto-index-subcategories"
-                >
-                  <input
-                    checked={{@autoIndexIncludeSubcategories}}
-                    type="checkbox"
-                    {{on
-                      "change"
-                      (fn @onToggleAutoIndexIncludeSubcategories args.close)
-                    }}
-                  />
-                  {{i18n
-                    "doc_categories.category_settings.sidebar_structure_editor.include_subcategories"
-                  }}
-                </label>
-              </dropdown.item>
-              {{#unless @hideResyncToggle}}
-                <dropdown.divider />
-                <dropdown.item>
-                  <DButton
-                    class="btn-transparent"
-                    @action={{fn @onToggleResyncAutoIndex args.close}}
-                    @icon={{if @pendingResync "xmark" "arrows-rotate"}}
-                    @label={{if
-                      @pendingResync
-                      "doc_categories.category_settings.sidebar_structure_editor.cancel_resync"
-                      "doc_categories.category_settings.sidebar_structure_editor.resync_auto_index"
-                    }}
-                  />
-                </dropdown.item>
-              {{/unless}}
-            </DDropdownMenu>
-          </:content>
-        </DMenu>
-      {{/if}}
-
       <div class="doc-category-index-editor__section-header">
         <DButton
           class="btn-flat btn-small doc-category-index-editor__collapse-btn"
@@ -675,24 +604,6 @@ export class IndexEditorSection extends Component {
             </:row>
           </DReorderableList>
 
-          {{#if @section.autoIndex}}
-            <div class="doc-category-index-editor__link --ghost">
-              {{! The handle renders on every viewport now, so the placeholder
-                  standing in its column does too. }}
-              <span
-                class="doc-category-index-editor__drag-handle-spacer"
-              ></span>
-              <div class="doc-category-index-editor__link-card --ghost">
-                <div class="doc-category-index-editor__link-card-header">
-                  <span class="doc-category-index-editor__link-label">
-                    {{i18n
-                      "doc_categories.category_settings.sidebar_structure_editor.auto_index_placeholder"
-                    }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          {{/if}}
         </div>
 
         {{#unless this.collapsed}}
@@ -750,19 +661,15 @@ export class IndexEditorSection extends Component {
                           @label="doc_categories.category_settings.sidebar_structure_editor.add_link"
                         />
                       </dropdown.item>
-                      {{! Auto-index already gathers what the index leaves out
-                          into its own section. }}
-                      {{#unless @section.autoIndex}}
-                        <dropdown.divider />
-                        <dropdown.item>
-                          <DButton
-                            class="btn-transparent doc-category-index-editor__review-section-topics"
-                            @action={{this.reviewUnindexedTopics}}
-                            @icon="list-check"
-                            @label="doc_categories.category_settings.sidebar_structure_editor.add_missing_topics"
-                          />
-                        </dropdown.item>
-                      {{/unless}}
+                      <dropdown.divider />
+                      <dropdown.item>
+                        <DButton
+                          class="btn-transparent doc-category-index-editor__review-section-topics"
+                          @action={{this.reviewUnindexedTopics}}
+                          @icon="list-check"
+                          @label="doc_categories.category_settings.sidebar_structure_editor.add_missing_topics"
+                        />
+                      </dropdown.item>
                     </DDropdownMenu>
                   </combo.Menu>
                 </:default>

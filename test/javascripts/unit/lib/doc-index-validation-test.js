@@ -97,10 +97,10 @@ module("Unit | Lib | doc-index-validation", function () {
     assert.strictEqual(errors.length, 1);
   });
 
-  test("does not return empty section error for autoIndex sections with no links", function (assert) {
-    const sections = [{ title: "Auto", links: [], autoIndex: true }];
+  test("allows an empty section already present in the saved index", function (assert) {
+    const sections = [{ id: 42, title: "Topics", links: [] }];
 
-    const errors = validateDocIndexSections(sections);
+    const errors = validateDocIndexSections(sections, new Set([42]));
     assert.deepEqual(errors, []);
   });
 

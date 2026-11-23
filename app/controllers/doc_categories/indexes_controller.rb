@@ -6,13 +6,6 @@ module ::DocCategories
     before_action :ensure_admin
     before_action :ensure_index_editor_enabled
 
-    MAX_TOPICS = 50
-
-    def topics
-      scope = topic_candidates
-      render json: { topics: topic_rows(scope.limit(MAX_TOPICS)), total_count: scope.count }
-    end
-
     def unindexed_topics
       DocCategories::UnindexedTopicsList.call(service_params) do
         on_success do |topics:, total_count:, params:|
@@ -38,7 +31,8 @@ module ::DocCategories
     end
 
     def update
-      DocCategories::IndexSaver.call(service_params) do
+      save_params = params.to_unsafe_h.slice(:category_id, :sections, :force_direct)
+      DocCategories::IndexSaver.call(params: save_params, guardian: guardian) do
         on_success do |index_structure:|
           render json: success_json.merge(index_structure: index_structure)
         end
@@ -61,23 +55,6 @@ module ::DocCategories
     end
 
     private
-
-    def topic_candidates
-      category = ::Category.find(params[:category_id])
-      guardian.ensure_can_see!(category)
-
-      TopicCandidatesQuery.new(
-        user: current_user,
-        category: category,
-        include_subcategories: ActiveRecord::Type::Boolean.new.cast(params[:include_subcategories]),
-      ).scope
-    end
-
-    def topic_rows(scope)
-      scope
-        .pluck(:id, :title, :slug, :category_id)
-        .map { |id, title, slug, category_id| { id:, title:, slug:, category_id: } }
-    end
 
     def ensure_index_editor_enabled
       return if SiteSetting.doc_categories_index_editor

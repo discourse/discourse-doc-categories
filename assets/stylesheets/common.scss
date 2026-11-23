@@ -265,10 +265,6 @@ body.doc-simple-mode {
     transition: border-color 0.15s;
     position: relative;
 
-    &:has(> .doc-category-index-editor__auto-index-badge) {
-      padding-top: 1.25em;
-    }
-
     &.--nested,
     &.--has-subsections {
       border-color: transparent;
@@ -400,9 +396,7 @@ body.doc-simple-mode {
     padding-left: 0.5em;
   }
 
-  /* The reorderable list itself, inside the indented wrapper that also holds
-     the auto-index placeholder. */
-
+  /* The reorderable list inside the indented wrapper. */
   &__link-list {
     display: flex;
     flex-direction: column;
@@ -531,70 +525,6 @@ body.doc-simple-mode {
     font-weight: 700;
     flex-shrink: 0;
     white-space: nowrap;
-  }
-
-  &__link.--ghost {
-    pointer-events: none;
-  }
-
-  &__drag-handle-spacer {
-    flex-shrink: 0;
-    width: var(--doc-index-grip-size);
-  }
-
-  &__link-card.--ghost {
-    border-style: dashed;
-    border-color: var(--primary-low-mid);
-    background: transparent;
-    box-shadow: none;
-    opacity: 0.6;
-
-    .doc-category-index-editor__link-label {
-      color: var(--primary-medium);
-    }
-  }
-
-  &__auto-index-badge.btn {
-    position: absolute;
-    top: -0.65em;
-    right: 0.75em;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25em;
-    padding: 0.1em 0.5em;
-    border: 1px solid var(--tertiary-low);
-    border-radius: var(--d-border-radius);
-    background: var(--tertiary-low);
-    color: var(--tertiary-hover);
-    font-size: var(--font-down-2);
-    font-weight: 700;
-    white-space: nowrap;
-    z-index: 1;
-
-    .d-icon {
-      color: inherit;
-    }
-
-    &:hover,
-    &:focus {
-      background: var(--tertiary-very-low, var(--secondary));
-      color: var(--tertiary-hover);
-      box-shadow: 0 0 0 1px var(--tertiary-low);
-
-      .d-icon {
-        color: inherit;
-      }
-    }
-  }
-
-  &__auto-index-subcategories {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.25em var(--d-sidebar-row-horizontal-padding);
-    font-size: var(--font-down-1);
-    font-weight: normal;
-    cursor: pointer;
   }
 
   &__link-edit-row {
@@ -927,40 +857,12 @@ body.doc-simple-mode {
 }
 
 /*
-  Rendered in a floating portal, outside .doc-category-index-editor.
-  The class is doubled to raise specificity above the DMenu dropdown's
-  own label styles (`.fk-d-menu__content label`).
-*/
-
-/* The only menu row that is not a button, so it borrows the metrics the others
-   get from the shared menu-item treatment: same gutter, same row height, and a
-   checkbox occupying the column their icons do. It also keeps the ordinary text
-   colour, since a dimmed row beside them reads as unavailable. */
-
-label.doc-category-index-editor__subcategory-toggle.doc-category-index-editor__subcategory-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--d-sidebar-section-link-prefix-margin-right);
-  height: var(--d-sidebar-row-height);
-  padding-inline: var(--d-sidebar-row-horizontal-padding);
-  cursor: pointer;
-  font-weight: normal;
-
-  input[type="checkbox"] {
-    width: var(--d-sidebar-section-link-prefix-width);
-    margin: 0;
-  }
-}
-
-/*
   DMenu / DComboButton dropdowns from the editor portal to #d-menu-portals,
   which sits below the modal in z-order. Raise them above the modal overlay.
 */
 
 .fk-d-menu.index-options-menu-content,
-.fk-d-menu.add-section-menu-content,
-.fk-d-menu.section-add-menu-content,
-.fk-d-menu.auto-index-badge-menu-content {
+.fk-d-menu.section-add-menu-content {
   z-index: z("modal", "dialog");
 }
 

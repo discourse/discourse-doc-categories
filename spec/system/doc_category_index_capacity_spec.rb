@@ -36,7 +36,7 @@ RSpec.describe "Doc index capacity" do
     )
   end
 
-  it "disables both section creation options at capacity" do
+  it "disables section creation at capacity" do
     populate(section, 1)
     (DocCategories::Index::MAX_SECTIONS - 1).times do |position|
       extra =
@@ -56,11 +56,6 @@ RSpec.describe "Doc index capacity" do
         "js.doc_categories.category_settings.sidebar_structure_editor.section_limit",
         count: DocCategories::Index::MAX_SECTIONS,
       ),
-    )
-    find(".doc-category-index-editor__footer .d-combo-button-menu").click
-    expect(page).to have_button(
-      I18n.t("js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section"),
-      disabled: true,
     )
   end
 
