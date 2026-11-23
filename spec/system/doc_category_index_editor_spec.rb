@@ -115,6 +115,17 @@ describe "Doc Category Index Editor" do
   end
 
   context "with editor mode" do
+    it "offers only Clear sidebar in the index options menu" do
+      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
+      find(".doc-category-index-editor__options-trigger").click
+
+      within(".index-options-menu-content") do
+        expect(page).to have_button("Clear sidebar", count: 1)
+        expect(page).to have_css("button", count: 1)
+        expect(page).to have_no_css("input[type='checkbox']")
+      end
+    end
+
     it "saves doc-index sections atomically with the category via Save Category" do
       editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
       expect(editor).to have_editor
@@ -133,21 +144,6 @@ describe "Doc Category Index Editor" do
       expect(index.sidebar_sections.first.title).to eq("My Section")
       expect(index.sidebar_sections.first.sidebar_links.count).to eq(1)
       expect(index.sidebar_sections.first.sidebar_links.first.title).to eq("My Link")
-    end
-
-    it "saves auto-index section via Save Category" do
-      editor.visit_doc_index_tab(category).switch_to_mode("mode_direct")
-      expect(editor).to have_editor
-
-      editor.add_auto_index_section
-      expect(editor).to have_auto_index_section
-
-      editor.save_category
-      expect(editor).to have_no_pending_changes
-
-      index = DocCategories::Index.find_by(category_id: category.id)
-      expect(index).to be_present
-      expect(index.sidebar_sections.first.auto_index).to eq(true)
     end
 
     it "preserves saved doc-index state across tab switches" do

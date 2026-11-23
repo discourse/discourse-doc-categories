@@ -52,31 +52,20 @@ module(
         }))
       );
 
-      assert
-        .dom(".doc-category-index-editor__footer .d-combo-button-button")
-        .isDisabled();
+      assert.dom(".doc-category-index-editor__footer button").isDisabled();
       assert
         .dom(
           ".doc-category-index-editor__footer .doc-category-index-editor__capacity-message"
         )
         .hasText(i18n(`${PREFIX}.section_limit`, { count: MAX_SECTIONS }));
-      await click(".doc-category-index-editor__footer .d-combo-button-menu");
-      assert
-        .dom(".fk-d-menu__inner-content button", document)
-        .isDisabled("auto-index cannot bypass the limit");
       editor.addSection();
-      editor.addAutoIndexSection();
       assert.strictEqual(editor.sections.length, MAX_SECTIONS);
 
       editor.sections.pop();
       await settled();
-      assert
-        .dom(".doc-category-index-editor__footer .d-combo-button-button")
-        .isEnabled();
-      editor.addAutoIndexSection();
-      await settled();
+      assert.dom(".doc-category-index-editor__footer button").isEnabled();
+      await click(".doc-category-index-editor__footer button");
       assert.strictEqual(editor.sections.length, MAX_SECTIONS);
-      assert.true(editor.hasAutoIndexSection);
     });
 
     test("topic and manual-link additions stop at the link limit", async function (assert) {

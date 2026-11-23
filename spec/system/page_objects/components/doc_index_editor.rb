@@ -264,69 +264,6 @@ module PageObjects
         has_css?(".doc-category-index-editor__section-title-label", text: title)
       end
 
-      def add_auto_index_section
-        find(".doc-category-index-editor__footer .d-combo-button-menu").click
-        find(
-          "button",
-          text:
-            I18n.t(
-              "js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section",
-            ),
-        ).click
-        self
-      end
-
-      def has_auto_index_section?
-        has_css?(".doc-category-index-editor__auto-index-badge")
-      end
-
-      def has_no_auto_index_section?
-        has_no_css?(".doc-category-index-editor__auto-index-badge")
-      end
-
-      def has_auto_index_placeholder?
-        has_css?(".doc-category-index-editor__link-card.--ghost")
-      end
-
-      def has_no_auto_index_button?
-        has_no_button?(
-          I18n.t(
-            "js.doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section",
-          ),
-        )
-      end
-
-      def has_auto_indexed_link_badge?
-        has_css?(".doc-category-index-editor__item-badge")
-      end
-
-      def click_auto_index_badge
-        find(".doc-category-index-editor__auto-index-badge").click
-        self
-      end
-
-      def toggle_include_subcategories
-        click_auto_index_badge
-        find(".doc-category-index-editor__auto-index-subcategories input[type='checkbox']").click
-        self
-      end
-
-      def click_resync_button
-        click_auto_index_badge
-        find(
-          "button",
-          text:
-            I18n.t(
-              "js.doc_categories.category_settings.sidebar_structure_editor.resync_auto_index",
-            ),
-        ).click
-        self
-      end
-
-      def has_auto_index_badge_with_text?(text)
-        has_css?(".doc-category-index-editor__auto-index-badge", text: text)
-      end
-
       def section_count
         all(".doc-category-index-editor__section").count
       end

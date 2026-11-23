@@ -35,6 +35,100 @@ RSpec.describe DocCategories::IndexSaver do
       it { is_expected.to fail_to_find_a_model(:category) }
     end
 
+    context "when a link references a private subcategory topic" do
+      fab!(:group)
+      fab!(:private_category) do
+        Fabricate(:private_category, parent_category: category, group: group)
+      end
+      fab!(:private_topic) { Fabricate(:topic, category: private_category) }
+      fab!(:public_topic) { Fabricate(:topic, category: category) }
+      fab!(:index) { Fabricate(:doc_categories_index, category: category, index_topic_id: -1) }
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index: index, title: "Existing") }
+      fab!(:link) do
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: section,
+          topic: public_topic,
+          href: public_topic.relative_url,
+        )
+      end
+
+      let(:sections_data) do
+        [
+          {
+            title: "Private",
+            links: [{ title: "Private guide", href: private_topic.relative_url }],
+          },
+        ]
+      end
+
+      it "rejects the save without replacing the existing index" do
+        expect(result).to fail_a_step(:validate_topic_visibility)
+        expect(result["result.step.validate_topic_visibility"].error).to eq(
+          I18n.t("doc_categories.errors.private_topic"),
+        )
+        expect(index.reload.sidebar_sections.pluck(:id)).to eq([section.id])
+        expect(section.sidebar_links.pluck(:id)).to eq([link.id])
+      end
+
+      context "when an explicit public topic ID is paired with a private topic URL" do
+        let(:sections_data) do
+          [
+            {
+              title: "Private",
+              links: [
+                { title: "Guide", href: private_topic.relative_url, topic_id: public_topic.id },
+              ],
+            },
+          ]
+        end
+
+        it { is_expected.to fail_a_step(:validate_topic_visibility) }
+      end
+
+      context "when the private topic is referenced in a nested section" do
+        let(:sections_data) do
+          [
+            {
+              title: "Root",
+              items: [
+                {
+                  type: "section",
+                  title: "Nested",
+                  items: [
+                    { type: "link", title: "Guide", href: "/guide", topic_id: private_topic.id },
+                  ],
+                },
+              ],
+            },
+          ]
+        end
+
+        it { is_expected.to fail_a_step(:validate_topic_visibility) }
+      end
+
+      context "when the referenced subcategory becomes public" do
+        before do
+          private_category.set_permissions(everyone: :full)
+          private_category.save!
+        end
+
+        it { is_expected.to run_successfully }
+      end
+    end
+
+    context "when a private category indexes its own topic" do
+      fab!(:group)
+      fab!(:category) { Fabricate(:private_category, group: group) }
+      fab!(:topic) { Fabricate(:topic, category: category) }
+
+      let(:sections_data) do
+        [{ title: "Private docs", links: [{ title: topic.title, href: topic.relative_url }] }]
+      end
+
+      it { is_expected.to run_successfully }
+    end
+
     context "when the index is in topic mode" do
       before do
         topic = Fabricate(:topic, category: category)
@@ -76,20 +170,6 @@ RSpec.describe DocCategories::IndexSaver do
       end
     end
 
-    context "when multiple auto-index sections are submitted" do
-      let(:sections_data) do
-        [
-          { title: "First", auto_index: true, links: [] },
-          { title: "Second", auto_index: true, links: [] },
-        ]
-      end
-
-      it "rejects the sections without creating an index" do
-        expect(result).to fail_a_step(:parse_and_validate_sections)
-        expect(DocCategories::Index.exists?(category_id: category.id)).to eq(false)
-      end
-    end
-
     context "when a replacement link cannot be persisted" do
       fab!(:index_topic) { Fabricate(:topic_with_op, category: category) }
       fab!(:index) do
@@ -111,7 +191,6 @@ RSpec.describe DocCategories::IndexSaver do
         {
           category_id: category.id,
           force_direct: true,
-          auto_index_include_subcategories: true,
           sections: [
             {
               title: "New",
@@ -123,10 +202,9 @@ RSpec.describe DocCategories::IndexSaver do
 
       before { deleted_topic.trash! }
 
-      it "rolls back the mode, setting, and replaced sidebar data" do
+      it "rolls back the mode and replaced sidebar data" do
         expect { result }.to raise_error(ActiveRecord::RecordInvalid)
         expect(index.reload.index_topic_id).to eq(index_topic.id)
-        expect(index.auto_index_include_subcategories).to eq(false)
         expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
         expect(section.sidebar_links.pluck(:id)).to eq([link.id])
       end
@@ -442,175 +520,43 @@ RSpec.describe DocCategories::IndexSaver do
       ).to eq([{ text: "L", href: "/a" }])
     end
 
-    context "with auto-index sections" do
-      it "allows an auto-index section with no manual links" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [{ title: "Auto", auto_index: true, links: [] }],
-          },
-        )
+    it "makes generated links manual when their automatic section gains a child" do
+      topic = Fabricate(:topic, category: category)
+      index = Fabricate(:doc_categories_index, category:, index_topic_id: -1)
+      section = index.sidebar_sections.create!(title: "Topics", position: 0, auto_index: true)
+      section.sidebar_links.create!(
+        topic:,
+        href: topic.relative_url,
+        position: 0,
+        auto_indexed: true,
+      )
 
-        index = DocCategories::Index.find_by(category_id: category.id)
-        expect(index).to be_present
-        section = index.sidebar_sections.first
-        expect(section.title).to eq("Auto")
-        expect(section.auto_index).to eq(true)
-      end
-
-      it "still skips non-auto-index sections with empty links" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [
-              { title: "Empty", links: [] },
-              { title: "Auto", auto_index: true, links: [] },
-            ],
-          },
-        )
-
-        index = DocCategories::Index.find_by(category_id: category.id)
-        expect(index.sidebar_sections.count).to eq(1)
-        expect(index.sidebar_sections.first.title).to eq("Auto")
-      end
-
-      it "preserves auto_indexed flag on links through save cycle" do
-        topic = Fabricate(:topic, category: category)
-
+      result =
         described_class.call(
           params: {
             category_id: category.id,
             sections: [
               {
-                title: "Auto",
-                auto_index: true,
-                links: [{ title: "T", href: topic.relative_url, topic_id: topic.id }],
+                id: section.id,
+                title: "Topics",
+                items: [
+                  { type: "link", topic_id: topic.id, href: topic.relative_url },
+                  { type: "section", title: "Child", links: [{ title: "Guide", href: "/guide" }] },
+                ],
               },
             ],
           },
         )
 
-        index = DocCategories::Index.find_by(category_id: category.id)
-        link = index.sidebar_sections.first.sidebar_links.first
-        link.update!(auto_indexed: true)
-
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [
-              {
-                title: "Auto",
-                auto_index: true,
-                links: [{ title: "T", href: topic.relative_url, topic_id: topic.id }],
-              },
-            ],
-          },
-        )
-
-        index.reload
-        link = index.sidebar_sections.first.sidebar_links.first
-        expect(link.auto_indexed).to eq(true)
-      end
-
-      it "does not mark links as auto_indexed if they were not previously" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [{ title: "S", links: [{ title: "L", href: "/t/slug/1", topic_id: 1 }] }],
-          },
-        )
-
-        index = DocCategories::Index.find_by(category_id: category.id)
-        link = index.sidebar_sections.first.sidebar_links.first
-        expect(link.auto_indexed).to eq(false)
-      end
-    end
-
-    context "with auto-index sync" do
-      fab!(:topic) { Fabricate(:topic, category: category) }
-      fab!(:post) { Fabricate(:post, topic: topic) }
-
-      fab!(:index) do
-        Fabricate(
-          :doc_categories_index,
-          category: category,
-          index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
-        )
-      end
-      fab!(:auto_section) do
-        Fabricate(
-          :doc_categories_sidebar_section,
-          index: index,
-          title: "Topics",
-          position: 0,
-          auto_index: true,
-        )
-      end
-
-      it "syncs when force_sync is true even if section id is preserved" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            force_sync: true,
-            sections: [{ id: auto_section.id, title: "Topics", auto_index: true, links: [] }],
-          },
-        )
-
-        index.reload
-        expect(index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(
-          topic.id,
-        )
-      end
-
-      it "does not sync when section id is preserved and force is false" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [{ id: auto_section.id, title: "Topics", auto_index: true, links: [] }],
-          },
-        )
-
-        index.reload
-        expect(index.auto_index_section.sidebar_links.auto_indexed.count).to eq(0)
-      end
-
-      it "syncs when section id is nil (new section)" do
-        described_class.call(
-          params: {
-            category_id: category.id,
-            sections: [{ title: "Topics", auto_index: true, links: [] }],
-          },
-        )
-
-        index.reload
-        expect(index.auto_index_section.sidebar_links.auto_indexed.pluck(:topic_id)).to include(
-          topic.id,
-        )
-      end
-
-      it "does not sync when there is no auto-index section" do
-        auto_section.update!(auto_index: false)
-
-        result =
-          described_class.call(
-            params: {
-              category_id: category.id,
-              force_sync: true,
-              sections: [
-                {
-                  id: auto_section.id,
-                  title: "Topics",
-                  auto_index: false,
-                  links: [{ title: "Manual", href: "/t/slug/1" }],
-                },
-              ],
-            },
-          )
-
-        expect(result).to run_successfully
-        index.reload
-        expect(index.sidebar_sections.first.sidebar_links.auto_indexed.count).to eq(0)
-      end
+      expect(result).to run_successfully
+      expect(index.reload.auto_index_section).to be_nil
+      expect(
+        index
+          .sidebar_sections
+          .find_by!(title: "Topics")
+          .sidebar_links
+          .pluck(:topic_id, :auto_indexed),
+      ).to eq([[topic.id, false]])
     end
   end
 end

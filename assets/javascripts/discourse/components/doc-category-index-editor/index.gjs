@@ -1,22 +1,18 @@
 import Component from "@glimmer/component";
 import { cached, tracked } from "@glimmer/tracking";
 import { fn } from "@ember/helper";
-import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import {
   trackedArray,
   trackedObject,
   trackedSet,
 } from "@ember/reactive/collections";
-import { next, schedule } from "@ember/runloop";
+import { schedule } from "@ember/runloop";
 import { service } from "@ember/service";
 import DMenu from "discourse/float-kit/components/d-menu";
-import { ajax } from "discourse/lib/ajax";
-import { popupAjaxError } from "discourse/lib/ajax-error";
 import { bind } from "discourse/lib/decorators";
 import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
-import DComboButton from "discourse/ui-kit/d-combo-button";
 import DConditionalInElement from "discourse/ui-kit/d-conditional-in-element";
 import DDragHandle from "discourse/ui-kit/d-drag-handle";
 import DDropdownMenu from "discourse/ui-kit/d-dropdown-menu";
@@ -97,7 +93,6 @@ function editorGroup(group, editor) {
 
 const SectionRow = <template>
   <IndexEditorSection
-    @autoIndexIncludeSubcategories={{@editor.autoIndexIncludeSubcategories}}
     @batchDragType={{@editor.batchDragType}}
     @batchMode={{@editor.batchMode}}
     @canAddChild={{@editor.canAddChild}}
@@ -108,7 +103,6 @@ const SectionRow = <template>
     @duplicateHrefs={{@editor.duplicateHrefs}}
     @duplicateTitles={{@editor.duplicateTitles}}
     @group={{@group}}
-    @hideResyncToggle={{@editor.subcategorySettingChanged}}
     @invertSelectionInSection={{@editor.invertSelectionInSection}}
     @isBatchDragging={{@editor.isBatchDragging}}
     @isFirstSection={{@editor.isFirstSection}}
@@ -123,9 +117,6 @@ const SectionRow = <template>
     @onMoveOut={{@editor.moveSectionOut}}
     @onRemoveSection={{@editor.removeSection}}
     @onReviewUnindexedTopics={{@editor.reviewUnindexedTopics}}
-    @onToggleAutoIndexIncludeSubcategories={{@editor.toggleAutoIndexIncludeSubcategories}}
-    @onToggleResyncAutoIndex={{@editor.toggleResyncAutoIndex}}
-    @pendingResync={{@editor.pendingResync}}
     @searchFilters={{@editor.searchFilters}}
     @section={{@section}}
     @sectionDepth={{@editor.sectionDepth}}
@@ -155,11 +146,6 @@ export default class DocCategoryIndexEditor extends Component {
   @service toasts;
 
   @tracked sections = trackedArray(this.#initSections());
-  @tracked includeSubcategories = false;
-  @tracked
-  autoIndexIncludeSubcategories =
-    this.args.category?.doc_category_auto_index_include_subcategories ?? false;
-  @tracked pendingResync = false;
   @tracked batchMode = false;
   @tracked isBatchDragging = false;
   @tracked batchDragType = null;
@@ -170,8 +156,6 @@ export default class DocCategoryIndexEditor extends Component {
   selectedItems = trackedSet();
   selectedSections = trackedSet();
 
-  #originalAutoIndexIncludeSubcategories =
-    this.args.category?.doc_category_auto_index_include_subcategories ?? false;
   #additionToast = null;
   #unindexedCounter = new UnindexedTopicsCounter(this.args.categoryId);
   #lastDestination = null;
@@ -189,9 +173,6 @@ export default class DocCategoryIndexEditor extends Component {
       this.selectedItems.clear();
       this.selectedSections.clear();
       this.dismissLastAddition();
-      this.autoIndexIncludeSubcategories =
-        this.#originalAutoIndexIncludeSubcategories;
-      this.pendingResync = false;
       this._hasLocalChanges = false;
       this.#refreshUnindexedCount({ force: true, immediate: true });
     });
@@ -279,7 +260,13 @@ export default class DocCategoryIndexEditor extends Component {
       );
     }
 
-    errors.push(...validateDocIndexSections(this.sections));
+    // The server can return a saved section whose links are all hidden or absent.
+    const emptySectionIds = new Set(
+      (this.args.indexData ?? [])
+        .filter((section) => section.id && section.links?.length === 0)
+        .map((section) => section.id)
+    );
+    errors.push(...validateDocIndexSections(this.sections, emptySectionIds));
     return errors;
   }
 
@@ -320,31 +307,6 @@ export default class DocCategoryIndexEditor extends Component {
     return dupes;
   }
 
-  get hasAutoIndexSection() {
-    return this.sections.some((s) => s.autoIndex);
-  }
-
-  get subcategorySettingChanged() {
-    return (
-      this.autoIndexIncludeSubcategories !==
-      this.#originalAutoIndexIncludeSubcategories
-    );
-  }
-
-  /** The auto-index's scope when there is one, so counts match what it collects. */
-  get unindexedIncludesSubcategories() {
-    return this.hasAutoIndexSection && this.autoIndexIncludeSubcategories;
-  }
-
-  /** Mirrors when the server's IndexSaver runs auto-index on category save. */
-  get autoIndexSyncPending() {
-    const section = this.sections.find((s) => s.autoIndex);
-    return (
-      !!section &&
-      (!section.id || this.pendingResync || this.subcategorySettingChanged)
-    );
-  }
-
   get showUnindexedTopics() {
     return !this.batchMode && this.#unindexedCounter.count > 0;
   }
@@ -355,32 +317,10 @@ export default class DocCategoryIndexEditor extends Component {
         "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.checking"
       );
     }
-    if (this.autoIndexSyncPending) {
-      const section = this.sections.find((candidate) => candidate.autoIndex);
-      const available = Math.max(
-        0,
-        MAX_LINKS_PER_SECTION - sectionLinks(section).length
-      );
-      return available === 0
-        ? i18n(
-            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.auto_index_full"
-          )
-        : i18n(
-            "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.auto_index_pending",
-            { count: Math.min(available, this.#unindexedCounter.count) }
-          );
-    }
-
-    const count = this.#unindexedCounter.count;
-    return this.unindexedIncludesSubcategories
-      ? i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.count_with_subcategories",
-          { count }
-        )
-      : i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.count",
-          { count }
-        );
+    return i18n(
+      "doc_categories.category_settings.sidebar_structure_editor.unindexed_topics.count",
+      { count: this.#unindexedCounter.count }
+    );
   }
 
   get hasPendingChanges() {
@@ -480,17 +420,14 @@ export default class DocCategoryIndexEditor extends Component {
       this._saveToTransientData();
     };
 
-    if (!section.autoIndex && section.items.length === 0) {
+    if (section.items.length === 0) {
       remove();
       return;
     }
 
     let message =
       "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_section";
-    if (section.autoIndex) {
-      message =
-        "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_auto_index_section";
-    } else if (section.items.some(isIndexSection)) {
+    if (section.items.some(isIndexSection)) {
       message =
         "doc_categories.category_settings.sidebar_structure_editor.confirm_remove_section_tree";
     }
@@ -532,9 +469,7 @@ export default class DocCategoryIndexEditor extends Component {
   @bind
   canAddChild(section) {
     return (
-      !!section.title?.trim() &&
-      !section.autoIndex &&
-      this.sectionDepth(section) < MAX_SECTION_DEPTH
+      !!section.title?.trim() && this.sectionDepth(section) < MAX_SECTION_DEPTH
     );
   }
 
@@ -578,19 +513,6 @@ export default class DocCategoryIndexEditor extends Component {
   @bind
   sectionLabel(section) {
     return this.#sectionLabel(section);
-  }
-
-  @bind
-  async fetchTopics(includeSubcategories) {
-    const response = await ajax(
-      `/doc-categories/indexes/${this.args.categoryId}/topics`,
-      { data: { include_subcategories: includeSubcategories } }
-    );
-    return {
-      topics: response.topics || [],
-      totalCount: response.total_count ?? 0,
-      truncated: (response.total_count ?? 0) > (response.topics || []).length,
-    };
   }
 
   @bind
@@ -679,12 +601,9 @@ export default class DocCategoryIndexEditor extends Component {
   @action
   reviewUnindexedTopics(section) {
     const preferred =
-      [section, this.#lastDestination].find(
-        (candidate) =>
-          candidate &&
-          !candidate.autoIndex &&
-          this.allSections.includes(candidate)
-      ) ?? this.allSections.findLast((candidate) => !candidate.autoIndex);
+      [section, this.#lastDestination].find((candidate) =>
+        this.allSections.includes(candidate)
+      ) ?? this.allSections.at(-1);
 
     this.modal.show(UnindexedTopicsModal, {
       model: {
@@ -693,10 +612,7 @@ export default class DocCategoryIndexEditor extends Component {
         initialDestination: preferred
           ? this.#destinationValue(preferred)
           : NEW_SECTION,
-        includeSubcategories: this.unindexedIncludesSubcategories,
-        canIncludeSubcategories:
-          !!this.args.category?.has_children ||
-          this.unindexedIncludesSubcategories,
+        canIncludeSubcategories: !!this.args.category?.has_children,
         getReferences: () => draftTopicReferences(this.sections),
         addTopics: this.addUnindexedTopics,
       },
@@ -717,9 +633,7 @@ export default class DocCategoryIndexEditor extends Component {
       }
     } else {
       section = this.allSections.find(
-        (candidate) =>
-          !candidate.autoIndex &&
-          this.#destinationValue(candidate) === destination
+        (candidate) => this.#destinationValue(candidate) === destination
       );
       if (!section) {
         return {
@@ -762,7 +676,6 @@ export default class DocCategoryIndexEditor extends Component {
         items: trackedArray([]),
       });
       this.sections.push(section);
-      this.#moveAboveAutoIndex(section);
     }
 
     const links = topicsToAdd.map((topic) => this.#topicToLink(topic));
@@ -857,76 +770,6 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   @action
-  addAutoIndexSection() {
-    if (this.hasAutoIndexSection || this.sectionLimitReached) {
-      return;
-    }
-    this.sections.push(
-      trackedObject({
-        title: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.auto_index_section_title"
-        ),
-        autoIndex: true,
-        items: trackedArray([]),
-      })
-    );
-    this._saveToTransientData();
-  }
-
-  @action
-  toggleIncludeSubcategories() {
-    this.includeSubcategories = !this.includeSubcategories;
-  }
-
-  @action
-  toggleResyncAutoIndex(closeMenu) {
-    closeMenu?.();
-    this.pendingResync = !this.pendingResync;
-    this._saveToTransientData();
-  }
-
-  @action
-  toggleAutoIndexIncludeSubcategories(closeMenu) {
-    closeMenu?.();
-
-    // Toggling back to the original value doesn't trigger a resync,
-    // so no confirmation is needed.
-    const newValue = !this.autoIndexIncludeSubcategories;
-    if (newValue === this.#originalAutoIndexIncludeSubcategories) {
-      this.autoIndexIncludeSubcategories = newValue;
-      this.pendingResync = false;
-      this._saveToTransientData();
-      return;
-    }
-
-    this.dialog.yesNoConfirm({
-      message: i18n(
-        "doc_categories.category_settings.sidebar_structure_editor.include_subcategories_confirm"
-      ),
-      didConfirm: () => {
-        this.autoIndexIncludeSubcategories = newValue;
-        this.pendingResync = false;
-        this._saveToTransientData();
-      },
-    });
-  }
-
-  @action
-  indexAllTopics(closeMenu) {
-    closeMenu?.();
-    if (this.sections.length > 0) {
-      this.dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.auto_populate_confirm"
-        ),
-        didConfirm: () => this.#doIndexAllTopics(),
-      });
-    } else {
-      this.#doIndexAllTopics();
-    }
-  }
-
-  @action
   toggleAllSections() {
     const collapse = this.allSectionsExpanded;
     this.allSections.forEach((section) => (section.collapsed = collapse));
@@ -934,19 +777,6 @@ export default class DocCategoryIndexEditor extends Component {
 
   @action
   toggleBatchMode() {
-    if (this.batchMode && this.hasSelection) {
-      this.dialog.yesNoConfirm({
-        message: i18n(
-          "doc_categories.category_settings.sidebar_structure_editor.batch_exit_confirm"
-        ),
-        didConfirm: () => {
-          this.batchMode = false;
-          this.selectedItems.clear();
-          this.selectedSections.clear();
-        },
-      });
-      return;
-    }
     this.batchMode = !this.batchMode;
     if (!this.batchMode) {
       this.selectedItems.clear();
@@ -1112,12 +942,8 @@ export default class DocCategoryIndexEditor extends Component {
       const ancestors = [...this.#ancestors(destination), destination];
       if (
         !destination.title?.trim() ||
-        destination.autoIndex ||
         sections.some(
-          (section) =>
-            section.autoIndex ||
-            !section.title?.trim() ||
-            ancestors.includes(section)
+          (section) => !section.title?.trim() || ancestors.includes(section)
         )
       ) {
         this.#showMoveError("invalid_section_destination");
@@ -1203,13 +1029,6 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   #initSections() {
-    // Restore the subcategory toggle from transient data (tab switch recovery)
-    const savedIncludeSub =
-      this.args.transientData?._docIndexAutoIndexIncludeSubcategories;
-    if (savedIncludeSub != null) {
-      this.autoIndexIncludeSubcategories = savedIncludeSub;
-    }
-
     // Restore from FormKit transient data if available (tab switch recovery)
     const saved = this.args.transientData?._docIndexEditorState;
     return saved?.length
@@ -1233,7 +1052,7 @@ export default class DocCategoryIndexEditor extends Component {
     return trackedObject({
       id: section.id ?? null,
       title,
-      autoIndex: draft ? section.autoIndex : section.auto_index,
+
       isEditingTitle: !first && !title,
       items: trackedArray(
         items.map((item) => {
@@ -1253,7 +1072,6 @@ export default class DocCategoryIndexEditor extends Component {
             topic_id: item.topic_id ?? null,
             topicTitle: item.topic_title,
             autoTitle: item.topic_id && !item.custom_title,
-            autoIndexed: item.auto_indexed || false,
           });
         })
       ),
@@ -1264,7 +1082,7 @@ export default class DocCategoryIndexEditor extends Component {
     const serialize = (section) => ({
       id: section.id,
       title: section.title,
-      autoIndex: section.autoIndex || false,
+
       items: section.items.map((item) =>
         isIndexSection(item)
           ? { ...serialize(item), type: "section" }
@@ -1275,7 +1093,6 @@ export default class DocCategoryIndexEditor extends Component {
               topic_id: item.topic_id,
               topicTitle: item.topicTitle,
               autoTitle: item.autoTitle,
-              autoIndexed: item.autoIndexed || false,
             }
       ),
     });
@@ -1287,7 +1104,6 @@ export default class DocCategoryIndexEditor extends Component {
       const data = {
         id: section.id,
         title: section.title,
-        auto_index: section.autoIndex || false,
       };
       const serializeLink = (link) => ({
         title: link.title,
@@ -1308,42 +1124,6 @@ export default class DocCategoryIndexEditor extends Component {
     return this.sections.map(serialize);
   }
 
-  async #doIndexAllTopics() {
-    try {
-      const result = await this.fetchTopics(this.includeSubcategories);
-      if (this.isDestroying) {
-        return;
-      }
-      if (result.topics.length === 0) {
-        return;
-      }
-      this.sections.splice(
-        0,
-        this.sections.length,
-        trackedObject({
-          title: i18n(
-            "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
-          ),
-          items: trackedArray(result.topics.map((t) => this.#topicToLink(t))),
-        })
-      );
-      this._saveToTransientData();
-      if (result.truncated) {
-        this.dialog.alert(
-          i18n(
-            "doc_categories.category_settings.sidebar_structure_editor.topics_truncated",
-            {
-              loaded: result.topics.length,
-              total: result.totalCount,
-            }
-          )
-        );
-      }
-    } catch (e) {
-      popupAjaxError(e);
-    }
-  }
-
   #topicToLink(topic) {
     return trackedObject({
       title: topic.title || topic.fancy_title,
@@ -1359,7 +1139,6 @@ export default class DocCategoryIndexEditor extends Component {
     this.#unindexedCounter.update(
       {
         references: draftTopicReferences(this.sections),
-        includeSubcategories: this.unindexedIncludesSubcategories,
       },
       options
     );
@@ -1380,13 +1159,11 @@ export default class DocCategoryIndexEditor extends Component {
   }
 
   #unindexedDestinations() {
-    const destinations = this.allSections
-      .filter((section) => !section.autoIndex)
-      .map((section) => ({
-        value: this.#destinationValue(section),
-        label: this.sectionPath(section),
-        linkCount: sectionLinks(section).length,
-      }));
+    const destinations = this.allSections.map((section) => ({
+      value: this.#destinationValue(section),
+      label: this.sectionPath(section),
+      linkCount: sectionLinks(section).length,
+    }));
 
     if (!this.sectionLimitReached) {
       destinations.push({
@@ -1419,27 +1196,6 @@ export default class DocCategoryIndexEditor extends Component {
     return title;
   }
 
-  /**
-   * Auto-index stays last, gathering what the sections above leave out. The
-   * move waits a tick: a section rendered ahead of an existing one in the same
-   * pass trips the reorderable group's backtracking assertion.
-   */
-  #moveAboveAutoIndex(section) {
-    next(() => {
-      if (this.isDestroying) {
-        return;
-      }
-      const from = this.sections.indexOf(section);
-      const to = this.sections.findIndex((s) => s.autoIndex);
-      if (from === -1 || to === -1 || from < to) {
-        return;
-      }
-      this.sections.splice(from, 1);
-      this.sections.splice(to, 0, section);
-      this._saveToTransientData();
-    });
-  }
-
   /** Unsaved sections have no id, so they borrow their reorder key. */
   #destinationValue(section) {
     return section.id ? String(section.id) : sectionUid(section);
@@ -1461,7 +1217,7 @@ export default class DocCategoryIndexEditor extends Component {
    *
    * - `_docIndexEditorState`: Rich camelCase array used to restore the full
    *   editor UI on tab-switch recovery (includes UI-only fields like
-   *   `topicTitle`, `autoTitle`, `type`, and `autoIndexed`).
+   *   `topicTitle`, `autoTitle`, and `type`).
    * - `doc_index_sections`: Lean snake_case JSON string sent to the backend
    *   via `registerCategorySaveProperty` when "Save Category" is clicked.
    */
@@ -1471,17 +1227,8 @@ export default class DocCategoryIndexEditor extends Component {
     this._hasLocalChanges = true;
     this.args.form?.set("_docIndexEditorState", sections);
     this.args.form?.set(
-      "_docIndexAutoIndexIncludeSubcategories",
-      this.autoIndexIncludeSubcategories
-    );
-
-    this.args.form?.set(
       "doc_index_sections",
-      JSON.stringify({
-        sections: this.#buildPayload(),
-        auto_index_include_subcategories: this.autoIndexIncludeSubcategories,
-        force_sync: this.pendingResync,
-      })
+      JSON.stringify({ sections: this.#buildPayload() })
     );
     this.args.form?.set("doc_index_topic_id", -1);
     this.#refreshUnindexedCount();
@@ -1500,6 +1247,11 @@ export default class DocCategoryIndexEditor extends Component {
           and this page has no drag it would be wrong to scroll for. }}
       {{dDragAndDropAutoScroll target="window"}}
     >
+      <p class="doc-category-index-editor__private-topics-help">
+        {{i18n
+          "doc_categories.category_settings.sidebar_structure_editor.private_topics_help"
+        }}
+      </p>
       <DConditionalInElement @append={{true}} @element={{@toolbarElement}}>
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__toolbar-actions">
@@ -1528,29 +1280,6 @@ export default class DocCategoryIndexEditor extends Component {
               </:trigger>
               <:content as |menuArgs|>
                 <DDropdownMenu as |dropdown|>
-                  <dropdown.item>
-                    <DButton
-                      class="btn-transparent"
-                      @action={{fn this.indexAllTopics menuArgs.close}}
-                      @icon="arrows-rotate"
-                      @label="doc_categories.category_settings.sidebar_structure_editor.index_all_topics"
-                    />
-                  </dropdown.item>
-                  <dropdown.item>
-                    <label
-                      class="doc-category-index-editor__subcategory-toggle"
-                    >
-                      <input
-                        checked={{this.includeSubcategories}}
-                        type="checkbox"
-                        {{on "change" this.toggleIncludeSubcategories}}
-                      />
-                      {{i18n
-                        "doc_categories.category_settings.sidebar_structure_editor.include_subcategories"
-                      }}
-                    </label>
-                  </dropdown.item>
-                  <dropdown.divider />
                   <dropdown.item>
                     <DButton
                       class="btn-transparent doc-category-index-editor__clear-index-btn"
@@ -1692,36 +1421,13 @@ export default class DocCategoryIndexEditor extends Component {
       >
         {{#unless this.batchMode}}
           <div class="doc-category-index-editor__footer">
-            <DComboButton @hasMenu={{not this.hasAutoIndexSection}}>
-              <:default as |combo|>
-                <combo.Button
-                  class="btn-default btn-small"
-                  @action={{fn this.addSection null}}
-                  @disabled={{or @isPreview this.sectionLimitReached}}
-                  @icon="plus"
-                  @label="doc_categories.category_settings.sidebar_structure_editor.add_section"
-                />
-                {{! The menu is gated by @hasMenu, so guarding it here as well
-                    would be the same condition written twice. }}
-                <combo.Menu
-                  class="btn-default btn-small"
-                  @disabled={{@isPreview}}
-                  @identifier="add-section-menu"
-                >
-                  <DDropdownMenu as |dropdown|>
-                    <dropdown.item>
-                      <DButton
-                        class="btn-transparent"
-                        @action={{this.addAutoIndexSection}}
-                        @disabled={{this.sectionLimitReached}}
-                        @icon="bolt"
-                        @label="doc_categories.category_settings.sidebar_structure_editor.add_auto_index_section"
-                      />
-                    </dropdown.item>
-                  </DDropdownMenu>
-                </combo.Menu>
-              </:default>
-            </DComboButton>
+            <DButton
+              class="btn-default btn-small"
+              @action={{fn this.addSection null}}
+              @disabled={{or @isPreview this.sectionLimitReached}}
+              @icon="plus"
+              @label="doc_categories.category_settings.sidebar_structure_editor.add_section"
+            />
             {{#if this.sectionLimitReached}}
               <span class="doc-category-index-editor__capacity-message">
                 {{this.sectionLimitMessage}}

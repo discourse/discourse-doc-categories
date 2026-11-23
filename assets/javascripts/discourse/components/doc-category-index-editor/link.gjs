@@ -5,7 +5,6 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { next } from "@ember/runloop";
 import DTooltip from "discourse/float-kit/components/d-tooltip";
-import TopicChooser from "discourse/select-kit/components/topic-chooser";
 import { not, or } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
@@ -13,6 +12,7 @@ import icon from "discourse/ui-kit/helpers/d-icon";
 import dAutoFocus from "discourse/ui-kit/modifiers/d-auto-focus";
 import dDragAndDropTarget from "discourse/ui-kit/modifiers/d-drag-and-drop-target";
 import { i18n } from "discourse-i18n";
+import DocCategoryTopicChooser from "../doc-category-topic-chooser.js";
 
 /** What a dragged batch selection of links publishes. */
 export const LINK_DRAG_TYPE = "doc-index-link";
@@ -345,11 +345,12 @@ export class IndexEditorLink extends Component {
           {{#if this.isTopicLink}}
             {{#if this.swapping}}
               <div class="doc-category-index-editor__swap-chooser">
-                <TopicChooser
+                <DocCategoryTopicChooser
                   @content={{this.swapTopicContent}}
                   @onChange={{this.onSwapTopic}}
                   @options={{hash
                     additionalFilters=@searchFilters
+                    docCategoryId=@categoryId
                     none="doc_categories.category_settings.sidebar_structure_editor.select_topic"
                   }}
                   @value={{null}}
@@ -446,18 +447,7 @@ export class IndexEditorLink extends Component {
           >
             {{this.displayTitle}}
           </span>
-          {{#if @link.autoIndexed}}
-            <DTooltip
-              class="doc-category-index-editor__item-badge"
-              @content={{i18n
-                "doc_categories.category_settings.sidebar_structure_editor.auto_indexed_tooltip"
-              }}
-            >
-              <:trigger>
-                {{icon "book"}}
-              </:trigger>
-            </DTooltip>
-          {{else if @link.autoTitle}}
+          {{#if @link.autoTitle}}
             <DTooltip
               class="doc-category-index-editor__item-badge"
               @content={{i18n

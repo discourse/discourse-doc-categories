@@ -10,7 +10,7 @@ import {
   sectionLinks,
 } from "./doc-index-tree.js";
 
-export default function validateDocIndexSections(sections) {
+export default function validateDocIndexSections(sections, emptySectionIds) {
   const errors = new Set();
 
   const entries = [...sectionEntries(sections)];
@@ -56,7 +56,11 @@ export default function validateDocIndexSections(sections) {
         )
       );
     }
-    if (links.length === 0 && !hasChildren && !section.autoIndex) {
+    if (
+      links.length === 0 &&
+      !hasChildren &&
+      !emptySectionIds?.has(section.id)
+    ) {
       errors.add(
         i18n(
           "doc_categories.category_settings.sidebar_structure_editor.validation_empty_section"

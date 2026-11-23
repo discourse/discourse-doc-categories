@@ -102,21 +102,17 @@ module(
         );
     });
 
-    test("populated and auto-index sections still require confirmation", async function (assert) {
-      const editor = await renderEditor([
-        ...indexData(),
-        { text: "Other topics", auto_index: true, links: [] },
-      ]);
+    test("populated sections still require confirmation", async function (assert) {
+      const editor = await renderEditor();
       const confirm = sinon.stub(
         this.owner.lookup("service:dialog"),
         "yesNoConfirm"
       );
 
       editor.removeSection(editor.sections[0]);
-      editor.removeSection(editor.sections[2]);
 
-      assert.strictEqual(confirm.callCount, 2);
-      assert.strictEqual(editor.sections.length, 3);
+      assert.strictEqual(confirm.callCount, 1);
+      assert.strictEqual(editor.sections.length, 2);
     });
 
     test("it starts closed with nothing selected", async function (assert) {
@@ -139,26 +135,6 @@ module(
 
       assert.false(editor.batchMode, "it closes straight away");
       assert.false(confirm.called, "with nothing to lose, it does not ask");
-    });
-
-    test("closing with a live selection asks before discarding it", async function (assert) {
-      const editor = await renderEditor();
-      const dialog = this.owner.lookup("service:dialog");
-      const confirm = sinon.stub(dialog, "yesNoConfirm");
-
-      editor.toggleBatchMode();
-      await settled();
-      editor.selectAll();
-      await settled();
-      editor.toggleBatchMode();
-      await settled();
-
-      assert.true(confirm.calledOnce, "it asks first");
-      assert.true(
-        editor.batchMode,
-        "and stays open until answered, so a mis-click cannot drop the selection"
-      );
-      assert.true(editor.hasSelection, "with the selection intact");
     });
 
     test("confirming the close drops the selection", async function (assert) {
@@ -570,24 +546,16 @@ function topicIndexData() {
   ];
 }
 
-async function renderTopicEditor(
-  data = topicIndexData(),
-  category,
-  registerAfterReset,
-  form
-) {
+async function renderTopicEditor(data = topicIndexData()) {
   let editor;
   const capture = (instance) => (editor = instance);
 
   await render(
     <template>
       <DocCategoryIndexEditor
-        @category={{category}}
         @categoryId={{1}}
-        @form={{form}}
         @indexData={{data}}
         @onRegisterEditor={{capture}}
-        @registerAfterReset={{registerAfterReset}}
       />
     </template>
   );
@@ -672,152 +640,11 @@ module(
       );
     });
 
-    test("counts in the auto-index scope when it includes subcategories", async function (assert) {
-      const requests = stubUnindexedTopics(2);
-      await renderTopicEditor(
-        [
-          ...topicIndexData(),
-          { id: 12, text: "Other topics", auto_index: true, links: [] },
-        ],
-        { doc_category_auto_index_include_subcategories: true }
-      );
-
-      assert.true(requests[0].include_subcategories);
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.count_with_subcategories`, { count: 2 })
-        );
-    });
-
-    test("a saved auto-index section still reports gaps", async function (assert) {
-      stubUnindexedTopics(2);
-      await renderTopicEditor([
-        ...topicIndexData(),
-        { id: 12, text: "Other topics", auto_index: true, links: [] },
-      ]);
-
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.count`, { count: 2 }),
-          "auto-index only collects new topics, so older ones can stay out"
-        );
-    });
-
-    test("defers to auto-index when saving will run it", async function (assert) {
-      stubUnindexedTopics(2);
-      const editor = await renderTopicEditor();
-
-      editor.addAutoIndexSection();
-      await settled();
-
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.auto_index_pending`, { count: 2 }),
-          "a new auto-index section collects them on save"
-        );
-    });
-
-    test("pending auto-index accounts for limited and exhausted capacity", async function (assert) {
-      stubUnindexedTopics(3);
-      const links = Array.from({ length: 199 }, (_, index) => ({
-        text: `Topic ${index}`,
-        href: `/t/topic/${index + 1}`,
-        topic_id: index + 1,
-      }));
-      const editor = await renderTopicEditor([
-        { id: 12, text: "Other topics", auto_index: true, links },
-      ]);
-      editor.pendingResync = true;
-      await settled();
-
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.auto_index_pending`, { count: 1 }),
-          "only available slots are promised"
-        );
-      editor.sections[0].items.push({
-        title: "Last slot",
-        href: "/t/last/999",
-        topic_id: 999,
-      });
-      editor._saveToTransientData();
-      await settled();
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.auto_index_full`),
-          "a full auto-index section does not promise additions"
-        );
-    });
-
-    test("Reset restores auto-index flags before recounting and later edits", async function (assert) {
-      const requests = stubUnindexedTopics(3);
-      let reset;
-      const form = { set: sinon.spy() };
-      const editor = await renderTopicEditor(
-        [
-          ...topicIndexData(),
-          { id: 12, text: "Other topics", auto_index: true, links: [] },
-        ],
-        { doc_category_auto_index_include_subcategories: false },
-        (callback) => {
-          reset = callback;
-        },
-        form
-      );
-      editor.autoIndexIncludeSubcategories = true;
-      editor.pendingResync = true;
-      editor._saveToTransientData();
-      await settled();
-      reset();
-      await settled();
-
-      assert.false(
-        editor.autoIndexIncludeSubcategories,
-        "the saved scope is restored"
-      );
-      assert.false(
-        editor.pendingResync,
-        "the discarded resync request is cleared"
-      );
-      assert.false(
-        requests.at(-1).include_subcategories,
-        "the recount uses the restored scope"
-      );
-      assert
-        .dom(".doc-category-index-editor__missing-topics")
-        .includesText(
-          i18n(`${UNINDEXED}.count`, { count: 3 }),
-          "the tip no longer claims a sync is pending"
-        );
-      assert.false(editor.hasPendingChanges, "Reset leaves no local changes");
-
-      editor.addUnindexedTopics({ topics: [topic(7)], destination: "10" });
-      const payload = JSON.parse(
-        form.set.withArgs("doc_index_sections").lastCall.args[1]
-      );
-      assert.false(
-        payload.auto_index_include_subcategories,
-        "later edits do not save the discarded scope"
-      );
-      assert.false(
-        payload.force_sync,
-        "later edits do not request the discarded resync"
-      );
-    });
-
-    test("Review topics preselects the last manual section", async function (assert) {
+    test("Review topics preselects the last section", async function (assert) {
       stubUnindexedTopics(2);
       const modal = this.owner.lookup("service:modal");
       const show = sinon.stub(modal, "show");
-      await renderTopicEditor([
-        ...topicIndexData(),
-        { id: 12, text: "Other topics", auto_index: true, links: [] },
-      ]);
+      await renderTopicEditor();
 
       await click(".doc-category-index-editor__review-topics");
 
@@ -825,10 +652,9 @@ module(
       assert.deepEqual(
         model.destinations.map((option) => option.value),
         ["10", "11", "new"],
-        "manual sections and a new section are offered, but auto-index is not"
+        "existing sections and a new section are offered"
       );
       assert.strictEqual(model.initialDestination, "11");
-      assert.false(model.includeSubcategories, "the scope matches the count");
       assert.deepEqual(
         model.getReferences(),
         {
@@ -897,35 +723,6 @@ module(
         this.toasts.activeToasts.length,
         0,
         "dismisses the addition toast"
-      );
-    });
-
-    test("with no manual section, a new one goes before auto-index", async function (assert) {
-      stubUnindexedTopics(2);
-      const modal = this.owner.lookup("service:modal");
-      const show = sinon.stub(modal, "show");
-      const editor = await renderTopicEditor([
-        { id: 12, text: "Other topics", auto_index: true, links: [] },
-      ]);
-
-      editor.reviewUnindexedTopics();
-      const { model } = show.firstCall.args[1];
-      assert.deepEqual(
-        model.destinations.map((option) => option.value),
-        ["new"]
-      );
-
-      model.addTopics({ topics: [topic(7)], destination: "new" });
-      await settled();
-
-      assert.deepEqual(
-        editor.sections.map((section) => section.title),
-        [
-          i18n(
-            "doc_categories.category_settings.sidebar_structure_editor.all_topics_section"
-          ),
-          "Other topics",
-        ]
       );
     });
 
