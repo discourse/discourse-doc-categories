@@ -26,6 +26,10 @@ RSpec.describe "Documentation category type" do
     expect(page).to have_no_content(I18n.t("js.category.type_settings_schema.site_settings"))
     banner.click_save
 
+    expect(page).to have_no_current_path(%r{\A/new-category})
+    created_category = Category.find_by!(name: "Product docs")
+    category_page.visit_general(created_category)
+
     expect(page).to have_css(".edit-category-documentation", count: 1)
     editor.switch_to_doc_index_tab
 
@@ -33,7 +37,7 @@ RSpec.describe "Documentation category type" do
     expect(page).to have_button("Add section", disabled: false)
     expect(page).to have_no_css(".edit-category-doc-index")
     expect(SiteSetting.doc_categories_enabled).to eq(true)
-    expect(Category.find_by!(name: "Product docs").doc_categories_index).to be_mode_direct
+    expect(created_category.reload.doc_categories_index).to be_mode_direct
   end
 
   it "previews the editor with disabled controls before the category is created" do
