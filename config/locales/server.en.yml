@@ -32,3 +32,6 @@ en:
     doc_categories_index_editor: "Enable the visual index editor for doc categories. Allows building sidebar indexes directly instead of using a topic."
     doc_categories_docs_legacy_enabled: "Enable redirects for old Docs Plugin URLs. This setting has no effect if the Docs plugin is installed and enabled"
     doc_categories_homepage: "When `doc_categories_docs_legacy_enabled` the old docs homepage will redirect to this address."
+  mcp_tools:
+    errors:
+      category_not_found: "Category not found or you do not have permission to view it."
