@@ -76,6 +76,18 @@ module DocCategories
         .exists?(topic: topic)
     end
 
+    def indexed_topic_ids
+      links = DocCategories::SidebarLink.where(sidebar_section: sidebar_sections.reorder(nil))
+      topic_ids = links.where.not(topic_id: nil).distinct.pluck(:topic_id)
+      href_topic_ids =
+        links
+          .where(topic_id: nil)
+          .distinct
+          .pluck(:href)
+          .filter_map { |href| DocCategories::Url.extract_topic_id_from_url(href) }
+      (topic_ids + href_topic_ids).uniq
+    end
+
     def replace_sidebar_sections!(sections)
       topic_ids = section_topic_ids(sections).uniq
       topic_titles = ::Topic.where(id: topic_ids).pluck(:id, :title).to_h

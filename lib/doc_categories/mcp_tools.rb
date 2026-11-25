@@ -70,6 +70,61 @@ module DocCategories
       end
     end
 
+    class ListUnindexedTopics
+      REQUIRED_SCOPES = ReadIndex::REQUIRED_SCOPES
+      TOPIC_SCHEMA =
+        DiscourseMcp::OutputSchema.object(
+          id: DiscourseMcp::OutputSchema::INTEGER,
+          title: DiscourseMcp::OutputSchema::STRING,
+          slug: DiscourseMcp::OutputSchema::STRING,
+          category_id: DiscourseMcp::OutputSchema::INTEGER,
+        )
+      OUTPUT_SCHEMA =
+        DiscourseMcp::OutputSchema.object(
+          topics: DiscourseMcp::OutputSchema::ARRAY.merge(items: TOPIC_SCHEMA),
+          total_count: DiscourseMcp::OutputSchema::INTEGER,
+          page: DiscourseMcp::OutputSchema::INTEGER,
+          per_page: DiscourseMcp::OutputSchema::INTEGER,
+        )
+
+      def self.call(arguments:, request_context:)
+        DocCategories::UnindexedTopicsList.call(
+          params: arguments,
+          options: {
+            exclude_saved_index: true,
+          },
+          guardian: request_context.guardian,
+        ) do
+          on_success do |topics:, total_count:, params:|
+            DiscourseMcp::ToolHelpers.text_and_structured(
+              topics:
+                ActiveModel::ArraySerializer.new(
+                  topics,
+                  each_serializer: DocCategories::UnindexedTopicSerializer,
+                  root: false,
+                ).as_json,
+              total_count:,
+              page: params.page.to_i,
+              per_page: DocCategories::UnindexedTopicsList::PAGE_SIZE,
+            )
+          end
+          on_failed_contract do |contract|
+            raise DiscourseMcp::ToolError, contract.errors.full_messages.join(", ")
+          end
+          on_model_not_found(:category) do
+            raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.category_not_found")
+          end
+          on_failed_policy(:can_list_topics) do
+            raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.category_not_found")
+          end
+          on_failure do
+            raise DiscourseMcp::ToolError,
+                  I18n.t("doc_categories.errors.unindexed_topics_unavailable")
+          end
+        end
+      end
+    end
+
     class PatchIndex
       REQUIRED_SCOPES = %w[discourse-doc-categories:write_index].freeze
 

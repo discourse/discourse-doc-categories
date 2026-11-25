@@ -31,6 +31,41 @@ module ::DocCategories
         )
 
         plugin.register_mcp_tool(
+          "discourse_documentation_index_list_unindexed_topics",
+          title: "List unindexed documentation topics",
+          description: <<~TEXT.squish,
+            Lists category topics that are missing from the saved documentation sidebar.
+            Requires a site admin. Results are paginated starting at page 0.
+          TEXT
+          implementation: DocCategories::McpTools::ListUnindexedTopics,
+          input_schema: {
+            type: "object",
+            properties: {
+              category_id: {
+                type: "integer",
+                minimum: 1,
+              },
+              page: {
+                type: "integer",
+                minimum: 0,
+                maximum: 999_999,
+                default: 0,
+              },
+            },
+            required: %w[category_id],
+            additionalProperties: false,
+          },
+          output_schema: DocCategories::McpTools::ListUnindexedTopics::OUTPUT_SCHEMA,
+          required_scopes: DocCategories::McpTools::ListUnindexedTopics::REQUIRED_SCOPES,
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+          },
+          risk: :read,
+          availability: -> { UpcomingChanges.enabled?(:doc_categories_index_editor) },
+        )
+
+        plugin.register_mcp_tool(
           "discourse_documentation_index_patch",
           title: "Edit documentation index",
           description: <<~TEXT.squish,

@@ -35,6 +35,7 @@ en:
       auto_index_section_cannot_have_subsections: "The auto-index section cannot have subsections."
       index_patch_conflict: "The documentation index changed during the edit. Read it again before retrying."
       index_patch_failed: "The documentation index could not be updated."
+      unindexed_topics_unavailable: "Unindexed topics could not be listed."
   site_settings:
     doc_categories_enabled: "Enable the Discourse Doc Categories Plugin"
     doc_categories_simple_mode: "Enable simple mode for doc categories. Simplifies topic lists and collapses comments behind a toggle on topic pages."

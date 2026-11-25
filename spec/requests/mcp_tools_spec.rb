@@ -154,6 +154,138 @@ describe "Documentation index MCP tools" do
     end
   end
 
+  describe "list unindexed topics" do
+    fab!(:user) { Fabricate(:admin, refresh_auto_groups: true) }
+
+    before do
+      McpPrimitive.find_or_initialize_by(
+        kind: "tool",
+        identifier: "discourse_documentation_index_list_unindexed_topics",
+      ).update!(enabled: true)
+    end
+
+    def call_list_unindexed_topics(category_id: category.id, **arguments)
+      call_mcp_tool(
+        "discourse_documentation_index_list_unindexed_topics",
+        category_id:,
+        **arguments,
+      )
+    end
+
+    it "requires the documentation index read scope" do
+      authorize
+
+      call_list_unindexed_topics
+
+      expect(response.status).to eq(403), response.body
+      expect(response.headers["WWW-Authenticate"]).to include(
+        'error="insufficient_scope"',
+        "scope=\"#{read_scope}\"",
+      )
+    end
+
+    it "lists category topics without links in the saved index" do
+      href_only_topic = Fabricate(:topic, category:)
+      unindexed_topic = Fabricate(:topic, category:)
+      Fabricate(
+        :doc_categories_sidebar_link,
+        sidebar_section: subsection,
+        topic: nil,
+        href: href_only_topic.relative_url,
+      )
+      authorize(read_scope)
+
+      call_list_unindexed_topics
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      expect(result["isError"]).to eq(false)
+      expect(result.fetch("structuredContent")).to match(
+        "topics" =>
+          contain_exactly(
+            {
+              "id" => unindexed_topic.id,
+              "title" => unindexed_topic.title,
+              "slug" => unindexed_topic.slug,
+              "category_id" => category.id,
+            },
+            hash_including("id" => index.index_topic_id, "category_id" => category.id),
+          ),
+        "total_count" => 2,
+        "page" => 0,
+        "per_page" => DocCategories::UnindexedTopicsList::PAGE_SIZE,
+      )
+    end
+
+    it "returns an empty page with the total count when the page is beyond the results" do
+      authorize(read_scope)
+
+      call_list_unindexed_topics(page: 1)
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      expect(result["isError"]).to eq(false)
+      expect(result.fetch("structuredContent")).to eq(
+        "topics" => [],
+        "total_count" => 1,
+        "page" => 1,
+        "per_page" => DocCategories::UnindexedTopicsList::PAGE_SIZE,
+      )
+    end
+
+    it "lists eligible topics when the category has no saved index" do
+      category_without_index = Fabricate(:category_with_definition)
+      eligible_topic = Fabricate(:topic, category: category_without_index)
+      authorize(read_scope)
+
+      call_list_unindexed_topics(category_id: category_without_index.id)
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      expect(result["isError"]).to eq(false)
+      expect(result.fetch("structuredContent")).to include(
+        "topics" => [hash_including("id" => eligible_topic.id)],
+        "total_count" => 1,
+      )
+    end
+
+    it "returns a tool error for a missing category" do
+      authorize(read_scope)
+
+      call_list_unindexed_topics(category_id: Category.maximum(:id) + 1)
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      expect(result).to include(
+        "isError" => true,
+        "content" => [
+          { "type" => "text", "text" => I18n.t("mcp_tools.errors.category_not_found") },
+        ],
+      )
+      expect(result).not_to have_key("structuredContent")
+    end
+
+    context "when the token belongs to a non-admin" do
+      fab!(:user) { Fabricate(:user, refresh_auto_groups: true) }
+
+      it "returns a tool error without exposing the topic list" do
+        authorize(read_scope)
+
+        call_list_unindexed_topics
+
+        expect(response.status).to eq(200), response.body
+        result = response.parsed_body.fetch("result")
+        expect(result).to include(
+          "isError" => true,
+          "content" => [
+            { "type" => "text", "text" => I18n.t("mcp_tools.errors.category_not_found") },
+          ],
+        )
+        expect(result).not_to have_key("structuredContent")
+      end
+    end
+  end
+
   describe "patch index" do
     fab!(:user) { Fabricate(:admin, refresh_auto_groups: true) }
     fab!(:other_section) { Fabricate(:doc_categories_sidebar_section, index:, title: "Themes") }

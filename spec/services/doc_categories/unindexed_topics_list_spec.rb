@@ -156,6 +156,29 @@ RSpec.describe DocCategories::UnindexedTopicsList do
       end
     end
 
+    context "when excluding saved index links as well as draft topic IDs" do
+      fab!(:index) do
+        Fabricate(
+          :doc_categories_index,
+          category:,
+          index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+        )
+      end
+      fab!(:sidebar_section) { Fabricate(:doc_categories_sidebar_section, index:) }
+      fab!(:sidebar_link) do
+        Fabricate(:doc_categories_sidebar_link, sidebar_section:, topic:, href: topic.relative_url)
+      end
+
+      let(:params) { { category_id: category.id, exclude_topic_ids: [other_topic.id] } }
+      let(:dependencies) { super().merge(options: { exclude_saved_index: true }) }
+
+      it "excludes both topics from the page and count" do
+        expect(result).to run_successfully
+        expect(result[:topics]).to be_empty
+        expect(result[:total_count]).to eq(0)
+      end
+    end
+
     context "when counting without loading a page" do
       let(:params) { { category_id: category.id, limit: 0 } }
 

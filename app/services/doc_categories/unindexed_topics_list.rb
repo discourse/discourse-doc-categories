@@ -7,6 +7,8 @@ module DocCategories
     PAGE_SIZE = 50
     MAX_EXCLUDED_TOPICS = Index::MAX_SECTIONS * Index::MAX_LINKS_PER_SECTION
 
+    options { attribute :exclude_saved_index, :boolean, default: false }
+
     params do
       attribute :category_id, :integer
       attribute :include_subcategories, :boolean, default: false
@@ -63,7 +65,12 @@ module DocCategories
         (SiteSetting.doc_categories_index_editor || category.doc_categories_index&.mode_direct?)
     end
 
-    def fetch_candidates(params:, category:, guardian:)
+    def fetch_candidates(params:, options:, category:, guardian:)
+      excluded_topic_ids = params.excluded_topic_ids
+      if options.exclude_saved_index
+        excluded_topic_ids |= Array(category.doc_categories_index&.indexed_topic_ids)
+      end
+
       scope =
         TopicCandidatesQuery
           .new(
@@ -72,7 +79,7 @@ module DocCategories
             include_subcategories: params.include_subcategories,
           )
           .scope
-          .where.not(id: params.excluded_topic_ids.uniq)
+          .where.not(id: excluded_topic_ids.uniq)
       if params.search.present?
         scope = scope.where("topics.title ILIKE ?", "%#{Topic.sanitize_sql_like(params.search)}%")
       end
