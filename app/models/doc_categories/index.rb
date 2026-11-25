@@ -39,10 +39,10 @@ module DocCategories
       index_topic_id.present? && index_topic_id > 0
     end
 
-    def sidebar_structure
+    def sidebar_structure(include_empty: false)
       sections =
         sidebar_sections.includes(sidebar_links: { topic: :category }).group_by(&:parent_section_id)
-      serialize_sections(sections.fetch(nil, []), sections).map(&:last)
+      serialize_sections(sections.fetch(nil, []), sections, include_empty:).map(&:last)
     end
 
     def auto_index_section
@@ -107,15 +107,15 @@ module DocCategories
 
     private
 
-    def serialize_sections(roots, sections)
+    def serialize_sections(roots, sections, include_empty:)
       roots.filter_map do |section|
-        children = serialize_sections(sections.fetch(section.id, []), sections)
+        children = serialize_sections(sections.fetch(section.id, []), sections, include_empty:)
         links =
           section.sidebar_links.filter_map do |link|
             data = serialize_link(link)
             [link.position, data] if data
           end
-        next if children.empty? && links.empty? && !section.auto_index?
+        next if children.empty? && links.empty? && !section.auto_index? && !include_empty
 
         data = { id: section.id, text: section.title }
         if children.empty?

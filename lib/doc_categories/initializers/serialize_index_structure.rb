@@ -13,7 +13,7 @@ module ::DocCategories
         end
       end
 
-      def self.serialize_index(category)
+      def self.serialize_index(category, include_empty: false)
         index = category&.doc_categories_index
         return nil if index.blank?
 
@@ -31,7 +31,7 @@ module ::DocCategories
           return nil unless category.id == index_topic.category_id
         end
 
-        index.sidebar_structure.presence&.as_json
+        index.sidebar_structure(include_empty:).presence&.as_json
       end
     end
   end

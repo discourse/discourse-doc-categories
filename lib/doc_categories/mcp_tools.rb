@@ -57,23 +57,43 @@ module DocCategories
           raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.category_not_found")
         end
 
-        DiscourseMcp::ToolHelpers.text_and_structured(
-          sections: DocCategories::Initializers::SerializeIndexStructure.serialize_index(category),
-        )
+        index_result(category)
+      end
+
+      def self.index_result(category)
+        sections =
+          DocCategories::Initializers::SerializeIndexStructure.serialize_index(
+            category,
+            include_empty: true,
+          )
+        DiscourseMcp::ToolHelpers.text_and_structured(sections: sections || [])
       end
     end
 
-    # class CreateIndexSection
-    #   REQUIRED_SCOPES = %w[documentation:write_index].freeze
-    #   OUTPUT_SCHEMA =
-    #     DiscourseMcp::OutputSchema.object(
-    #       id: DiscourseMcp::OutputSchema::INTEGER,
-    #       channel_id: DiscourseMcp::OutputSchema::INTEGER,
-    #       created_at: DiscourseMcp::OutputSchema::STRING,
-    #     )
+    class PatchIndex
+      REQUIRED_SCOPES = %w[discourse-doc-categories:write_index].freeze
 
-    #   def self.call(arguments:, request_context:)
-    #   end
-    # end
+      def self.call(arguments:, request_context:)
+        DocCategories::IndexPatcher.call(params: arguments, guardian: request_context.guardian) do
+          on_success { |category:| ReadIndex.index_result(category) }
+          on_failed_contract do |contract|
+            raise DiscourseMcp::ToolError, contract.errors.full_messages.join(", ")
+          end
+          on_failed_policy(:can_edit_index) do
+            raise DiscourseMcp::ToolError, I18n.t("doc_categories.errors.index_admin_required")
+          end
+          on_model_not_found(:category) do
+            raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.category_not_found")
+          end
+          on_failed_policy(:not_topic_managed) do
+            raise DiscourseMcp::ToolError, I18n.t("doc_categories.errors.index_topic_managed")
+          end
+          on_failed_step(:apply_patch) { |step| raise DiscourseMcp::ToolError, step.error }
+          on_failure do
+            raise DiscourseMcp::ToolError, I18n.t("doc_categories.errors.index_patch_failed")
+          end
+        end
+      end
+    end
   end
 end
