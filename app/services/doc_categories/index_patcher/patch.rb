@@ -31,10 +31,12 @@ module DocCategories
           @section = find_section(@params.section_id)
         when "remove_topic_link"
           @section = find_section(@params.section_id)
-          @links = section.sidebar_links.where(topic_id: @params.topic_id).to_a
+          @links =
+            section.sidebar_links.select { |link| link.referenced_topic_id == @params.topic_id }
           reject_patch("index_topic_link_not_found") if links.empty?
         end
 
+        @changes_index = calculate_index_change
         self
       end
 
@@ -47,10 +49,30 @@ module DocCategories
       end
 
       def section_items(parent)
-        children_of(parent) + (parent ? parent.sidebar_links.to_a : [])
+        (parent ? parent.sidebar_links.to_a : []) + children_of(parent)
+      end
+
+      def changes_index?
+        @changes_index
       end
 
       private
+
+      def calculate_index_change
+        return topics.present? if operation == "add_topic_links"
+        return true if operation != "move_section" || section.parent_section_id != parent&.id
+
+        siblings = section_items(parent).sort_by(&:position)
+        section_position = siblings.index(section)
+        case placement
+        when "before"
+          siblings[section_position + 1] != relative_section
+        when "after"
+          section_position == 0 || siblings[section_position - 1] != relative_section
+        when "inside"
+          siblings.last != section
+        end
+      end
 
       def prepare_new_section
         if @sections.size >= Index::MAX_SECTIONS
@@ -76,9 +98,9 @@ module DocCategories
       def topics_to_append
         topics = eligible_topics
         links = section.sidebar_links
-        existing_ids = links.where(topic_id: topics.map(&:id)).pluck(:topic_id)
+        existing_ids = links.filter_map(&:referenced_topic_id).to_set
         new_topics = topics.reject { |topic| existing_ids.include?(topic.id) }
-        if links.count + new_topics.size > Index::MAX_LINKS_PER_SECTION
+        if links.size + new_topics.size > Index::MAX_LINKS_PER_SECTION
           reject_patch("too_many_links", max: Index::MAX_LINKS_PER_SECTION)
         end
         new_topics
@@ -100,8 +122,26 @@ module DocCategories
 
       def validate_destination(subtree_depth:)
         reject_patch("auto_index_section_cannot_have_subsections") if parent&.auto_index?
+        validate_section_titles
         if ancestors(parent).size + subtree_depth > Index::MAX_SECTION_DEPTH
           reject_patch("section_depth_limit", max: Index::MAX_SECTION_DEPTH)
+        end
+      end
+
+      def validate_section_titles
+        if parent
+          if parent.title.blank? || (section && section.title.blank?)
+            reject_patch("index_section_title_required")
+          end
+        else
+          first_root = children_of(nil).find { |root| root != section }
+          placing_first =
+            relative_section && placement == "before" && relative_section == first_root
+          if (
+               section && section.title.blank? && (!placing_first || children_of(section).present?)
+             ) || (placing_first && first_root.title.blank?)
+            reject_patch("index_section_title_required")
+          end
         end
       end
 
@@ -120,7 +160,11 @@ module DocCategories
 
       def eligible_topics
         topic_ids = Array(@params.topic_ids)
-        topics = ::Topic.where(id: topic_ids, visible: true).includes(:category).index_by(&:id)
+        topics =
+          ::Topic
+            .where(id: topic_ids, visible: true)
+            .includes(:category, :shared_draft)
+            .index_by(&:id)
         topic_ids.map do |topic_id|
           topic = topics[topic_id]
           if topic.nil? || !TopicEligibility.allowed?(topic, category_id: category.id)

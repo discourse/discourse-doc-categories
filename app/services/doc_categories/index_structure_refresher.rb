@@ -10,26 +10,34 @@ module DocCategories
       validates :category_id, presence: true
     end
 
-    model :index
-    policy :is_topic_mode
-    only_if(:invalid_index_topic) do
-      transaction { step :remove_index }
-      step :publish_changes
-      step :ensure_valid_topic
+    transaction do
+      step :lock_category
+      model :index
+      policy :is_topic_mode
+      only_if(:invalid_index_topic) { step :remove_index }
+      only_if(:index_retained) do
+        model :topic
+        step :require_index_topic_body
+        model :raw_sections, :parse_first_post, optional: true
+        model :linked_topics, optional: true
+        model :built_sections, :build_sections, optional: true
+        step :replace_sections
+      end
     end
 
-    model :topic
-    step :parse_first_post
-    model :linked_topics, optional: true
-    model :built_sections, :build_sections, optional: true
-
-    transaction { step :replace_sections }
     step :publish_changes
+    only_if(:invalid_index_topic) { step :ensure_valid_topic }
 
     private
 
+    def lock_category(params:)
+      Index.lock_categories(params.category_id)
+    end
+
     def fetch_index(params:)
-      DocCategories::Index.includes(:index_topic).find_by(category_id: params.category_id)
+      DocCategories::Index.includes(index_topic: :shared_draft).find_by(
+        category_id: params.category_id,
+      )
     end
 
     def is_topic_mode(index:)
@@ -37,13 +45,15 @@ module DocCategories
     end
 
     def invalid_index_topic(index:)
-      topic = index.index_topic
-      topic.nil? || topic.private_message? || topic.trashed? ||
-        topic.category_id != index.category_id
+      !index.sidebar_available?
     end
 
     def remove_index(index:)
       index.destroy!
+    end
+
+    def index_retained(index:)
+      index.persisted?
     end
 
     def ensure_valid_topic
@@ -54,13 +64,12 @@ module DocCategories
       index.index_topic
     end
 
-    def parse_first_post(topic:)
-      first_post = topic.first_post
-      fail!("first post has no content") if first_post&.cooked.blank?
+    def require_index_topic_body(topic:)
+      fail!("first post has no content") if topic.first_post&.cooked.blank?
+    end
 
-      context[:raw_sections] = Array(
-        DocCategories::DocIndexTopicParser.new(first_post.cooked).sections,
-      )
+    def parse_first_post(topic:)
+      Array(DocCategories::DocIndexTopicParser.new(topic.first_post.cooked).sections)
     end
 
     def replace_sections(index:, built_sections:)
@@ -84,8 +93,7 @@ module DocCategories
     end
 
     def publish_changes(index:)
-      Site.clear_cache
-      index.category.publish_category
+      DocCategories::Action::PublishSidebarChanges.call(category_ids: [index.category_id])
     end
 
     def fetch_linked_topics(raw_sections:)
@@ -95,7 +103,7 @@ module DocCategories
           .filter_map { |link| DocCategories::Url.extract_topic_id_from_url(link[:href]) }
           .uniq
 
-      ::Topic.where(id: topic_ids).includes(:category).index_by(&:id)
+      ::Topic.where(id: topic_ids).includes(:category, :shared_draft).index_by(&:id)
     end
 
     def build_sections(index:, raw_sections:, linked_topics:)

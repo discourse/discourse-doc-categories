@@ -4,6 +4,8 @@ module DocCategories
   class CategoryIndexManager
     include Service::Base
 
+    options { attribute :expected_index_topic_id, :integer }
+
     params do
       attribute :category_id, :integer
       attribute :topic_id
@@ -16,30 +18,31 @@ module DocCategories
       end
     end
 
-    model :category
-    model :index, optional: true
-    policy :index_editor_enabled
+    transaction do
+      model :category
+      model :index, optional: true
+      policy :index_editor_enabled
 
-    only_if(:assigning_topic_mode) do
-      model :topic
-      policy :valid_index_topic
-    end
-
-    only_if(:changing_index) do
-      transaction do
-        only_if(:removing_index) { step :remove_index }
-        only_if(:replacing_direct_sections) { step :remove_direct_sections }
-        only_if(:assigning_index) { model :saved_index, :save_index }
+      only_if(:assigning_topic_mode) do
+        model :topic
+        policy :valid_index_topic
       end
 
-      only_if(:assigning_topic_mode) { step :schedule_refresh }
-      step :publish_changes
+      model :index_change, :plan_index_change
+      only_if(:removing_index) { step :remove_index }
+      only_if(:assigning_index) do
+        only_if(:replacing_direct_sections) { step :remove_direct_sections }
+        model :saved_index, :save_index
+      end
     end
+
+    only_if(:topic_index_assigned) { step :schedule_refresh }
+    only_if(:index_changed) { step :publish_changes }
 
     private
 
     def fetch_category(params:)
-      ::Category.find_by(id: params.category_id)
+      ::Category.lock.find_by(id: params.category_id)
     end
 
     def fetch_index(category:)
@@ -60,16 +63,24 @@ module DocCategories
     end
 
     def valid_index_topic(topic:, category:)
-      topic.category_id == category.id && !topic.private_message? && !topic.trashed?
+      topic.category_id == category.id && !topic.private_message? && !topic.trashed? &&
+        !topic.shared_draft
     end
 
-    def changing_index(params:, index:)
-      params.normalized_topic_id != index&.index_topic_id ||
-        (params.normalized_topic_id.nil? && index.present?)
+    def plan_index_change(params:, index:, options:)
+      if options.expected_index_topic_id && index&.index_topic_id != options.expected_index_topic_id
+        return :unchanged
+      end
+
+      topic_id = params.normalized_topic_id
+      return :remove if topic_id.nil? && index
+      return :assign if topic_id != index&.index_topic_id
+
+      :unchanged
     end
 
-    def removing_index(params:)
-      params.normalized_topic_id.nil?
+    def removing_index(index_change:)
+      index_change == :remove
     end
 
     def remove_index(index:, category:)
@@ -85,24 +96,32 @@ module DocCategories
       index.sidebar_sections.destroy_all
     end
 
-    def assigning_index(params:)
-      params.normalized_topic_id.present?
+    def assigning_index(index_change:)
+      index_change == :assign
     end
 
     def save_index(params:, category:, index:)
-      record = index || DocCategories::Index.new(category: category)
-      record.index_topic_id = params.normalized_topic_id
-      record.save
-      record
+      index_topic_id = params.normalized_topic_id
+      return Index.create(category:, index_topic_id:) if index.nil?
+
+      index.update(index_topic_id:)
+      index
     end
 
     def schedule_refresh(category:)
-      ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id)
+      DB.after_commit { ::Jobs.enqueue(:doc_categories_refresh_index, category_id: category.id) }
     end
 
     def publish_changes(category:)
-      Site.clear_cache
-      category.publish_category
+      DocCategories::Action::PublishSidebarChanges.call(category_ids: [category.id])
+    end
+
+    def topic_index_assigned(index_change:, params:)
+      index_change == :assign && assigning_topic_mode(params:)
+    end
+
+    def index_changed(index_change:)
+      index_change != :unchanged
     end
   end
 end

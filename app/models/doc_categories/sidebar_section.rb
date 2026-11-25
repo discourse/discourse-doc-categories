@@ -4,6 +4,8 @@ module DocCategories
   class SidebarSection < ActiveRecord::Base
     self.table_name = "doc_categories_sidebar_sections"
 
+    MAX_TITLE_LENGTH = 255
+
     belongs_to :index,
                class_name: "DocCategories::Index",
                foreign_key: :index_id,
@@ -20,7 +22,7 @@ module DocCategories
 
     validates :index_id, presence: true
     validates :position, presence: true, uniqueness: { scope: %i[index_id parent_section_id] }
-    validates :title, length: { maximum: 255 }, allow_blank: true
+    validates :title, length: { maximum: MAX_TITLE_LENGTH }, allow_blank: true
     validate :parent_belongs_to_index, if: :parent_section_id?
     validate :only_one_auto_index_section_per_index, if: :auto_index?
 

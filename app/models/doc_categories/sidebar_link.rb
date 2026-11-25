@@ -5,6 +5,10 @@ module DocCategories
     self.table_name = "doc_categories_sidebar_links"
     self.ignored_columns += %i[icon]
 
+    MAX_HREF_LENGTH = 2000
+    MAX_TITLE_LENGTH = 255
+    TOPIC_LOOKUP_BATCH_SIZE = 500
+
     belongs_to :sidebar_section,
                class_name: "DocCategories::SidebarSection",
                foreign_key: :sidebar_section_id,
@@ -13,6 +17,8 @@ module DocCategories
     belongs_to :topic, -> { with_deleted }, optional: true
 
     scope :auto_indexed, -> { where(auto_indexed: true) }
+    scope :auto_indexed_for_topic,
+          ->(topic_id) { auto_indexed.joins(sidebar_section: :index).where(topic_id:) }
 
     before_validation :populate_href_from_topic, if: -> { topic.present? && href.blank? }
 
@@ -26,11 +32,38 @@ module DocCategories
                 only_integer: true,
                 greater_than: -1,
               }
-    validates :title, length: { maximum: 255 }
-    validates :href, length: { maximum: 2000 }, presence: true
-    validate :topic_not_deleted
+    validates :title, length: { maximum: MAX_TITLE_LENGTH }
+    validates :href, length: { maximum: MAX_HREF_LENGTH }, presence: true
+    validate :topic_not_deleted, unless: :position_only_change?
+
+    def self.referenced_topic_id(topic_id, href)
+      topic_id || DocCategories::Url.extract_topic_id_from_url(href)
+    end
+
+    def self.targeting_topics(topic_ids)
+      href_link_ids =
+        topic_ids
+          .each_slice(TOPIC_LOOKUP_BATCH_SIZE)
+          .flat_map do |ids|
+            # The SQL filter narrows the candidates. Route recognition verifies the destination.
+            path = "/t/(?:[^/?#]+/)?(?:#{ids.join("|")})(?:[./?#]|$)"
+            matching_ids = ids.to_set
+            where("href ~ ?", path)
+              .pluck(:id, :href)
+              .filter_map { |id, href| id if matching_ids.include?(referenced_topic_id(nil, href)) }
+          end
+      where(topic_id: topic_ids).or(where(id: href_link_ids))
+    end
+
+    def referenced_topic_id
+      self.class.referenced_topic_id(topic_id, href)
+    end
 
     private
+
+    def position_only_change?
+      persisted? && changes_to_save.keys == ["position"]
+    end
 
     def topic_not_deleted
       return if topic.nil?

@@ -15,7 +15,11 @@ module DocCategories
       policy :topic_qualifies
       model :matching_indexes, optional: true
 
-      transaction { model :affected_indexes, :create_links, optional: true }
+      transaction do
+        model :locked_indexes, :lock_matching_indexes, optional: true
+        model :current_topic, :reload_eligible_topic, optional: true
+        model :affected_indexes, :create_links, optional: true
+      end
 
       only_if(:indexes_changed) { step :publish_changes }
 
@@ -26,7 +30,8 @@ module DocCategories
       end
 
       def topic_qualifies(topic:)
-        !topic.trashed? && topic.visible? && topic.archetype == Archetype.default
+        !topic.trashed? && topic.visible? && topic.archetype == Archetype.default &&
+          !topic.shared_draft
       end
 
       def fetch_matching_indexes(topic:)
@@ -38,17 +43,33 @@ module DocCategories
           .select { |index| index.matching_category_ids.include?(topic.category_id) }
       end
 
-      def create_links(matching_indexes:, topic:)
-        matching_indexes.filter_map do |index|
+      def lock_matching_indexes(matching_indexes:)
+        category_ids = Index.lock_categories(matching_indexes.map(&:category_id))
+        Index.where(category_id: category_ids)
+      end
+
+      def reload_eligible_topic(topic:)
+        current_topic = ::Topic.find_by(id: topic.id)
+        current_topic if current_topic && topic_qualifies(topic: current_topic)
+      end
+
+      def create_links(locked_indexes:, current_topic:)
+        return [] if !current_topic
+
+        locked_indexes.filter_map do |index|
+          if !index.mode_direct? || !index.matching_category_ids.include?(current_topic.category_id)
+            next
+          end
+
           section = index.auto_index_section
           next if section.nil?
-          next if index.sidebar_topic_linked?(topic)
+          next if index.sidebar_topic_linked?(current_topic)
           next if section.sidebar_links.count >= DocCategories::Index::MAX_LINKS_PER_SECTION
 
           next_position = (section.sidebar_links.maximum(:position) || -1) + 1
           section.sidebar_links.create!(
-            topic_id: topic.id,
-            href: topic.relative_url,
+            topic: current_topic,
+            href: current_topic.relative_url,
             position: next_position,
             auto_indexed: true,
           )
@@ -57,8 +78,9 @@ module DocCategories
       end
 
       def publish_changes(affected_indexes:)
-        Site.clear_cache
-        affected_indexes.each { |index| index.category.publish_category }
+        DocCategories::Action::PublishSidebarChanges.call(
+          category_ids: affected_indexes.map(&:category_id),
+        )
       end
 
       def indexes_changed(affected_indexes:)

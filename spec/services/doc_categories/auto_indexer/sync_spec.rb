@@ -27,9 +27,8 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
     end
 
     let(:params) { { index_id: index.id } }
-    let(:messages) { MessageBus.track_publish("/categories") { result } }
-
     let(:dependencies) { {} }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -71,11 +70,11 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
         expect(linked_topic_ids).to contain_exactly(topic_1.id, topic_2.id)
       end
 
-      it "does not duplicate already-linked topics" do
+      it "does not duplicate topics already linked by URL alone" do
         Fabricate(
           :doc_categories_sidebar_link,
           sidebar_section: auto_section,
-          topic: topic_1,
+          topic: nil,
           href: topic_1.relative_url,
           position: 0,
         )
@@ -85,6 +84,21 @@ RSpec.describe DocCategories::AutoIndexer::Sync do
         expect(auto_section.sidebar_links.auto_indexed.pluck(:topic_id)).to contain_exactly(
           topic_2.id,
         )
+      end
+
+      it "removes an existing auto-indexed link when its topic becomes a shared draft" do
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: auto_section,
+          topic: topic_1,
+          href: topic_1.relative_url,
+          position: 0,
+          auto_indexed: true,
+        )
+        Fabricate(:shared_draft, topic: topic_1, category:)
+
+        expect(result).to run_successfully
+        expect(auto_section.sidebar_links.auto_indexed.pluck(:topic_id)).to eq([topic_2.id])
       end
 
       it "excludes invisible topics" do

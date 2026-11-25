@@ -7,7 +7,11 @@ module ::DocCategories
         plugin.register_mcp_tool(
           "discourse_documentation_index_read",
           title: "Read documentation index",
-          description: "Reads the documentation sidebar structure index for a category",
+          description: <<~TEXT.squish,
+            Reads the documentation sidebar for a category. Large indexes are returned as an
+            ordered page of sections and links. If the result includes a next_offset, pass it
+            as offset to continue.
+          TEXT
           implementation: DocCategories::McpTools::ReadIndex,
           input_schema: {
             type: "object",
@@ -16,11 +20,16 @@ module ::DocCategories
                 type: "integer",
                 minimum: 1,
               },
+              offset: {
+                type: "integer",
+                minimum: 0,
+                description: "Request an ordered page starting at this entry offset.",
+              },
             },
             required: %w[category_id],
             additionalProperties: false,
           },
-          output_schema: DocCategories::McpTools::ReadIndex::SECTION_OUTPUT_SCHEMA,
+          output_schema: DocCategories::McpTools::ReadIndex::OUTPUT_SCHEMA,
           required_scopes: DocCategories::McpTools::ReadIndex::REQUIRED_SCOPES,
           annotations: {
             readOnlyHint: true,
@@ -48,7 +57,7 @@ module ::DocCategories
               page: {
                 type: "integer",
                 minimum: 0,
-                maximum: 999_999,
+                maximum: DocCategories::UnindexedTopicsList::MAX_PAGE,
                 default: 0,
               },
             },
@@ -73,6 +82,8 @@ module ::DocCategories
             topic links, move a section with its contents, append topic links, remove a section
             with its contents, or remove a topic link from a section. Use IDs from the read index
             tool. Adding a section without placement appends it at the top level.
+            If the result includes a read_offset, use the read index tool with that offset
+            to fetch the updated sidebar.
           TEXT
           implementation: DocCategories::McpTools::PatchIndex,
           input_schema: {
@@ -89,7 +100,7 @@ module ::DocCategories
               title: {
                 type: "string",
                 minLength: 1,
-                maxLength: 255,
+                maxLength: DocCategories::SidebarSection::MAX_TITLE_LENGTH,
               },
               section_id: {
                 type: "integer",
@@ -146,7 +157,7 @@ module ::DocCategories
               end,
             additionalProperties: false,
           },
-          output_schema: DocCategories::McpTools::ReadIndex::SECTION_OUTPUT_SCHEMA,
+          output_schema: DocCategories::McpTools::PatchIndex::OUTPUT_SCHEMA,
           required_scopes: DocCategories::McpTools::PatchIndex::REQUIRED_SCOPES,
           annotations: {
             readOnlyHint: false,

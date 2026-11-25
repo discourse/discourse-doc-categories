@@ -11,20 +11,30 @@ module DocCategories
         validates :topic_id, presence: true
       end
 
-      model :auto_indexed_links, optional: true
-      model :affected_categories, optional: true
-
-      transaction { step :destroy_links }
+      transaction do
+        model :locked_category_ids, :lock_categories, optional: true
+        model :auto_indexed_links, optional: true
+        model :affected_categories, optional: true
+        step :destroy_links
+      end
 
       only_if(:categories_changed) { step :publish_changes }
 
       private
 
-      def fetch_auto_indexed_links(params:)
-        DocCategories::SidebarLink
-          .auto_indexed
-          .joins(sidebar_section: :index)
-          .where(topic_id: params.topic_id)
+      def lock_categories(params:)
+        category_ids =
+          SidebarLink
+            .auto_indexed_for_topic(params.topic_id)
+            .distinct
+            .pluck("doc_categories_indexes.category_id")
+        Index.lock_categories(category_ids)
+      end
+
+      def fetch_auto_indexed_links(params:, locked_category_ids:)
+        SidebarLink
+          .auto_indexed_for_topic(params.topic_id)
+          .where(doc_categories_indexes: { category_id: locked_category_ids })
           .includes(sidebar_section: { index: :category })
       end
 
@@ -41,8 +51,9 @@ module DocCategories
       end
 
       def publish_changes(affected_categories:)
-        Site.clear_cache
-        affected_categories.each(&:publish_category)
+        DocCategories::Action::PublishSidebarChanges.call(
+          category_ids: affected_categories.map(&:id),
+        )
       end
     end
   end

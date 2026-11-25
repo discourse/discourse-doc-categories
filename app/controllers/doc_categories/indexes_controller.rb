@@ -4,6 +4,7 @@ module ::DocCategories
   class IndexesController < ::ApplicationController
     requires_plugin PLUGIN_NAME
     before_action :ensure_admin
+    before_action :ensure_category_visible
     before_action :ensure_index_editor_enabled
 
     def unindexed_topics
@@ -31,8 +32,7 @@ module ::DocCategories
     end
 
     def update
-      save_params = params.to_unsafe_h.slice(:category_id, :sections, :force_direct)
-      DocCategories::IndexSaver.call(params: save_params, guardian: guardian) do
+      DocCategories::IndexSaver.call(service_params) do
         on_success do |index_structure:|
           render json: success_json.merge(index_structure: index_structure)
         end
@@ -56,12 +56,16 @@ module ::DocCategories
 
     private
 
+    def ensure_category_visible
+      @category = ::Category.find_by(id: params[:category_id])
+      raise Discourse::NotFound if !guardian.can_see_category?(@category)
+    end
+
     def ensure_index_editor_enabled
       return if SiteSetting.doc_categories_index_editor
 
       # Allow edits to categories already in direct mode
-      index = DocCategories::Index.find_by(category_id: params[:category_id])
-      raise Discourse::InvalidAccess if index.nil? || !index.mode_direct?
+      raise Discourse::InvalidAccess if !@category.doc_categories_index&.mode_direct?
     end
   end
 end

@@ -44,6 +44,16 @@ RSpec.describe ::DocCategories::IndexesController do
       expect(response.status).to eq(404)
     end
 
+    it "returns 404 when the category is hidden from the admin" do
+      restricted_category = Fabricate(:private_category, group: Fabricate(:group))
+      SiteSetting.suppress_secured_categories_from_admin = true
+      sign_in(admin)
+
+      post "/doc-categories/indexes/#{restricted_category.id}/unindexed_topics.json"
+
+      expect(response.status).to eq(404)
+    end
+
     it "excludes draft topic IDs and category definitions before counting" do
       sign_in(admin)
 
@@ -248,6 +258,74 @@ RSpec.describe ::DocCategories::IndexesController do
     fab!(:category)
 
     before { SiteSetting.doc_categories_index_editor = true }
+
+    context "when a moderator can manage categories" do
+      fab!(:moderator)
+      fab!(:index) do
+        Fabricate(
+          :doc_categories_index,
+          category:,
+          index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
+        )
+      end
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index:) }
+      fab!(:topic) { Fabricate(:topic_with_op, category:) }
+
+      let(:category_params) do
+        { name: "New category name", color: category.color, text_color: category.text_color }
+      end
+
+      before do
+        SiteSetting.moderators_manage_categories = true
+        sign_in(moderator)
+      end
+
+      it "rejects sidebar content from the category update route" do
+        expect do
+          put "/categories/#{category.id}.json",
+              params: category_params.merge(doc_index_sections: "[]"),
+              as: :json
+        end.not_to change { index.sidebar_sections.pluck(:id) }
+
+        expect(response.status).to eq(403)
+      end
+
+      it "rejects changing the source topic from the category update route" do
+        expect do
+          put "/categories/#{category.id}.json",
+              params: category_params.merge(doc_index_topic_id: topic.id),
+              as: :json
+        end.not_to change { index.reload.index_topic_id }
+
+        expect(response.status).to eq(403)
+      end
+
+      it "accepts a regular category edit with empty index fields" do
+        put "/categories/#{category.id}.json",
+            params: category_params.merge(doc_index_topic_id: nil, doc_index_sections: nil),
+            as: :json
+
+        expect(response.status).to eq(200)
+        expect(category.reload.name).to eq(category_params[:name])
+        expect(index.reload).to be_mode_direct
+        expect(index.sidebar_sections.pluck(:id)).to eq([section.id])
+      end
+    end
+
+    it "returns 404 instead of updating a category hidden from the admin" do
+      restricted_category = Fabricate(:private_category, group: Fabricate(:group))
+      SiteSetting.suppress_secured_categories_from_admin = true
+      sign_in(admin)
+
+      put "/doc-categories/indexes/#{restricted_category.id}.json",
+          params: {
+            sections: [{ title: "Private", links: [{ title: "Guide", href: "/guide" }] }],
+          },
+          as: :json
+
+      expect(response.status).to eq(404)
+      expect(DocCategories::Index.exists?(category: restricted_category)).to eq(false)
+    end
 
     context "when a submitted link references a private subcategory topic" do
       fab!(:group)

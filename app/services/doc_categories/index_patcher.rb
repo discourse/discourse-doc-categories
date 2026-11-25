@@ -26,7 +26,7 @@ module DocCategories
 
       validates :category_id, numericality: { only_integer: true, greater_than: 0 }
       validates :operation, inclusion: { in: OPERATIONS.keys }
-      validates :title, length: { maximum: 255 }, allow_nil: true
+      validates :title, length: { maximum: SidebarSection::MAX_TITLE_LENGTH }, allow_nil: true
       validates :section_id,
                 :relative_section_id,
                 :topic_id,
@@ -76,16 +76,18 @@ module DocCategories
     end
 
     policy :can_edit_index
-    model :category
 
     transaction do
-      step :lock_category
+      model :category
       model :index, optional: true
+      policy :index_editor_enabled
       policy :not_topic_managed
-      step :apply_patch
+      model :patch, :build_patch
+      step :prepare_patch
+      only_if(:index_changed) { step :apply_patch }
     end
 
-    step :publish_changes
+    only_if(:index_changed) { step :publish_changes }
 
     private
 
@@ -94,34 +96,45 @@ module DocCategories
     end
 
     def fetch_category(params:, guardian:)
-      category = ::Category.find_by(id: params.category_id)
+      category = ::Category.lock.find_by(id: params.category_id)
       category if guardian.can_see_category?(category)
     end
 
-    def lock_category(category:)
-      category.lock!
+    def fetch_index(category:)
+      DocCategories::Index.find_by(category:)
     end
 
-    def fetch_index(category:)
-      DocCategories::Index.lock.find_by(category:)
+    def index_editor_enabled(index:)
+      SiteSetting.doc_categories_enabled &&
+        (UpcomingChanges.enabled?(:doc_categories_index_editor) || index&.mode_direct?)
     end
 
     def not_topic_managed(index:)
       !index&.mode_topic?
     end
 
-    def apply_patch(category:, index:, params:)
-      patch = Patch.new(category:, index:, params:).prepare!
-      DocCategories::Action::ApplyPatch.call(patch:)
+    def build_patch(category:, index:, params:)
+      Patch.new(category:, index:, params:)
+    end
+
+    def prepare_patch(patch:)
+      patch.prepare!
     rescue Patch::Invalid => error
       fail!(error.message)
+    end
+
+    def index_changed(patch:)
+      patch.changes_index?
+    end
+
+    def apply_patch(patch:)
+      DocCategories::Action::ApplyPatch.call(patch:)
     rescue ActiveRecord::RecordNotUnique
       fail!(I18n.t("doc_categories.errors.index_patch_conflict"))
     end
 
     def publish_changes(category:)
-      Site.clear_cache
-      category.publish_category
+      DocCategories::Action::PublishSidebarChanges.call(category_ids: [category.id])
     end
   end
 end

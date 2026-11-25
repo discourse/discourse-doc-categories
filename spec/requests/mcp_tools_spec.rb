@@ -55,8 +55,21 @@ describe "Documentation index MCP tools" do
     @token = McpOauthAccessToken.issue!(authorization:)
   end
 
-  def call_read_index
-    call_mcp_tool("discourse_documentation_index_read", category_id: category.id)
+  def call_read_index(**arguments)
+    call_mcp_tool("discourse_documentation_index_read", category_id: category.id, **arguments)
+  end
+
+  def populate_large_sidebar
+    SiteSetting.mcp_max_response_bytes = 16_384
+    first_position = subsection.sidebar_links.maximum(:position) + 1
+    Array.new(12) do |offset|
+      Fabricate(
+        :doc_categories_sidebar_link,
+        sidebar_section: subsection,
+        href: "https://docs.example.com/guide/#{offset}?tracking=#{"x" * 1_500}",
+        position: first_position + offset,
+      )
+    end
   end
 
   def call_mcp_tool(name, **arguments)
@@ -79,6 +92,74 @@ describe "Documentation index MCP tools" do
   end
 
   describe "read index" do
+    it "returns bounded pages containing each nested entry in sidebar order" do
+      external_links = populate_large_sidebar
+      authorize(read_scope)
+
+      entries = []
+      offset = nil
+      (external_links.size + 3).times do
+        call_read_index(**(offset.nil? ? {} : { offset: }))
+        expect(response.status).to eq(200), response.body
+        expect(response.body.bytesize).to be <= SiteSetting.mcp_max_response_bytes
+        result = response.parsed_body.fetch("result")
+        expect(result["isError"]).to eq(false)
+        page = result.fetch("structuredContent")
+        entries.concat(page.fetch("entries"))
+        offset = page.fetch("next_offset")
+        break if offset.nil?
+        expect(offset).to eq(entries.size)
+      end
+
+      expect(offset).to be_nil
+      expect(entries.first(2)).to eq(
+        [
+          {
+            "type" => "section",
+            "id" => section.id,
+            "parent_section_id" => nil,
+            "text" => section.title,
+          },
+          {
+            "type" => "section",
+            "id" => subsection.id,
+            "parent_section_id" => section.id,
+            "text" => subsection.title,
+          },
+        ],
+      )
+      expect(entries.drop(2).pluck("type", "section_id", "href")).to eq(
+        [link, *external_links].map { |entry| ["link", subsection.id, entry.href] },
+      )
+    end
+
+    it "omits shared drafts and private topic URLs even without a stored topic ID" do
+      private_category = Fabricate(:private_category, group: private_group)
+      private_topic = Fabricate(:topic, category: private_category)
+      draft_topic = Fabricate(:topic, category:)
+      Fabricate(:shared_draft, topic: draft_topic, category:)
+      private_links =
+        [private_topic, draft_topic].map do |hidden_topic|
+          Fabricate(
+            :doc_categories_sidebar_link,
+            sidebar_section: subsection,
+            title: hidden_topic.title,
+            href: "#{hidden_topic.relative_url}.json",
+          )
+        end
+      authorize(read_scope)
+
+      call_read_index
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      nested_section = result.dig("structuredContent", "sections", 0, "items", 0)
+      expect(nested_section.fetch("links").pluck("href")).to eq([link.href])
+      expect(response.body).not_to include(
+        *private_links.flat_map { |entry| [entry.title, entry.href] },
+      )
+    end
+
     context "when the user can view the category" do
       before do
         category.set_permissions(group => :readonly)
@@ -249,6 +330,19 @@ describe "Documentation index MCP tools" do
       )
     end
 
+    it "lists eligible topics from a stale sidebar while omitting shared drafts" do
+      Fabricate(:shared_draft, topic: index.index_topic, category:)
+      authorize(read_scope)
+
+      call_list_unindexed_topics
+
+      expect(response.status).to eq(200), response.body
+      result = response.parsed_body.fetch("result")
+      content = result.fetch("structuredContent")
+      expect(content.fetch("topics").pluck("id")).to eq([topic.id])
+      expect(content.fetch("total_count")).to eq(1)
+    end
+
     it "returns a tool error for a missing category" do
       authorize(read_scope)
 
@@ -322,6 +416,63 @@ describe "Documentation index MCP tools" do
         "isError" => true,
         "content" => [{ "type" => "text", "text" => I18n.t(translation_key) }],
       )
+    end
+
+    it "acknowledges a committed patch when the resulting sidebar exceeds the response limit" do
+      populate_large_sidebar
+      authorize(read_scope, write_scope)
+
+      call_patch_index(operation: "add_section", title: "Added after commit")
+
+      expect(tool_result.fetch("structuredContent")).to eq(
+        "applied" => true,
+        "category_id" => category.id,
+        "read_offset" => 0,
+      )
+      expect(tool_result["isError"]).to eq(false)
+      expect(response.body.bytesize).to be <= SiteSetting.mcp_max_response_bytes
+      expect(index.sidebar_sections.pluck(:title)).to include("Added after commit")
+    end
+
+    it "rejects a write to a category hidden from the admin" do
+      category.set_permissions(private_group => :readonly)
+      category.save!
+      SiteSetting.suppress_secured_categories_from_admin = true
+      authorize(write_scope)
+
+      expect do call_patch_index(operation: "add_section", title: "Hidden") end.not_to change {
+        index.sidebar_sections.count
+      }
+      expect_patch_error("mcp_tools.errors.category_not_found")
+    end
+
+    it "rejects a shared draft even in a category the admin can edit" do
+      Fabricate(:shared_draft, topic: first_topic, category:)
+      authorize(write_scope)
+
+      expect do
+        call_patch_index(
+          operation: "add_topic_links",
+          section_id: subsection.id,
+          topic_ids: [second_topic.id, first_topic.id],
+        )
+      end.not_to change { subsection.sidebar_links.pluck(:id) }
+      expect_patch_error("doc_categories.errors.index_topic_unavailable")
+    end
+
+    it "rejects making an untitled first section into a subsection" do
+      section.update!(title: "")
+      authorize(write_scope)
+
+      expect do
+        call_patch_index(
+          operation: "move_section",
+          section_id: section.id,
+          placement: "inside",
+          relative_section_id: other_section.id,
+        )
+      end.not_to change { section.reload.parent_section_id }
+      expect_patch_error("doc_categories.errors.index_section_title_required")
     end
 
     it "requires the write scope even when the token has the read scope" do
