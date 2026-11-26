@@ -38,6 +38,19 @@ module DocCategories
         end
       end
 
+      def referenced_topic_ids(items)
+        items
+          .flat_map do |item|
+            if item.key?(:items)
+              referenced_topic_ids(item[:items])
+            else
+              [item[:topic_id], DocCategories::Url.extract_topic_id_from_url(item[:href])]
+            end
+          end
+          .compact
+          .uniq
+      end
+
       private
 
       def invalid_sections
@@ -104,7 +117,7 @@ module DocCategories
       end
 
       def build_section(section, allow_untitled: false, auto_index: false)
-        title = section[:title].to_s.strip.first(255)
+        title = section[:title].to_s.strip.first(SidebarSection::MAX_TITLE_LENGTH)
         return if title.blank? && !allow_untitled
 
         items =
@@ -119,25 +132,25 @@ module DocCategories
       end
 
       def build_link(link)
-        title = link[:title].to_s.strip.first(255).presence
-        href = link[:href].to_s.strip.first(2000)
+        title = link[:title].to_s.strip.first(SidebarLink::MAX_TITLE_LENGTH).presence
+        href = link[:href].to_s.strip.first(SidebarLink::MAX_HREF_LENGTH)
         return if href.blank?
 
-        topic_id =
-          link[:topic_id].presence&.to_i || DocCategories::Url.extract_topic_id_from_url(href)
+        topic_id = SidebarLink.referenced_topic_id(link[:topic_id].presence&.to_i, href)
         return if title.blank? && topic_id.blank?
 
         { title:, href:, topic_id: }
       end
     end
 
-    model :category
-    model :index, optional: true
-    policy :not_topic_managed
-    step :parse_and_validate_sections
-    step :validate_topic_visibility
-
     transaction do
+      model :category
+      model :index, optional: true
+      policy :not_topic_managed
+      step :parse_and_validate_sections
+      model :built_sections, :build_sections, optional: true
+      step :validate_topic_visibility
+
       only_if(:removing_index) { step :remove_index }
       only_if(:saving_sections) do
         model :saved_index, :save_index
@@ -146,12 +159,12 @@ module DocCategories
     end
 
     only_if(:index_changed) { step :publish_changes }
-    step :build_response
+    model :index_structure, :build_response, optional: true
 
     private
 
     def fetch_category(params:)
-      ::Category.find_by(id: params.category_id)
+      ::Category.lock.find_by(id: params.category_id)
     end
 
     def fetch_index(category:)
@@ -162,32 +175,25 @@ module DocCategories
       index.nil? || !index.mode_topic? || params.force_direct
     end
 
-    def parse_and_validate_sections(params:, index:)
+    def parse_and_validate_sections(params:)
       error = params.sections_error
       fail!(error) if error
-      auto_index_section_id = index.auto_index_section&.id if index&.mode_direct?
-      context[:built_sections] = params.built_sections(auto_index_section_id:)
     end
 
-    def validate_topic_visibility(built_sections:, category:)
+    def build_sections(params:, index:)
+      auto_index_section_id = index.auto_index_section&.id if index&.mode_direct?
+      params.built_sections(auto_index_section_id:)
+    end
+
+    def validate_topic_visibility(params:, built_sections:, category:)
       topics =
-        ::Topic.with_deleted.where(id: referenced_topic_ids(built_sections)).includes(:category)
+        ::Topic
+          .with_deleted
+          .where(id: params.referenced_topic_ids(built_sections))
+          .includes(:category, :shared_draft)
       unless topics.all? { |topic| TopicEligibility.allowed?(topic, category_id: category.id) }
         fail!(I18n.t("doc_categories.errors.private_topic"))
       end
-    end
-
-    def referenced_topic_ids(items)
-      items
-        .flat_map do |item|
-          if item.key?(:items)
-            referenced_topic_ids(item[:items])
-          else
-            [item[:topic_id], DocCategories::Url.extract_topic_id_from_url(item[:href])]
-          end
-        end
-        .compact
-        .uniq
     end
 
     def removing_index(built_sections:, index:)
@@ -204,10 +210,11 @@ module DocCategories
     end
 
     def save_index(category:, index:)
-      record = index || DocCategories::Index.new(category: category)
-      record.index_topic_id = DocCategories::Index::INDEX_TOPIC_ID_DIRECT
-      record.save
-      record
+      index_topic_id = Index::INDEX_TOPIC_ID_DIRECT
+      return Index.create(category:, index_topic_id:) if index.nil?
+
+      index.update(index_topic_id:)
+      index
     end
 
     def replace_sections(built_sections:, saved_index:)
@@ -219,15 +226,12 @@ module DocCategories
     end
 
     def publish_changes(category:)
-      Site.clear_cache
-      category.publish_category
+      DocCategories::Action::PublishSidebarChanges.call(category_ids: [category.id])
     end
 
     def build_response(category:)
-      context[:index_structure] = DocCategories::Index
-        .find_by(category: category)
-        &.sidebar_structure
-        &.as_json
+      index = DocCategories::Index.find_by(category:)
+      DocCategories::IndexSerializer.new(index, root: false).as_json&.dig(:sections)&.as_json
     end
   end
 end

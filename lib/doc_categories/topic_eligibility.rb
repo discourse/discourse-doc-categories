@@ -8,7 +8,7 @@ module DocCategories
 
     # Sidebar structures are shared without a per-reader guardian.
     def self.allowed?(topic, category_id:)
-      !topic.private_message? &&
+      !topic.private_message? && !topic.shared_draft &&
         (topic.category_id == category_id || topic.category&.read_restricted? == false)
     end
   end

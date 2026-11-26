@@ -69,6 +69,7 @@ after_initialize do
 
   reloadable_patch do
     Category.prepend ::DocCategories::Initializers::CategoryExtension
+    CategoriesController.prepend ::DocCategories::Initializers::AddCategoryExtensions::CategoryUpdatePermissions
     register_category_type(DocCategories::Categories::Types::Documentation)
   end
 

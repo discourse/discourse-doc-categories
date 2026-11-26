@@ -11,12 +11,12 @@ module DocCategories
         validates :index_id, presence: true
       end
 
-      model :index
-      model :auto_index_section
-      model :topics_to_add, optional: true
-      model :stale_links, optional: true
-
       transaction do
+        step :lock_category
+        model :index
+        model :auto_index_section
+        model :topics_to_add, optional: true
+        model :stale_links, optional: true
         step :remove_stale_links
         model :added_links, :add_missing_topics, optional: true
       end
@@ -24,6 +24,10 @@ module DocCategories
       only_if(:index_changed) { step :publish_changes }
 
       private
+
+      def lock_category(params:)
+        Index.lock_categories(Index.where(id: params.index_id).select(:category_id))
+      end
 
       def fetch_index(params:)
         DocCategories::Index.find_by(id: params.index_id)
@@ -34,17 +38,11 @@ module DocCategories
       end
 
       def fetch_topics_to_add(index:)
-        existing_topic_ids =
-          DocCategories::SidebarLink
-            .joins(:sidebar_section)
-            .where(sidebar_section: { index_id: index.id })
-            .where.not(topic_id: nil)
-            .select(:topic_id)
-
         ::Topic
           .where(category_id: index.matching_category_ids)
           .where(visible: true, archetype: Archetype.default, deleted_at: nil)
-          .where.not(id: existing_topic_ids)
+          .where.not(id: ::SharedDraft.select(:topic_id))
+          .where.not(id: index.indexed_topic_ids)
           .order(created_at: :desc)
           .limit(DocCategories::Index::MAX_LINKS_PER_SECTION)
           .to_a
@@ -62,6 +60,7 @@ module DocCategories
             OR topics.visible = false
             OR topics.archetype != ?
             OR topics.category_id NOT IN (?)
+            OR EXISTS (SELECT 1 FROM shared_drafts WHERE shared_drafts.topic_id = topics.id)
           SQL
           .to_a
       end
@@ -95,8 +94,7 @@ module DocCategories
       end
 
       def publish_changes(index:)
-        Site.clear_cache
-        index.category.publish_category
+        DocCategories::Action::PublishSidebarChanges.call(category_ids: [index.category_id])
       end
     end
   end

@@ -21,6 +21,9 @@ module ::DocCategories
             category_id: category.id,
             topic_id: nil,
           },
+          options: {
+            expected_index_topic_id: topic.id,
+          },
         )
       end
     end

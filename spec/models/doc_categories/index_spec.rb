@@ -108,10 +108,35 @@ describe DocCategories::Index do
 
   describe "#sidebar_structure" do
     fab!(:direct_index) do
-      described_class.create!(
-        category: category,
+      Fabricate(
+        :doc_categories_index,
+        category:,
         index_topic_id: DocCategories::Index::INDEX_TOPIC_ID_DIRECT,
       )
+    end
+
+    context "when a linked topic becomes a shared draft" do
+      fab!(:section) { Fabricate(:doc_categories_sidebar_section, index: direct_index) }
+      fab!(:topic) { Fabricate(:topic, category:) }
+      fab!(:link) do
+        Fabricate(:doc_categories_sidebar_link, sidebar_section: section, href: topic.relative_url)
+      end
+
+      let(:messages) do
+        MessageBus.track_publish("/categories") { Fabricate(:shared_draft, topic:, category:) }
+      end
+
+      before { SiteSetting.doc_categories_enabled = true }
+
+      it "republishes the sidebar without the draft's saved link" do
+        expect(direct_index.sidebar_structure.first.fetch(:links).pluck(:href)).to eq([link.href])
+
+        category_updates = messages.flat_map { |message| message.data[:categories] }
+        expect(category_updates.map { |update| update.slice(:id, :doc_category_index) }).to eq(
+          [{ id: category.id, doc_category_index: nil }],
+        )
+        expect(direct_index.sidebar_structure).to be_empty
+      end
     end
 
     it "returns a link with text from topic title and href from topic URL" do

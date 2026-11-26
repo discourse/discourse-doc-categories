@@ -28,9 +28,8 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
     fab!(:topic) { Fabricate(:topic, category: category) }
 
     let(:params) { { topic_id: topic.id } }
-    let(:messages) { MessageBus.track_publish("/categories") { result } }
-
     let(:dependencies) { {} }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -72,12 +71,12 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
       it { is_expected.to fail_a_policy(:topic_qualifies) }
     end
 
-    context "when the topic is already linked" do
+    context "when the topic is already linked by URL alone" do
       fab!(:link) do
         Fabricate(
           :doc_categories_sidebar_link,
           sidebar_section: auto_section,
-          topic: topic,
+          topic: nil,
           href: topic.relative_url,
           position: 0,
         )
@@ -86,6 +85,7 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
       it "leaves the category unpublished" do
         expect(messages).to be_empty
         expect(result).to run_successfully
+        expect(auto_section.sidebar_links.pluck(:id)).to eq([link.id])
       end
     end
 
@@ -107,13 +107,20 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
         expect(link.position).to eq(0)
       end
 
-      it "sets incrementing positions for multiple topics" do
+      it "sets the next position after an existing automatic link" do
         other_topic = Fabricate(:topic, category: category)
-        described_class.call(params: { topic_id: other_topic.id })
+        Fabricate(
+          :doc_categories_sidebar_link,
+          sidebar_section: auto_section,
+          topic: other_topic,
+          href: other_topic.relative_url,
+          position: 0,
+          auto_indexed: true,
+        )
         result
 
         links = auto_section.sidebar_links.auto_indexed.order(:position)
-        expect(links.map(&:position)).to eq([0, 1])
+        expect(links.pluck(:topic_id, :position)).to eq([[other_topic.id, 0], [topic.id, 1]])
       end
 
       it "skips indexes where the topic is already linked" do
@@ -139,24 +146,6 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
 
           expect { result }.not_to change { DocCategories::SidebarLink.count }
         end
-      end
-
-      it "does not match indexes that are not in direct mode" do
-        topic_mode_index = Fabricate(:doc_categories_index)
-        Fabricate(
-          :doc_categories_sidebar_section,
-          index: topic_mode_index,
-          auto_index: true,
-          title: "Auto",
-          position: 0,
-        )
-        topic_in_that_category = Fabricate(:topic, category: topic_mode_index.category)
-
-        result = described_class.call(params: { topic_id: topic_in_that_category.id })
-        expect(result).to run_successfully
-        expect(
-          DocCategories::SidebarLink.auto_indexed.where(topic_id: topic_in_that_category.id).count,
-        ).to eq(0)
       end
 
       it "does not match indexes whose category does not match the topic" do
@@ -237,6 +226,27 @@ RSpec.describe DocCategories::AutoIndexer::AddTopic do
         it "leaves subcategory topics unindexed" do
           expect { result }.not_to change { DocCategories::SidebarLink.auto_indexed.count }
         end
+      end
+    end
+
+    context "when an index is topic-managed" do
+      fab!(:topic_mode_index, :doc_categories_index)
+      fab!(:topic_section) do
+        Fabricate(
+          :doc_categories_sidebar_section,
+          index: topic_mode_index,
+          auto_index: true,
+          title: "Auto",
+          position: 0,
+        )
+      end
+      fab!(:topic_in_that_category) { Fabricate(:topic, category: topic_mode_index.category) }
+
+      let(:params) { { topic_id: topic_in_that_category.id } }
+
+      it "leaves the topic-managed index untouched" do
+        expect(result).to run_successfully
+        expect(topic_section.sidebar_links).to be_empty
       end
     end
   end

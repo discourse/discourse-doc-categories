@@ -160,6 +160,25 @@ RSpec.describe SiteController do
       expect(serialized_links(category.id).pluck("topic_id")).to eq([public_topic.id])
     end
 
+    it "invalidates cached and live URL-only links with a format suffix" do
+      href = "#{public_topic.relative_url}.json"
+      public_link.update!(topic: nil, title: public_topic.title, href:)
+
+      get "/site.json"
+      expect(serialized_links(category.id).pluck("href")).to eq([href])
+
+      messages =
+        MessageBus.track_publish("/categories") do
+          public_subcategory.set_permissions(group.name => :full)
+          public_subcategory.save!
+        end
+
+      expect(published_links(messages)).to be_empty
+      get "/site.json"
+      expect(serialized_links(category.id)).to be_empty
+      expect(response.body).not_to include(href, public_topic.title)
+    end
+
     it "removes cached and live links when a topic becomes a private message" do
       get "/site.json"
       expect(serialized_links(category.id).pluck("topic_id")).to eq([public_topic.id])

@@ -27,6 +27,10 @@ module DocCategories
 
     validate :index_topic_matches_category, if: :mode_topic?
 
+    def self.lock_categories(category_ids)
+      ::Category.where(id: category_ids).order(:id).lock.pluck(:id)
+    end
+
     def mode_none?
       index_topic_id.nil?
     end
@@ -39,10 +43,24 @@ module DocCategories
       index_topic_id.present? && index_topic_id > 0
     end
 
-    def sidebar_structure
-      sections =
-        sidebar_sections.includes(sidebar_links: { topic: :category }).group_by(&:parent_section_id)
-      serialize_sections(sections.fetch(nil, []), sections).map(&:last)
+    def sidebar_available?
+      !mode_topic? ||
+        (
+          index_topic.present? && !index_topic.trashed? && !index_topic.private_message? &&
+            !index_topic.shared_draft && index_topic.category_id == category_id
+        )
+    end
+
+    def sidebar_structure(include_empty: false)
+      sections = sidebar_sections.includes(sidebar_links: { topic: %i[category shared_draft] }).to_a
+      sections_by_parent = sections.group_by(&:parent_section_id)
+      topics_by_href = href_topics(sections.flat_map(&:sidebar_links))
+      serialize_sections(
+        sections_by_parent.fetch(nil, []),
+        sections_by_parent,
+        topics_by_href,
+        include_empty:,
+      ).map(&:last)
     end
 
     def auto_index_section
@@ -70,10 +88,16 @@ module DocCategories
     end
 
     def sidebar_topic_linked?(topic)
-      DocCategories::SidebarLink
-        .joins(:sidebar_section)
-        .where(sidebar_section: { index_id: id })
-        .exists?(topic: topic)
+      return false if !sidebar_available?
+
+      sidebar_links_scope.exists?(topic:) || href_only_topic_ids.include?(topic.id)
+    end
+
+    def indexed_topic_ids
+      return [] if !sidebar_available?
+
+      topic_ids = sidebar_links_scope.where.not(topic_id: nil).distinct.pluck(:topic_id)
+      topic_ids | href_only_topic_ids
     end
 
     def replace_sidebar_sections!(sections)
@@ -107,46 +131,66 @@ module DocCategories
 
     private
 
-    def serialize_sections(roots, sections)
+    def sidebar_links_scope
+      SidebarLink.where(sidebar_section: sidebar_sections.reorder(nil))
+    end
+
+    def href_only_topic_ids
+      sidebar_links_scope
+        .where(topic_id: nil)
+        .distinct
+        .pluck(:href)
+        .filter_map { |href| SidebarLink.referenced_topic_id(nil, href) }
+    end
+
+    def href_topics(links)
+      topic_ids_by_href =
+        links
+          .reject { |link| link.topic && link.href == link.topic.relative_url }
+          .map(&:href)
+          .uniq
+          .index_with { |href| SidebarLink.referenced_topic_id(nil, href) }
+          .compact
+      topics_by_id =
+        ::Topic
+          .with_deleted
+          .where(id: topic_ids_by_href.values.uniq)
+          .includes(:category, :shared_draft)
+          .index_by(&:id)
+      topic_ids_by_href.transform_values { |topic_id| topics_by_id[topic_id] }
+    end
+
+    def serialize_sections(roots, sections, topics_by_href, include_empty:, nested: false)
       roots.filter_map do |section|
-        children = serialize_sections(sections.fetch(section.id, []), sections)
+        children =
+          serialize_sections(
+            sections.fetch(section.id, []),
+            sections,
+            topics_by_href,
+            include_empty:,
+            nested: true,
+          )
         links =
           section.sidebar_links.filter_map do |link|
-            data = serialize_link(link)
+            data = serialize_link(link, topics_by_href, nested: children.present?)
             [link.position, data] if data
           end
-        next if children.empty? && links.empty? && !section.auto_index?
+        next if children.empty? && links.empty? && !section.auto_index? && !include_empty
 
-        data = { id: section.id, text: section.title }
-        if children.empty?
-          data[:links] = links.map(&:last)
-        else
-          entries = links.map { |position, link| [position, link.merge(type: "link")] }
-          entries.concat(
-            children.map { |position, child| [position, child.merge(type: "section")] },
-          )
-          data[:items] = entries.sort_by(&:first).map(&:last)
-        end
+        data =
+          SidebarSectionSerializer.new(section, root: false, links:, children:, nested:).as_json
         [section.position, data]
       end
     end
 
-    def serialize_link(link)
-      referenced_topic = link.topic
-      return if referenced_topic && !topic_category_visible?(referenced_topic)
-
-      topic = valid_topic(referenced_topic)
-      text = link.title.presence || topic&.title
-      href = link.href.presence || topic&.relative_url
-      return if text.blank? || href.blank?
-
-      result = { text:, href: }
-      if link.topic_id.present?
-        result[:topic_id] = link.topic_id
-        result[:topic_title] = topic&.title
-        result[:custom_title] = link.title.present?
+    def serialize_link(link, topics_by_href, nested:)
+      topic = link.topic
+      if [topic, topics_by_href[link.href]].compact.any? { |target| !sidebar_visible_topic(target) }
+        return
       end
-      result
+
+      data = SidebarLinkSerializer.new(link, root: false, topic:, nested:).as_json
+      data if data[:text].present? && data[:href].present?
     end
 
     def section_topic_ids(sections)

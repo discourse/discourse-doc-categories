@@ -8,20 +8,35 @@ module DocCategories
         sync_handler = method(:sync_auto_indexes)
 
         plugin.add_model_callback(:topic, :after_update) do
-          next unless saved_change_to_category_id? || saved_change_to_archetype?
+          category_or_archetype_changed = saved_change_to_category_id? || saved_change_to_archetype?
+          unless category_or_archetype_changed || saved_change_to_visible? ||
+                   saved_change_to_deleted_at?
+            next
+          end
 
           topic_id = id
           category_ids = saved_change_to_category_id || [category_id]
           DB.after_commit do
-            refresh_handler.call(::Topic.with_deleted.where(id: topic_id))
-            sync_handler.call(category_ids)
+            refresh_handler.call([topic_id])
+            sync_handler.call(category_ids) if category_or_archetype_changed
           end
+        end
+
+        plugin.add_model_callback(:shared_draft, :after_create) do
+          draft_topic_id = topic_id
+          DB.after_commit { refresh_handler.call([draft_topic_id]) }
+        end
+
+        plugin.on(:topic_published) do |topic|
+          DB.after_commit { refresh_indexes_for_topics([topic.id]) }
         end
 
         plugin.on(:category_updated) do |category|
           next unless category.saved_change_to_read_restricted?
 
-          refresh_indexes_for_topics(::Topic.with_deleted.where(category_id: category.id))
+          refresh_indexes_for_topics(
+            ::Topic.with_deleted.where(category_id: category.id).pluck(:id),
+          )
           sync_auto_indexes([category.id])
         end
       end
@@ -57,13 +72,11 @@ module DocCategories
           end
       end
 
-      def refresh_indexes_for_topics(topics)
-        categories =
-          ::Category
-            .joins(doc_categories_index: { sidebar_sections: :sidebar_links })
-            .where(doc_categories_sidebar_links: { topic_id: topics.select(:id) })
-            .distinct
-            .to_a
+      def refresh_indexes_for_topics(topic_ids)
+        links = DocCategories::SidebarLink.targeting_topics(topic_ids)
+        linked_indexes = Index.joins(sidebar_sections: :sidebar_links).merge(links).select(:id)
+        indexes = Index.where(id: linked_indexes).or(Index.where(index_topic_id: topic_ids))
+        categories = ::Category.where(id: indexes.select(:category_id)).to_a
         return if categories.empty?
 
         Site.clear_cache

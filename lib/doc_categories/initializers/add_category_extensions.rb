@@ -3,6 +3,36 @@
 module ::DocCategories
   module Initializers
     class AddCategoryExtensions < Initializer
+      module CategoryUpdatePermissions
+        INDEX_PARAMS = %i[doc_index_topic_id doc_index_sections].freeze
+
+        def self.prepended(controller)
+          controller.before_action :authorize_documentation_index_params, only: :update
+        end
+
+        private
+
+        def authorize_documentation_index_params
+          if !SiteSetting.doc_categories_enabled || INDEX_PARAMS.none? { |key| params.key?(key) }
+            return
+          end
+
+          if guardian.is_admin?
+            raise Discourse::NotFound if !guardian.can_see_category?(@category)
+            return
+          end
+
+          topic_id = params[:doc_index_topic_id]
+          if params[:doc_index_sections].present? ||
+               (topic_id.present? && topic_id.to_s != @category.doc_index_topic_id.to_s)
+            raise Discourse::InvalidAccess
+          end
+
+          # Ordinary edits can echo the current mode or send empty optional fields.
+          INDEX_PARAMS.each { |key| params.delete(key) }
+        end
+      end
+
       def apply
         plugin.add_class_method(:category, :doc_category_ids) do
           DocCategories::Index.pluck(:category_id)

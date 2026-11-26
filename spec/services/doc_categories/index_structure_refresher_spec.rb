@@ -39,9 +39,8 @@ RSpec.describe DocCategories::IndexStructureRefresher do
     end
 
     let(:params) { { category_id: documentation_category.id } }
-    let(:messages) { MessageBus.track_publish("/categories") { result } }
-
     let(:dependencies) { {} }
+    let(:messages) { MessageBus.track_publish("/categories") { result } }
 
     before { SiteSetting.doc_categories_enabled = true }
 
@@ -74,7 +73,7 @@ RSpec.describe DocCategories::IndexStructureRefresher do
     context "when the first post has no cooked content" do
       before { index_topic.first_post.update_columns(cooked: "") }
 
-      it { is_expected.to fail_a_step(:parse_first_post) }
+      it { is_expected.to fail_a_step(:require_index_topic_body) }
     end
 
     it "rebuilds the sidebar structure from the index topic" do
