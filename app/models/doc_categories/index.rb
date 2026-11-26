@@ -27,7 +27,6 @@ module DocCategories
 
     validate :index_topic_matches_category, if: :mode_topic?
 
-    # Sidebar writers take the category lock first, even when no index exists yet.
     def self.lock_categories(category_ids)
       ::Category.where(id: category_ids).order(:id).lock.pluck(:id)
     end

@@ -18,6 +18,7 @@ module DocCategories
       def prepare!
         @sections = index ? index.sidebar_sections.to_a : []
         @sections_by_parent = @sections.group_by(&:parent_section_id)
+        @section = find_section(@params.section_id) if @params.section_id
 
         case operation
         when "add_section"
@@ -25,12 +26,8 @@ module DocCategories
         when "move_section"
           prepare_section_move
         when "add_topic_links"
-          @section = find_section(@params.section_id)
           @topics = topics_to_append
-        when "remove_section"
-          @section = find_section(@params.section_id)
         when "remove_topic_link"
-          @section = find_section(@params.section_id)
           @links =
             section.sidebar_links.select { |link| link.referenced_topic_id == @params.topic_id }
           reject_patch("index_topic_link_not_found") if links.empty?
@@ -59,18 +56,27 @@ module DocCategories
       private
 
       def calculate_index_change
-        return topics.present? if operation == "add_topic_links"
-        return true if operation != "move_section" || section.parent_section_id != parent&.id
+        case operation
+        when "add_topic_links"
+          topics.present?
+        when "move_section"
+          !already_in_place?
+        else
+          true
+        end
+      end
+
+      def already_in_place?
+        return false if section.parent_section_id != parent&.id
 
         siblings = section_items(parent).sort_by(&:position)
-        section_position = siblings.index(section)
         case placement
         when "before"
-          siblings[section_position + 1] != relative_section
+          siblings.each_cons(2).include?([section, relative_section])
         when "after"
-          section_position == 0 || siblings[section_position - 1] != relative_section
+          siblings.each_cons(2).include?([relative_section, section])
         when "inside"
-          siblings.last != section
+          siblings.last == section
         end
       end
 
@@ -85,7 +91,6 @@ module DocCategories
       end
 
       def prepare_section_move
-        @section = find_section(@params.section_id)
         @parent, @relative_section = destination
         if relative_section == section || ancestors(parent).include?(section)
           reject_patch("invalid_section_move")
@@ -129,19 +134,22 @@ module DocCategories
       end
 
       def validate_section_titles
+        moving_untitled_section = section && section.title.blank?
         if parent
-          if parent.title.blank? || (section && section.title.blank?)
+          if parent.title.blank? || moving_untitled_section
             reject_patch("index_section_title_required")
           end
-        else
-          first_root = children_of(nil).find { |root| root != section }
-          placing_first =
-            relative_section && placement == "before" && relative_section == first_root
-          if (
-               section && section.title.blank? && (!placing_first || children_of(section).present?)
-             ) || (placing_first && first_root.title.blank?)
-            reject_patch("index_section_title_required")
-          end
+          return
+        end
+
+        first_other_root = children_of(nil).find { |root| root != section }
+        placing_first = placement == "before" && relative_section == first_other_root
+
+        if moving_untitled_section && (!placing_first || children_of(section).any?)
+          reject_patch("index_section_title_required")
+        end
+        if placing_first && first_other_root.title.blank?
+          reject_patch("index_section_title_required")
         end
       end
 

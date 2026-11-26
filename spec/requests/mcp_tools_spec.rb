@@ -475,6 +475,22 @@ describe "Documentation index MCP tools" do
       expect_patch_error("doc_categories.errors.index_section_title_required")
     end
 
+    it "rejects inserting a section before an untitled first section" do
+      subsection.update!(parent_section: other_section)
+      section.update!(title: "")
+      authorize(write_scope)
+
+      expect do
+        call_patch_index(
+          operation: "add_section",
+          title: "Setup",
+          placement: "before",
+          relative_section_id: section.id,
+        )
+      end.not_to change { index.sidebar_sections.pluck(:id, :position) }
+      expect_patch_error("doc_categories.errors.index_section_title_required")
+    end
+
     it "requires the write scope even when the token has the read scope" do
       authorize(read_scope)
 

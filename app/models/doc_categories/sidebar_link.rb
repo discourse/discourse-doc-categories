@@ -45,12 +45,16 @@ module DocCategories
         topic_ids
           .each_slice(TOPIC_LOOKUP_BATCH_SIZE)
           .flat_map do |ids|
-            # The SQL filter narrows the candidates. Route recognition verifies the destination.
             path = "/t/(?:[^/?#]+/)?(?:#{ids.join("|")})(?:[./?#]|$)"
             matching_ids = ids.to_set
+
+            # A search URL can contain "/t/42" in its query string. Check where the URL routes.
             where("href ~ ?", path)
               .pluck(:id, :href)
-              .filter_map { |id, href| id if matching_ids.include?(referenced_topic_id(nil, href)) }
+              .filter_map do |link_id, href|
+                topic_id = DocCategories::Url.extract_topic_id_from_url(href)
+                link_id if matching_ids.include?(topic_id)
+              end
           end
       where(topic_id: topic_ids).or(where(id: href_link_ids))
     end

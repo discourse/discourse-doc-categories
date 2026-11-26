@@ -5,6 +5,7 @@ module DocCategories
     class IndexResult
       PAGE_SIZE = 50
       # Core adds JSON-RPC and MCP metadata after the tool returns.
+      # TODO (martin): Make a patch to core MCP to provide a better API for this.
       RESPONSE_ENVELOPE_BYTES = 2048
 
       def initialize(category)
