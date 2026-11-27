@@ -4,11 +4,9 @@ module DocCategories
   module McpTools
     class IndexResult
       PAGE_SIZE = 50
-      # Core adds JSON-RPC and MCP metadata after the tool returns.
-      # TODO (martin): Make a patch to core MCP to provide a better API for this.
-      RESPONSE_ENVELOPE_BYTES = 2048
 
-      def initialize(category)
+      def initialize(category, request_context:)
+        @request_context = request_context
         @category = category
         @sections =
           DocCategories::IndexSerializer
@@ -20,7 +18,7 @@ module DocCategories
       def read(offset:)
         if offset.nil?
           result = full_result
-          return result if fits_response?(result)
+          return result if @request_context.result_fits?(result)
         end
 
         page(offset || 0)
@@ -28,7 +26,7 @@ module DocCategories
 
       def patch
         result = full_result
-        return result if fits_response?(result)
+        return result if @request_context.result_fits?(result)
 
         DiscourseMcp::ToolHelpers.text_and_structured(
           applied: true,
@@ -43,11 +41,6 @@ module DocCategories
         DiscourseMcp::ToolHelpers.text_and_structured(sections: @sections)
       end
 
-      def fits_response?(result)
-        JSON.generate(result).bytesize + RESPONSE_ENVELOPE_BYTES <=
-          SiteSetting.mcp_max_response_bytes
-      end
-
       def page(offset)
         entries = flatten_sections(@sections)
         page_entries = offset < entries.size ? entries.slice(offset, PAGE_SIZE) : []
@@ -58,11 +51,11 @@ module DocCategories
             next_offset: next_offset < entries.size ? next_offset : nil,
           }
           result = DiscourseMcp::ToolHelpers.text_and_structured(value)
-          return result if fits_response?(result)
+          return result if @request_context.result_fits?(result)
 
           if page_entries.size <= 1
             result[:content] = [{ type: "text", text: I18n.t("mcp_tools.index_page_structured") }]
-            return result if fits_response?(result)
+            return result if @request_context.result_fits?(result)
 
             raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.index_entry_too_large")
           end
@@ -174,7 +167,7 @@ module DocCategories
           raise DiscourseMcp::ToolError, I18n.t("mcp_tools.errors.category_not_found")
         end
 
-        IndexResult.new(category).read(offset: arguments["offset"]&.to_i)
+        IndexResult.new(category, request_context:).read(offset: arguments["offset"]&.to_i)
       end
     end
 
@@ -251,7 +244,7 @@ module DocCategories
 
       def self.call(arguments:, request_context:)
         DocCategories::IndexPatcher.call(params: arguments, guardian: request_context.guardian) do
-          on_success { |category:| IndexResult.new(category).patch }
+          on_success { |category:| IndexResult.new(category, request_context:).patch }
           on_failed_contract do |contract|
             raise DiscourseMcp::ToolError, contract.errors.full_messages.join(", ")
           end
